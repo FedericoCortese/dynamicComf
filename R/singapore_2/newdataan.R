@@ -2,6 +2,7 @@ library(dplyr)
 library(ggplot2)
 library(tidyr)
 library(lubridate)
+library(LMest)
 
 # Data loading ------------------------------------------------------------
 enth_surv=read.csv("enth_surveys_calc.csv" )
@@ -225,17 +226,21 @@ summaryBy(skin_temp ~ comfort, data=enth_out_EDA, FUN=c(mean, sd, min, max),na.r
 # source("HMMcont_miss/RCode/bootstrap.MISS.R")
 # 
 # # Construct objects
-# ui=unique(enth_out$user_id)
-# ut=sort(unique(enth_out$time))
+ui=unique(enth_out$user_id)
+ut=sort(unique(enth_out$time))
+
+n=length(unique(ui))
+TT=length(unique(ut))
+
+temp=data.frame(time=rep(ut,each=n),user_id=rep(unique(ui),length(ut)))
+
+# Join temp and enth_out
+temp=merge(temp,enth_out,by=c("time","user_id"),all=T)
 # 
-# n=length(unique(ui))
-# TT=length(unique(ut))
-# 
-# temp=data.frame(time=rep(ut,each=n),user_id=rep(unique(ui),length(ut)))
-# 
-# # Join temp and enth_out
-# temp=merge(temp,enth_out,by=c("time","user_id"),all=T)
-# 
+
+# Extract response var
+YY1=temp[,c("time","user_id","thermal")]
+
 # # Construct response vars object
 # Yweather=temp[,c("user_id","time","temp_outdoor","humidity_outdoor","pressure_outdoor")]
 # Yphysio=temp[,c("user_id","time","heartrate","resting_heartrate","nb_temp","skin_temp")]
@@ -258,16 +263,22 @@ summaryBy(skin_temp ~ comfort, data=enth_out_EDA, FUN=c(mean, sd, min, max),na.r
 #   YYaq[i,,3]=temp[temp$user_id==ui[i],"pm10.0_outdoor"]
 # }
 
-#YY1=log(YY1)
-
 
 # LMM with covariates on the latent model ---------------------------------------------------------------------
+
+load("EMimpres.RData")
+
+Xweather=exp(modva[[4]]$Yimp)
+Xphysio=exp(modvb[[4]]$Yimp)
+Xaq=modvc[[4]]$Yimp
 
 enth_surv$BMI=enth_surv$weight/(enth_surv$height/100)^2
 enth_surv$outdoor_hr_day=apply(cbind(enth_surv$outdoor_hr_weekday,enth_surv$outdoor_hr_weekend),1,mean)
 
-XX1=array(0,dim=c(n,TT,15))
+XX1=array(0,dim=c(n,TT,23))
+
 for(i in 1:n){
+  
   XX1[i,,1]=enth_surv$sex[which(enth_surv$user_id==ui[i])]
   XX1[i,,2]=enth_surv$sweating[which(enth_surv$user_id==ui[i])]
   XX1[i,,3]=enth_surv$BMI[which(enth_surv$user_id==ui[i])]
@@ -283,19 +294,40 @@ for(i in 1:n){
   XX1[i,,13]=enth_surv$conscientiousness[which(enth_surv$user_id==ui[i])]
   XX1[i,,14]=enth_surv$emotional_stability[which(enth_surv$user_id==ui[i])]
   XX1[i,,15]=enth_surv$openness_to_experiences[which(enth_surv$user_id==ui[i])]
+ 
+  XX1[i,,16]=Xweather[i,,1] 
+  XX1[i,,17]=Xweather[i,,2]
+  XX1[i,,18]=Xweather[i,,3]
+  
+  XX1[i,,19]=Xphysio[i,,1]
+  XX1[i,,20]=Xphysio[i,,2]
+  XX1[i,,21]=Xphysio[i,,3]
+  XX1[i,,22]=Xphysio[i,,4]
+  
+  XX1[i,,23]=YY1$thermal[which(YY1$user_id==ui[i])]
 }
 
-prv=matrices2long(YY1[,,8],XX1)
-colnames(prv)[3:18]=c("thermal","sex","sweating","BMI","enjoy_ourdoor",
+prv=matrices2long(XX1)
+colnames(prv)[3:25]=c("sex","sweating","BMI","enjoy_ourdoor",
                       "satisfaction_weather","years_here","outdoor_hr_day",
                       "shoulder_circumference","hsps","swls","extraversion",
                       "agreeableness","conscientiousness","emotional_stability",
-                      "openness_to_experiences")
+                      "openness_to_experiences",
+                      "air_temperature","humidity","pressure",
+                      "heartrate","resting_heartrate","nb_temp","skin_temp",
+                      "thermal")
+
 
 prv$thermal=1+prv$thermal
+prv$satisfaction_weather=1+prv$satisfaction_weather
+
+head(prv)
 
 out <- lmest(responsesFormula = thermal ~ NULL,
-             latentFormula = ~ sex+BMI+enjoy_ourdoor+
+             latentFormula = ~ air_temperature+humidity+pressure+
+               heartrate+resting_heartrate+nb_temp+skin_temp+
+               sex+
+               BMI+enjoy_ourdoor+
                satisfaction_weather+years_here+outdoor_hr_day+
                shoulder_circumference+hsps+swls+extraversion+
                agreeableness+conscientiousness+emotional_stability+
@@ -307,83 +339,30 @@ out <- lmest(responsesFormula = thermal ~ NULL,
              modBasic = 1,
              seed = 123)
 
-summary(out)
-out$Psi
 
-outDec <- lmestDecoding(out)
+
+out2 <- lmest(responsesFormula = thermal ~ NULL,
+             latentFormula = ~ air_temperature+humidity+pressure+
+               heartrate+resting_heartrate+nb_temp+skin_temp+
+               sex+
+               BMI+enjoy_ourdoor+
+               satisfaction_weather+years_here+outdoor_hr_day+
+               shoulder_circumference+hsps+swls+extraversion+
+               agreeableness+conscientiousness+emotional_stability+
+               openness_to_experiences,
+             index = c("id","time"),
+             data = prv,
+             k = 2,
+             start = 1,
+             modBasic = 1,
+             seed = 123)
+
+summary(out2)
+round(out2$Psi,3)
+
+outDec <- lmestDecoding(out2)
 
 dim(outDec$Ug)
 
 prv$thermal[which(prv$id==4)]
 outDec$Ug[4,]
-
-
-
-
-dim(YY1)
-n <- dim(YY1)[1]                   # number of individuals
-TT <- dim(YY1)[2]                  # number of time occasions
-r <- dim(YY1)[3]                   # number of continuous outcomes            
-head(YY1[,1,])
-dim(XX1)
-head(XX1[,1,])
-
-nrep <- 10 
-Kmax <- 4
-tol <- 10^-4
-
-modva = vector("list",Kmax)
-for(k in 1:Kmax){
-  print(k)
-  if(k>=7) nrep<-2
-  modva[[k]] <- lmbasic.cont.MISS(YY1,k=k,modBasic=1,start=0,tol=tol)
-  if(k>1){
-    for(k1 in 1:(nrep*(k-1))){
-      print(c(k,k1))
-      tmp <- lmbasic.cont.MISS(YY,k=k,modBasic=1, start=1,tol=tol)
-      if(tmp$lk>modva[[k]]$lk){
-        modva[[k]] = tmp
-      }
-    }
-  }
-}
-
-#round(mp$Mu,3)
-exp(round(mp2$Mu,3))
-mp2$Si
-round(mp2$Pi[,,2],3)
-round(mp2$piv,3)
-
-# Too many NAS leads to errors on the HM estimation
-# na_ids=apply(YY1,1,function(x) sum(is.na(x)))/(4*TT)
-# na_ids=which(na_ids>.99)
-
-# YY1_drop=YY1[-na_ids,,]
-# XX1_drop=XX1[-na_ids,,]
-
-
-# Individual covariates affecting the initial probabilities
-X1 <- XX1[,1,]
-# Individual covariates affecting the transition probabilities
-X2 <- XX1[,2:TT,]
-mpcov <- lmcovlatent.cont.MISS(Y=YY1,k=2,X1=X1,
-                               X2=X2,start=1,tol=tol,output=TRUE)
-
-
-
-#
-modva = vector("list",Kmax)
-# for(k in 1:Kmax){
-#   print(k)
-#   if(k>=7) nrep<-2
-#   modva[[k]] <- lmbasic.cont.MISS(YY,k=k,modBasic=1,start=0,tol=tol)
-#   if(k>1){
-    for(k1 in 1:(nrep*(k-1))){
-      print(c(k,k1))
-      tmp <- lmbasic.cont.MISS(YY1,k=3,modBasic=1, start=1,tol=tol)
-      if(tmp$lk>modva[[k]]$lk){
-        modva[[k]] = tmp
-      }
-     }
-#   }
-# }

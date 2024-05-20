@@ -359,4 +359,58 @@ GIC=function(simest,satmod,Ksat=6,alpha0,K0){
   return(res_av)
 }
 
+MClinregSim=function(n,
+                   coeff,
+                   X,
+                   pers=.95, 
+                   init,
+                   seed=123){
+  # This function simulates data from a linear regression model with Markov chain underlying dynamics
+
+  # Arguments:
+  # n: number of observations
+  # coeff: matrix of coefficients for the linear regression model
+  # X: matrix of covariates
+  # pers: self-transition probability
+  # init: initial probabilities
+  # seed: seed for the random number generator
+
+  # Value:
+  # SimData: vector of simulated responses
+  
+  X=cbind(1,X)
+  
+  #markov chain simulation
+  reg=nrow(coeff)
+  Q <- matrix(rep((1-pers)/(reg-1),reg*reg), 
+              ncol = reg,
+              byrow = TRUE)
+  diag(Q)=rep(pers,reg)
+  #reg = dim(Q)[1]
+  x <- numeric(n)
+  set.seed(seed)
+  x[1] <- sample(1:reg, 1, prob = init)
+  for(i in 2:n){
+    x[i] <- sample(1:reg, 1, prob = Q[x[i - 1], ])
+  }
+  
+  d=1
+  Sim = matrix(0, n, d * reg)
+  SimData = matrix(0, n, d)
+  
+  #pseudo-observations simulation
+  for (k in 1:reg) {
+    #u = rCopula(n, copula::tCopula(param=P2p(R[,,k]), dim = d,df=nu[k],dispstr = "un"))
+    u = X%*%coeff[k,]
+    Sim[, (d * k - d + 1):(d * k)] = u
+  }
+  
+  for (i in 1:n) {
+    k = x[i]
+    SimData[i, ] = Sim[i, (d * k - d + 1):(d * k)]
+  }
+  return(list(SimData=SimData,mc=x))
+  
+}
+
 

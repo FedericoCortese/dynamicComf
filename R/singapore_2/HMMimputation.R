@@ -86,3 +86,11 @@ for(k in 1:Kmax){
     }
   }
 }
+
+lapply(modva, function(x) x$bic)
+lapply(modvb, function(x) x$bic)
+lapply(modvc, function(x) x$bic)
+
+dim(modva[[4]]$Yimp)
+plot(exp(modva[[4]]$Yimp[16,,3]),type="l")
+  plot(exp(modvb[[4]]$Yimp[16,,4]),type="l")
