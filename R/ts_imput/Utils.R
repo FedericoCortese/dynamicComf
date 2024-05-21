@@ -315,7 +315,7 @@ HoltWint.df=function(data,period=24){
   return(list(trend=trend,level=level,season=season,residuals=residuals))
 }
 
-# Kriging -----------------------------------------------------------------
+# Kriging Cross-Validation -----------------------------------------------------------------
 
 cvobj_STFDF=function(dat,locations,stat_col){
   
@@ -662,3 +662,8 @@ rmse_st=function(reconstr,true,miss){
   }
   return(RMSE)
 }
+
+
+# Kriging Predictions -----------------------------------------------------
+
+

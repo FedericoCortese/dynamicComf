@@ -167,7 +167,7 @@ mtext("Relative humidity", side = 3, line = - 2, outer = TRUE)
 # Rainfall
 windows()
 par(mfrow=c(4,9),mar=c(2,2,6,2))
-for(i in 2:36){
+for(i in 2:34){
   plot(x=rainfall$time,y=as.vector(unlist(rainfall[,i])),type="l",col="blue",
        xlab=" ",ylab=" ",
        main=colnames(rainfall[,i]))
@@ -178,7 +178,7 @@ mtext("Rainfall (1)", side = 3, line = - 2, outer = TRUE)
 # Plot for the next 36 stations
 windows()
 par(mfrow=c(4,9),mar=c(2,2,6,2))
-for(i in 37:72){
+for(i in 35:68){
   plot(x=rainfall$time,y=as.vector(unlist(rainfall[,i])),type="l",col="blue",
        xlab=" ",ylab=" ",
        main=colnames(rainfall[,i]))
@@ -225,7 +225,6 @@ count_gaps=function(x){
 
 # Gap lengths for air_data_wide as % of total length
 NA_count_air=count_gaps(air_temp);NA_count_air
-lapply(NA_count[-1],function(x) round(x/dim(air_data_wide)[1]*100,1))
 
 
 
@@ -314,15 +313,13 @@ NA_count_air=count_gaps(air_temp1);NA_count_air
 air_decomp=LOESS.df(air_temp1)
 RH_decomp=LOESS.df(RH1)
 rain_decomp=LOESS.df(rainfall1)
-
-par(mfrow=c(3,1))
-plot(rain_decomp$trend$time,rain_decomp$trend$S08,type='l')
-plot(rain_decomp$season$time,rain_decomp$season$S08,type='l')
-plot(rain_decomp$residuals$time,rain_decomp$residuals$S08,type='l')
-
 wdir_decomp=LOESS.df(wdir1)
+wsp_decomp=LOESS.df(wsp1)
 
-par(mfrow=c(3,1))
-plot(wdir_decomp$trend$time,wdir_decomp$trend$S100,type='l')
-plot(wdir_decomp$season$time,wdir_decomp$season$S100,type='l')
-plot(wdir_decomp$residuals$time,wdir_decomp$residuals$S100,type='l')
+plot(air_decomp$residuals$S100,type='l')
+
+# Where and when make predictions
+load("df_cozie.Rdata")
+
+length(unique(df_cozie$time))
+

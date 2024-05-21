@@ -225,9 +225,9 @@ X[,2]=rnorm(TT,mean=2)
 X=apply(X,2,scale)
 coeff=matrix(0,nrow=2,ncol=3)
 coeff[1,]=c(0,2,1)
-coeff[2,]=c(2,.5,.5)
-pers=.9
-init=c(.5,.5)
+coeff[2,]=c(2,-2,.5)
+pers=.95
+init=c(.8,.2)
 Y=MClinregSim(TT,coeff,X,pers,init)
 mchain=Y$mc
 Y=Y$SimData
@@ -242,3 +242,4 @@ prvLR=jumpLR(Y,X,n_states,jump_penalty = 10,verbose = F)
 round(prvLR$coefs,3)
 coeff
 table(prvLR$s)
+table(mchain)

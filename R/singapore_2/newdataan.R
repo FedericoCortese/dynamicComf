@@ -317,32 +317,94 @@ colnames(prv)[3:25]=c("sex","sweating","BMI","enjoy_ourdoor",
                       "heartrate","resting_heartrate","nb_temp","skin_temp",
                       "thermal")
 
+table(prv$thermal)
+# Few answering "warmer", let us aggregate with "no change"
+prv$thermal=recode(prv$thermal, "-1" = 0)
 
-prv$thermal=1+prv$thermal
+#prv$thermal=1+prv$thermal
 prv$satisfaction_weather=1+prv$satisfaction_weather
 
 head(prv)
 
-out <- lmest(responsesFormula = thermal ~ NULL,
-             latentFormula = ~ air_temperature+humidity+pressure+
-               heartrate+resting_heartrate+nb_temp+skin_temp+
-               sex+
-               BMI+enjoy_ourdoor+
-               satisfaction_weather+years_here+outdoor_hr_day+
-               shoulder_circumference+hsps+swls+extraversion+
-               agreeableness+conscientiousness+emotional_stability+
-               openness_to_experiences,
-             index = c("id","time"),
-             data = prv,
-             k = 3,
-             start = 1,
-             modBasic = 1,
-             seed = 123)
+# out <- lmest(responsesFormula = thermal ~ NULL,
+#              latentFormula = ~ air_temperature+humidity+pressure+
+#                heartrate+resting_heartrate+nb_temp+skin_temp+
+#                sex+
+#                BMI+enjoy_ourdoor+
+#                satisfaction_weather+years_here+outdoor_hr_day+
+#                shoulder_circumference+hsps+swls+extraversion+
+#                agreeableness+conscientiousness+emotional_stability+
+#                openness_to_experiences,
+#              index = c("id","time"),
+#              data = prv,
+#              k = 3,
+#              start = 1,
+#              modBasic = 1,
+#              seed = 123)
 
 
+
+# EDA post-imputation -----------------------------------------------------
+
+library(doBy)
+
+# Impact of weather variables on thermal and general comfort
+summaryBy(air_temperature ~ thermal, data=prv, FUN=c(mean, median, sd, min, max),na.rm=T)
+summaryBy(years_here~thermal, data=prv, FUN=c(mean, median, sd, min, max),na.rm=T)
+summaryBy(outdoor_hr_day~thermal, data=prv, FUN=c(mean, median, sd, min, max),na.rm=T)
+summaryBy(skin_temp~thermal, data=prv, FUN=c(mean, median, sd, min, max),na.rm=T)
+summaryBy(BMI~thermal, data=prv, FUN=c(mean, median, sd, min, max),na.rm=T)
+
+prop.table(table(prv$sex))*100
+con.comf.sex<-table(prv$sex,prv$thermal)
+con.comf.sex/rowSums(con.comf.sex)*100
+
+plot(prv$air_temperature,prv$humidity)
+plot(enth_out$temp_outdoor,enth_out$humidity_outdoor)
+
+# Scale numeric vars
+num_vars=c("BMI","years_here","outdoor_hr_day","shoulder_circumference",
+           "air_temperature","humidity","pressure",
+           "heartrate","resting_heartrate","nb_temp","skin_temp")
+prv_scaled=
+  as.data.frame(
+  apply(prv[,num_vars],2,scale)
+  )
+prv_scaled$id=prv$id
+prv_scaled$time=prv$time
+
+prv_notnum= select(prv, -num_vars) 
+
+prv_scaled=merge(prv_scaled,prv_notnum,
+                 by=c("id","time"))
+
+# sort by time and id
+prv_scaled=prv_scaled[order(prv_scaled$id,prv_scaled$time),]
+
+str(prv_scaled)
+
+# LMM ---------------------------------------------------------------------
+
+out2_nosc <- lmest(responsesFormula = thermal ~ NULL,
+              latentFormula = ~ 1 | air_temperature+humidity+pressure+
+                heartrate+resting_heartrate+nb_temp+skin_temp+
+                sex+
+                BMI+enjoy_ourdoor+
+                satisfaction_weather+years_here+outdoor_hr_day+
+                shoulder_circumference+hsps+swls+extraversion+
+                agreeableness+conscientiousness+emotional_stability+
+                openness_to_experiences,
+              index = c("id","time"),
+              data = prv,
+              k = 2,
+              start = 1,
+              modBasic = 1,
+              seed = 123, out_se = T)
+
+summary(out2_nosc)
 
 out2 <- lmest(responsesFormula = thermal ~ NULL,
-             latentFormula = ~ air_temperature+humidity+pressure+
+             latentFormula = ~ 1 | air_temperature+humidity+pressure+
                heartrate+resting_heartrate+nb_temp+skin_temp+
                sex+
                BMI+enjoy_ourdoor+
@@ -351,11 +413,11 @@ out2 <- lmest(responsesFormula = thermal ~ NULL,
                agreeableness+conscientiousness+emotional_stability+
                openness_to_experiences,
              index = c("id","time"),
-             data = prv,
+             data = prv_scaled,
              k = 2,
              start = 1,
              modBasic = 1,
-             seed = 123)
+             seed = 123, out_se = T)
 
 summary(out2)
 round(out2$Psi,3)
@@ -366,3 +428,20 @@ dim(outDec$Ug)
 
 prv$thermal[which(prv$id==4)]
 outDec$Ug[4,]
+
+
+out3 <- lmest(responsesFormula = thermal ~ NULL,
+              latentFormula = ~ 1 | air_temperature+humidity+pressure+
+                heartrate+resting_heartrate+nb_temp+skin_temp+
+                sex+
+                BMI+enjoy_ourdoor+
+                satisfaction_weather+years_here+outdoor_hr_day+
+                shoulder_circumference+hsps+swls+extraversion+
+                agreeableness+conscientiousness+emotional_stability+
+                openness_to_experiences,
+              index = c("id","time"),
+              data = prv_scaled,
+              k = 3,
+              start = 1,
+              modBasic = 1,
+              seed = 123, out_se = T)
