@@ -364,7 +364,9 @@ MClinregSim=function(n,
                    X,
                    pers=.95, 
                    init,
-                   seed=123){
+                   seed=123,
+                   family,
+                   sigma=0.5){
   # This function simulates data from a linear regression model with Markov chain underlying dynamics
 
   # Arguments:
@@ -399,18 +401,56 @@ MClinregSim=function(n,
   SimData = matrix(0, n, d)
   
   #pseudo-observations simulation
-  for (k in 1:reg) {
-    #u = rCopula(n, copula::tCopula(param=P2p(R[,,k]), dim = d,df=nu[k],dispstr = "un"))
-    u = X%*%coeff[k,]
-    Sim[, (d * k - d + 1):(d * k)] = u
-  }
+  # for (k in 1:reg) {
+  #   #u = rCopula(n, copula::tCopula(param=P2p(R[,,k]), dim = d,df=nu[k],dispstr = "un"))
+  #   u = X%*%coeff[k,]
+  #   Sim[, (d * k - d + 1):(d * k)] = u
+  # }
+  
+  switch (family,
+    gaussian={
+      for (k in 1:reg) {
+        #u = rCopula(n, copula::tCopula(param=P2p(R[,,k]), dim = d,df=nu[k],dispstr = "un"))
+        u = X%*%coeff[k,]+ rnorm(n = nrow(X), mean = 0, sd = sigma)
+        Sim[, (d * k - d + 1):(d * k)] = u
+      }
+    },
+    binomial={
+      for (k in 1:reg) {
+        # Compute the linear predictor
+        linear_predictor <- X %*% coeff[k,]
+        
+        # Compute the probability using the logistic function
+        probabilities <- 1 / (1 + exp(-linear_predictor))
+        
+        # Simulate the binomial responses
+        u <- rbinom(n = nrow(X), size = 1, prob = probabilities)
+        Sim[, (d * k - d + 1):(d * k)] = u
+      }
+      },
+    poisson={
+      for (k in 1:reg) {
+      # Compute the linear predictor
+      linear_predictor <- X %*% coeff[k,]
+      
+      # Compute the rate (lambda) using the exponential function
+      lambda <- exp(linear_predictor)
+      
+      # Simulate the Poisson responses
+      u <- rpois(n = nrow(X), lambda = lambda)
+      Sim[, (d * k - d + 1):(d * k)] = u
+      }
+    }
+  )
   
   for (i in 1:n) {
     k = x[i]
     SimData[i, ] = Sim[i, (d * k - d + 1):(d * k)]
   }
+  
   return(list(SimData=SimData,mc=x))
   
 }
+
 
 

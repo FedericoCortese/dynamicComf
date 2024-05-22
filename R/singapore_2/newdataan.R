@@ -88,7 +88,7 @@ missmap(enth_tab, main = "Missing values vs observed",margins = c(10,2))
 
 # Indoor Only -------------------------------------------------------------
 
-
+enth_in=enth_tab[enth_tab$indoor.outdoor==11,]
 
 # Outdoor only ------------------------------------------------------------
 # Extract outdoor observations (9 means outdoor)
@@ -383,7 +383,7 @@ prv_scaled=prv_scaled[order(prv_scaled$id,prv_scaled$time),]
 
 str(prv_scaled)
 
-# LMM ---------------------------------------------------------------------
+# LMM outdoor ---------------------------------------------------------------------
 
 out2_nosc <- lmest(responsesFormula = thermal ~ NULL,
               latentFormula = ~ 1 | air_temperature+humidity+pressure+
@@ -445,3 +445,8 @@ out3 <- lmest(responsesFormula = thermal ~ NULL,
               start = 1,
               modBasic = 1,
               seed = 123, out_se = T)
+
+
+# Indoor and outdoor  -----------------------------------------------------
+
+
