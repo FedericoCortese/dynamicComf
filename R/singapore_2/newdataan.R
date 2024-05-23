@@ -9,13 +9,23 @@ enth_surv=read.csv("enth_surveys_calc.csv" )
 enth_tab=read.csv("enth_tabular_merged.csv")
 # enth_tab=subset(enth_tab, select=-c(response_speed,space_id,building_name,body_presence,change))
 
+range(enth_tab$time)
+
+length(unique(enth_tab$user_id))
+
 # Data cleaning -----------------------------------------------------------
 str(enth_tab)
 
 enth_tab$time=as.POSIXct(enth_tab$time, format="%Y-%m-%d %H:%M:%S")
 
+enth_tab%>%group_by(user_id)%>%summarise(min(diff(time)))
+
+# Round at 15 mins
+enth_tab$time=round_date(enth_tab$time, "5 mins")
+
 # Order by user_id
 enth_tab=enth_tab[order(enth_tab$user_id, enth_tab$time),]
+
 
 # # Replace all NA with 999
 # enth_tab[is.na(enth_tab)] <- 999
@@ -28,8 +38,6 @@ enth_tab=enth_tab[order(enth_tab$user_id, enth_tab$time),]
 # 
 # enth_tab[139:141,c("time","user_id")]
 # enth_tab[207:209,]
-
-# Round time to hour
 
 enth_tab$air_vel=as.factor(enth_tab$air_vel)
 # "11"= "Perceived" = 1, "10"= "Not Perceived" = 0
@@ -128,6 +136,24 @@ library(Amelia)
 missmap(enth_out, main = "Missing values vs observed",margins = c(10,2))
 # missmap(enth_surv, main = "Missing values vs observed",margins = c(10,2))
 
+# Single user datasets
+enth01=enth_out[which(enth_out$user_id=="enth01"),]
+enth02=enth_out[which(enth_out$user_id=="enth02"),]
+enth03=enth_out[which(enth_out$user_id=="enth03"),]
+enth04=enth_out[which(enth_out$user_id=="enth04"),]
+enth05=enth_out[which(enth_out$user_id=="enth05"),]
+enth07=enth_out[which(enth_out$user_id=="enth07"),]
+enth09=enth_out[which(enth_out$user_id=="enth09"),]
+enth10=enth_out[which(enth_out$user_id=="enth10"),]
+enth11=enth_out[which(enth_out$user_id=="enth11"),]
+enth13=enth_out[which(enth_out$user_id=="enth13"),]
+enth15=enth_out[which(enth_out$user_id=="enth15"),]
+enth16=enth_out[which(enth_out$user_id=="enth16"),]
+enth17=enth_out[which(enth_out$user_id=="enth17"),]
+enth20=enth_out[which(enth_out$user_id=="enth20"),]
+enth22=enth_out[which(enth_out$user_id=="enth22"),]
+enth25=enth_out[which(enth_out$user_id=="enth25"),]
+enth28=enth_out[which(enth_out$user_id=="enth28"),]
 
 # Exploratory Data Analysis -----------------------------------------------
 library(doBy)
@@ -232,14 +258,20 @@ ut=sort(unique(enth_out$time))
 n=length(unique(ui))
 TT=length(unique(ut))
 
-temp=data.frame(time=rep(ut,each=n),user_id=rep(unique(ui),length(ut)))
+dt_long=data.frame(time=rep(ut,each=n),user_id=rep(unique(ui),length(ut)))
 
 # Join temp and enth_out
-temp=merge(temp,enth_out,by=c("time","user_id"),all=T)
+dt_long=merge(dt_long,enth_out,by=c("time","user_id"),all=T)
 # 
 
+save(dt_long,file="dt_long.Rdata")
+
+missmap(dt_long)
+
+max(diff(ut))
+
 # Extract response var
-YY1=temp[,c("time","user_id","thermal")]
+YY1=dt_long[,c("time","user_id","thermal")]
 
 # # Construct response vars object
 # Yweather=temp[,c("user_id","time","temp_outdoor","humidity_outdoor","pressure_outdoor")]
