@@ -3,6 +3,7 @@ library(reticulate)
 library(pdfCluster)
 library(boot)
 library(xtable)
+library(dplyr)
 #py_install("scipy")
 
 # Import the python module
@@ -452,5 +453,246 @@ MClinregSim=function(n,
   
 }
 
+jumpR <- function(Y, n_states, jump_penalty=1e-5, 
+                  #initial_states=NULL,
+                  max_iter=10, n_init=10, tol=NULL, verbose=FALSE, method="euclidean") {
+  # Fit jump model using framework of Bemporad et al. (2018)
+  
+  Y=as.matrix(Y)
+  n_states=as.integer(n_states)
+  
+  n_obs <- nrow(Y)
+  n_features <- ncol(Y)
+  Gamma <- jump_penalty * (1 - diag(n_states))
+  best_loss <- NULL
+  best_s <- NULL
+  
+  # Initialize mu
+  mu <- colMeans(Y,na.rm = T)
+  
+  # Track missings with 0 1 matrix
+  M=ifelse(is.na(Y),T,F)
+  
+  
+  Ytil=Y
+  # Impute missing values with mean of observed states
+  for(i in 1:n_features){
+    Y[,i]=ifelse(M[,i],mu,Y[,i])
+  }
+  
+  # State initialization through kmeans++
+  # if (!is.null(initial_states)) {
+  #   s <- initial_states
+  # } else {
+  s <- init_states(Y, n_states)+1
+  # }
+  
+  # Fill-in unobserved entries
+  
+  for (init in 1:n_init) {
+    mu <- matrix(0, nrow=n_states, ncol=n_features)
+    loss_old <- 1e10
+    for (it in 1:max_iter) {
+      
+      for (i in unique(s)) {
+        # Fit model by updating mean of observed states
+        if(sum(s==i)>1){
+          mu[i,] <- colMeans(Y[s==i,])
+        }
+        else{
+          mu[i,]=mean(Y[s==i,])
+        }
+      }
+      
+      # Fit state sequence
+      s_old <- s
+      
+      # Re-fill-in missings
+      for(i in 1:n_features){
+        Y[,i]=ifelse(M[,i],mu[s,i],Y[,i])
+      }
+      
+      loss_by_state=matrix(0,nrow=n_obs,ncol=n_states)
+      switch(method,
+             euclidean={
+               for(k in 1:n_states){
+                 loss_by_state[,k]=apply(Y,1,function(x) dist(rbind(x,mu[k,]),method="euclidean"))^2
+               }
+             },
+             manhattan={
+               for(k in 1:n_states){
+                 loss_by_state[,k]=apply(Y,1,function(x) dist(rbind(x,mu[k,]),method="manhattan"))
+               }
+             })
+      
+      
+      V <- loss_by_state
+      for (t in (n_obs-1):1) {
+        V[t-1,] <- loss_by_state[t-1,] + apply(V[t,] + Gamma, 2, min)
+      }
+      
+      s[1] <- which.min(V[1,])
+      for (t in 2:n_obs) {
+        s[t] <- which.min(V[t,] + Gamma[s[t-1],])
+      }
+      
+      if (length(unique(s)) == 1) {
+        break
+      }
+      loss <- min(V[1,])
+      if (verbose) {
+        cat(sprintf('Iteration %d: %.6e\n', it, loss))
+      }
+      if (!is.null(tol)) {
+        epsilon <- loss_old - loss
+        if (epsilon < tol) {
+          break
+        }
+      } else if (all(s == s_old)) {
+        break
+      }
+      loss_old <- loss
+    }
+    if (is.null(best_s) || (loss_old < best_loss)) {
+      best_loss <- loss_old
+      best_s <- s
+    }
+    s <- init_states(Y, n_states)+1
+  }
+  
+  return(best_s)
+}
 
+sparse_jumpR <- function(Y, n_states, max_features, jump_penalty=1e-5,
+                        max_iter=10, tol=1e-4, n_init=10, verbose=FALSE) {
+  n_obs <- nrow(Y)
+  n_features <- ncol(Y)
+  max_features <- pmax(1, pmin(max_features, sqrt(n_features)))
+  feat_w <- rep(1 / sqrt(n_features), n_features)
+  states <- NULL
 
+for (it in 1:max_iter) {
+  states <- jumpR(Y * sqrt(feat_w), n_states, initial_states=states,
+                  jump_penalty=jump_penalty, n_init=n_init)
+  if (length(unique(states)) == 1) {
+    break
+  } else {
+    new_w <- get_weights(Y, states, max_features, n_states)
+  }
+  if (sum(abs(new_w - feat_w)) / sum(abs(feat_w)) < tol) {
+    break
+  } else if (verbose) {
+    cat('Iteration', it, ', w diff', sum(abs(new_w - feat_w)), '\n')
+  }
+  feat_w <- new_w
+}
+
+return(list(states=states, feat_w=feat_w))
+}
+
+jump_mixed <- function(Y, n_states, jump_penalty=1e-5, 
+                  #initial_states=NULL,
+                  max_iter=10, n_init=10, tol=NULL, verbose=FALSE, method="euclidean") {
+  # Fit jump model using framework of Bemporad et al. (2018)
+  
+  Y=as.matrix(Y)
+  n_states=as.integer(n_states)
+
+  n_obs <- nrow(Y)
+  n_features <- ncol(Y)
+  Gamma <- jump_penalty * (1 - diag(n_states))
+  best_loss <- NULL
+  best_s <- NULL
+  
+  # P-dim vector identifying continuous variables
+  # cont_vars <- rep(1, n_features)
+  
+  
+  # Initialize mu
+  mu <- colMeans(Y,na.rm = T)
+  
+  # Track missings with 0 1 matrix
+  M=ifelse(is.na(Y),T,F)
+  
+  
+  Ytil=Y
+  # Impute missing values with mean of observed states
+  for(i in 1:n_features){
+    Y[,i]=ifelse(M[,i],mu,Y[,i])
+  }
+  
+  # State initialization through kmeans++
+  # if (!is.null(initial_states)) {
+  #   s <- initial_states
+  # } else {
+  s <- init_states(Y, n_states)+1
+  # }
+  
+  # Fill-in unobserved entries
+  
+  for (init in 1:n_init) {
+    mu <- matrix(0, nrow=n_states, ncol=n_features)
+    loss_old <- 1e10
+    for (it in 1:max_iter) {
+      
+      for (i in unique(s)) {
+        # Fit model by updating mean of observed states
+        if(sum(s==i)>1){
+          mu[i,] <- colMeans(Y[s==i,])
+        }
+        else{
+          mu[i,]=mean(Y[s==i,])
+        }
+      }
+      
+      # Fit state sequence
+      s_old <- s
+      
+      # Re-fill-in missings
+      for(i in 1:n_features){
+        Y[,i]=ifelse(M[,i],mu[s,i],Y[,i])
+      }
+      
+      loss_by_state=matrix(0,nrow=n_obs,ncol=n_states)
+      
+      for(k in 1:n_states){
+        loss_by_state[,k]=apply(Y,1,function(x) dist(rbind(x,mu[k,]),method="manhattan"))
+      }
+      
+      
+      V <- loss_by_state
+      for (t in (n_obs-1):1) {
+        V[t-1,] <- loss_by_state[t-1,] + apply(V[t,] + Gamma, 2, min)
+      }
+      
+      s[1] <- which.min(V[1,])
+      for (t in 2:n_obs) {
+        s[t] <- which.min(V[t,] + Gamma[s[t-1],])
+      }
+      
+      if (length(unique(s)) == 1) {
+        break
+      }
+      loss <- min(V[1,])
+      if (verbose) {
+        cat(sprintf('Iteration %d: %.6e\n', it, loss))
+      }
+      if (!is.null(tol)) {
+        epsilon <- loss_old - loss
+        if (epsilon < tol) {
+          break
+        }
+      } else if (all(s == s_old)) {
+        break
+      }
+      loss_old <- loss
+    }
+    if (is.null(best_s) || (loss_old < best_loss)) {
+      best_loss <- loss_old
+      best_s <- s
+    }
+    s <- init_states(Y, n_states)+1
+  }
+  
+  return(best_s)
+}

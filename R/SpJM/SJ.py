@@ -26,8 +26,9 @@ def sparse_jump(Y, n_states, max_features, jump_penalty=1e-5,
         feat_w = new_w
 
     return states, feat_w
-
-
+  
+  
+  
 def jump(Y, n_states, jump_penalty=1e-5, initial_states=None,
          max_iter=10, n_init=10, tol=None, verbose=False):
     # Fit jump model using framework of Bemporad et al. (2018)
