@@ -662,3 +662,53 @@ rmse_st=function(reconstr,true,miss){
   }
   return(RMSE)
 }
+
+# Naive prediction --------------------------------------------------------
+
+weightdist_pred=function(x_input,x_data,locations2,name="air_temp"){
+  
+  # This function predicts the variable "name" in x_input using a weighted mean of station records.
+  
+  # Arguments:
+  # x_input: a data.frame with columns "time, "longitude", and "latitude" corresponding to times and spatial locations to be predicted
+  # x_data: a data frame with time in the first column and station records in the other columns
+  # locations2: a data frame with station id, longitude and latitude
+  # name: a character specifying the name of the variable to be predicted
+  
+  # Value:
+  # A data frame with time, longitude, latitude, and the corresponding predicted values
+  
+  
+  # Sort x_input by time
+  x_input=x_input[order(x_input$time),]
+  x_input$pred=NA
+  
+  colnames(x_data)[1]="time"
+  rel_stat=intersect(locations2$id, colnames(x_data))
+  locations3=locations2[which(locations2$id%in%rel_stat),]
+  # Sort by locations$id
+  locations3=locations3[order(locations3$id),]
+  
+  colnames(x_input)=c("time","longitude","latitude","pred")
+  
+  for(i in 1:nrow(x_input)){
+    indx=which(x_data$time==x_input$time[i])
+    if(length(indx)!=0){
+      x_data_t=x_data[indx,]
+      dstats=distm(x=x_input[i,2:3],
+                   y=locations3[,2:3], 
+                   fun = distHaversine)/1000
+      colnames(dstats)=locations3$id
+      dstats[which(dstats==0)]=NA
+      wstats=1/(dstats)
+      wstats[which(is.na(wstats))]=0
+      wstats=wstats/sum(wstats,na.rm = T)
+      
+      x_input$pred[i]=weighted.mean(x_data_t[,-1],wstats,na.rm = T)
+    }
+    
+  }
+  colnames(x_input)[4]=name
+
+  return(x_input)
+}
