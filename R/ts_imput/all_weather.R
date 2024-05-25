@@ -1,5 +1,28 @@
 load("cleaned_data.RData")
 source("Utils.R")
+Sys.setenv(LANG = "en")
+Sys.setlocale("LC_ALL", "English")
+library(scales)
+library(dplyr)
+library(tidyr)
+library(tidyverse)
+library(lubridate)
+library(ggplot2)
+library(ggpubr)
+#library(geojsonio)
+library(leaflet)
+library(leaflet.extras)
+library(htmltools)
+library(sp)
+library(spacetime)
+# library(ozmaps)
+library(sf)
+library(ggmap)
+library(gstat)
+library(automap)
+library(xts)
+library(geosphere)
+
 
 # Summarize on hourly basis -----------------------------------------------
 
@@ -144,7 +167,7 @@ mtext("Relative humidity", side = 3, line = - 2, outer = TRUE)
 # Rainfall
 windows()
 par(mfrow=c(4,9),mar=c(2,2,6,2))
-for(i in 2:36){
+for(i in 2:34){
   plot(x=rainfall$time,y=as.vector(unlist(rainfall[,i])),type="l",col="blue",
        xlab=" ",ylab=" ",
        main=colnames(rainfall[,i]))
@@ -155,7 +178,7 @@ mtext("Rainfall (1)", side = 3, line = - 2, outer = TRUE)
 # Plot for the next 36 stations
 windows()
 par(mfrow=c(4,9),mar=c(2,2,6,2))
-for(i in 37:72){
+for(i in 35:68){
   plot(x=rainfall$time,y=as.vector(unlist(rainfall[,i])),type="l",col="blue",
        xlab=" ",ylab=" ",
        main=colnames(rainfall[,i]))
@@ -202,7 +225,6 @@ count_gaps=function(x){
 
 # Gap lengths for air_data_wide as % of total length
 NA_count_air=count_gaps(air_temp);NA_count_air
-#lapply(NA_count[-1],function(x) round(x/dim(air_data_wide)[1]*100,1))
 
 
 
@@ -215,8 +237,6 @@ RH1=weightdist_imp(x_data=RH,locations2=locations2)
 rainfall1=weightdist_imp(x_data=rainfall,locations2=locations2)
 wsp1=weightdist_imp(x_data=wsp,locations2=locations2)
 wdir1=weightdist_imp(x_data=wdir,locations2=locations2)
-
-NA_count_air=count_gaps(air_temp1);NA_count_air
 
 
 # New plot
@@ -288,119 +308,17 @@ for(i in 2:ncol(wdir1)){
 }
 mtext("Wind direction", side = 3, line = - 2, outer = TRUE)
 
+NA_count_air=count_gaps(air_temp1);NA_count_air
 
-# Retrieve relevant times, long and lat to be predicted -------------------
+air_decomp=LOESS.df(air_temp1)
+RH_decomp=LOESS.df(RH1)
+rain_decomp=LOESS.df(rainfall1)
+wdir_decomp=LOESS.df(wdir1)
+wsp_decomp=LOESS.df(wsp1)
 
+plot(air_decomp$residuals$S100,type='l')
+
+# Where and when make predictions
 load("df_cozie.Rdata")
-data_input=df_cozie[,c("time","ws_longitude","ws_latitude")]
-colnames(data_input)=c("time","longitude","latitude")
 
-# Naive prediction --------------------------------------------------------
-
-# Air temp
-air_temp_pred=weightdist_pred(x_input=data_input,locations2=locations2,
-                              x_data=air_temp1,name="air_temp")
-
-# Relative humidity
-RH_pred=weightdist_pred(x_input=data_input,locations2=locations2,
-                        x_data=RH1,name="RH")
-
-# Rainfall
-rainfall_pred=weightdist_pred(x_input=data_input,locations2=locations2,
-                              x_data=rainfall1,name="rainfall")
-
-# Wind speed
-wsp_pred=weightdist_pred(x_input=data_input,locations2=locations2,
-                         x_data=wsp1,name="wsp")
-
-# Wind direction
-wdir_pred=weightdist_pred(x_input=data_input,locations2=locations2,
-                          x_data=wdir1,name="wdir")
-
-# # Remove NAs
-# air_temp_pred2=air_temp_pred[complete.cases(air_temp_pred),]
-# RH_pred2=RH_pred[complete.cases(RH_pred),]
-# rainfall_pred2=rainfall_pred[complete.cases(rainfall_pred),]
-# wsp_pred2=wsp_pred[complete.cases(wsp_pred),]
-# wdir_pred2=wdir_pred[complete.cases(wdir_pred),]
-
-# Merge by time, longitude, latiitude
-data_pred=merge(air_temp_pred,RH_pred,by=c("time","longitude","latitude"))
-data_pred=merge(data_pred,rainfall_pred,by=c("time","longitude","latitude"))
-data_pred=merge(data_pred,wsp_pred,by=c("time","longitude","latitude"))
-data_pred=merge(data_pred,wdir_pred,by=c("time","longitude","latitude"))
-
-# Remove NAs
-data_pred=data_pred[complete.cases(data_pred),]
-
-#id_input=df_cozie[,c("time","ws_longitude","ws_latitude","id_participant")]
-id_input=subset(df_cozie,select=-c(ws_survey_count,
-                                   ws_timestamp_start,
-                                   ws_timestamp_location,
-                                   dT,
-                                   id_unique))
-changename=which(colnames(id_input)=="ws_longitude"|colnames(id_input)=="ws_latitude")
-colnames(id_input)[changename]=c("latitude","longitude")
-
-data_pred=merge(data_pred,id_input,by=c("time","longitude","latitude"))
-table(data_pred$id)
-
-
-# Only outdoor ------------------------------------------------------------
-
-data_model=data_pred[data_pred$q_location=="Outdoor",]
-data_model=subset(data_model,select=-c(q_location,q_location_office,
-                                       q_location_transport))
-
-# Prop odds ratio --------------------------------------------------------------------
-data_model$q_thermal_preference=ordered(data_model$q_thermal_preference,
-                                 levels=c("Warmer","No change", "Cooler"))
-colnames(data_model)
-dat=data_model[,-c(1:3,9)];colnames(dat)
-
-summary(dat$q_thermal_preference)
-barplot(table(dat$q_thermal_preference)/length(dat$q_thermal_preference),
-        col=rainbow(length(unique(dat$q_thermal_preference))))
-
-summary(dat[c("air_temp","rainfall","RH","wsp",
-              "Green.View.Mean","Sky.View.Mean","Building.View.Mean")])
-
-library(doBy)
-#Air Temperature
-summaryBy(air_temp ~ q_thermal_preference, data=dat, FUN=c(mean, sd, min, max))
-
-#Rainfall
-summaryBy(rainfall ~ q_thermal_preference, data=dat, FUN=c(mean, sd, min, max))
-
-#Relative humidity
-summaryBy(RH ~ q_thermal_preference, data=dat, FUN=c(mean, sd, min, max))
-
-#Wind speed
-summaryBy(wsp ~ q_thermal_preference, data=dat, FUN=c(mean, sd, min, max))
-
-# Add combined effect of air temp and humidity
-dat2=data.frame(dat,
-                air_RH=dat$air_temp*dat$RH)
-# dat_scaled=apply(dat2[,-c(11,16)],2,scale)
-# dat_scaled=data.frame(dat_scaled,
-#                       q_noise_nearby=dat$q_noise_nearby,
-#                       q_thermal_preference=dat$q_thermal_preference)
-
-# Scale all numeric variables with dplyr
-dat2=dat2 %>% 
-  mutate_if(is.numeric, scale)
-
-fit_sc=MASS::polr(q_thermal_preference~air_temp+RH+air_RH,data=dat2)
-summary(fit_sc)
-
-fit_=MASS::polr(q_thermal_preference~.,data=dat)
-summary(fit_)
-
-# Wide format - SJM - dynamic map of comfort ------------------------------------
-
-
-
-# LMM ---------------------------------------------------------------------
-library(LMest)
-?est_lm_cov_manifest
-
+length(unique(df_cozie$time))

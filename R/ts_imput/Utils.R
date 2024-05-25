@@ -315,7 +315,7 @@ HoltWint.df=function(data,period=24){
   return(list(trend=trend,level=level,season=season,residuals=residuals))
 }
 
-# Kriging -----------------------------------------------------------------
+# Kriging Cross-Validation -----------------------------------------------------------------
 
 cvobj_STFDF=function(dat,locations,stat_col){
   
@@ -401,13 +401,13 @@ STkriging<-function(dat,
   st.an=estiStAni(vsta,c(0,100))
   
   vgm.mod <- vgmST(stModel="sumMetric",
-                          space=vgm(s.sill,
-                                    "Exp", s.range,0),
-                          time=vgm(t.sill,
-                                   "Exp", t.range, 0),
-                          joint=vgm(s.sill,
-                                    "Exp",s.range, 0),
-                          stAni=st.an+0.01)
+                   space=vgm(s.sill,
+                             "Exp", s.range,0),
+                   time=vgm(t.sill,
+                            "Exp", t.range, 0),
+                   joint=vgm(s.sill,
+                             "Exp",s.range, 0),
+                   stAni=st.an+0.01)
   
   sp.sill.lb <- 0.7 * max(v.sp$gamma, na.rm=TRUE)
   sp.range.lb=min(v.sp$spacelag)
@@ -434,9 +434,9 @@ STkriging<-function(dat,
   names(dat_rep)=c("x","y")
   
   grid=STFDF(sp=x_gridded, 
-           time=dat@time, 
-           data=dat_rep
-           )
+             time=dat@time, 
+             data=dat_rep
+  )
   
   st=Sys.time()
   if(ordinary){
@@ -481,7 +481,7 @@ CV_STkr=function(stat_ind,dat,locations,ordinary=T,plot=F){
   stat_id=step1$stat_id
   step2=STkriging(step1$dat_stfdf,
                   #vgm.model,
-                 step1$loc_to_pred,ordinary = ordinary)
+                  step1$loc_to_pred,ordinary = ordinary)
   step3=compute_errors(step2,step1)
   
   if(plot){
@@ -511,7 +511,7 @@ CV_STkr=function(stat_ind,dat,locations,ordinary=T,plot=F){
       RMSE=step3$rmse,
       MAE=step3$mae))
   }
-
+  
 }
 
 # 
@@ -543,7 +543,7 @@ get_orig_series=function(x,kgrST.res,locations2,target,loess=T){
   seas.w=apply(x$season[,-1],1,function(y) sum(y*wstats))
   
   if(loess){
-   # result=trend.w+seas.w+kgr.ST.res
+    # result=trend.w+seas.w+kgr.ST.res
     result=trend.w+seas.w+kgrST.res
   }
   else{
@@ -618,8 +618,8 @@ rmse_detrdeseas=function(reconstr_series,true_series,time,plot=T,type="SARIMA - 
       geom_rect(aes(
         #xmin = time[miss[1]], xmax = time[miss[2]], 
         xmin = time[z], xmax = time[z+miss[2]-miss[1]], 
-                    ymin = min(c(min(result),min(true))), 
-                    ymax = max(c(max(result),max(true)))), alpha = 0.1,fill="grey")+
+        ymin = min(c(min(result),min(true))), 
+        ymax = max(c(max(result),max(true)))), alpha = 0.1,fill="grey")+
       geom_line(aes(x=time,y=true,col="blue"),size=1)+
       geom_line(aes(x=time,y=result,col="red"),size=.8)+
       theme_bw()+labs(x=' ',y=type)+
@@ -627,12 +627,12 @@ rmse_detrdeseas=function(reconstr_series,true_series,time,plot=T,type="SARIMA - 
             legend.text=element_text(size=12),
             axis.text = element_text(size=12))
     
-      if(legend){
-        P=P+scale_colour_manual(name = ' ', 
-                                values =c('blue'='blue','red'='red'), 
-                                labels = c('True','Fitted'))
-      }
-      
+    if(legend){
+      P=P+scale_colour_manual(name = ' ', 
+                              values =c('blue'='blue','red'='red'), 
+                              labels = c('True','Fitted'))
+    }
+    
     return(list(RMSE=RMSE,
                 plot=P))
   }
@@ -663,52 +663,6 @@ rmse_st=function(reconstr,true,miss){
   return(RMSE)
 }
 
-# Naive prediction --------------------------------------------------------
 
-weightdist_pred=function(x_input,x_data,locations2,name="air_temp"){
-  
-  # This function predicts the variable "name" in x_input using a weighted mean of station records.
-  
-  # Arguments:
-  # x_input: a data.frame with columns "time, "longitude", and "latitude" corresponding to times and spatial locations to be predicted
-  # x_data: a data frame with time in the first column and station records in the other columns
-  # locations2: a data frame with station id, longitude and latitude
-  # name: a character specifying the name of the variable to be predicted
-  
-  # Value:
-  # A data frame with time, longitude, latitude, and the corresponding predicted values
-  
-  
-  # Sort x_input by time
-  x_input=x_input[order(x_input$time),]
-  x_input$pred=NA
-  
-  colnames(x_data)[1]="time"
-  rel_stat=intersect(locations2$id, colnames(x_data))
-  locations3=locations2[which(locations2$id%in%rel_stat),]
-  # Sort by locations$id
-  locations3=locations3[order(locations3$id),]
-  
-  colnames(x_input)=c("time","longitude","latitude","pred")
-  
-  for(i in 1:nrow(x_input)){
-    indx=which(x_data$time==x_input$time[i])
-    if(length(indx)!=0){
-      x_data_t=x_data[indx,]
-      dstats=distm(x=x_input[i,2:3],
-                   y=locations3[,2:3], 
-                   fun = distHaversine)/1000
-      colnames(dstats)=locations3$id
-      dstats[which(dstats==0)]=NA
-      wstats=1/(dstats)
-      wstats[which(is.na(wstats))]=0
-      wstats=wstats/sum(wstats,na.rm = T)
-      
-      x_input$pred[i]=weighted.mean(x_data_t[,-1],wstats,na.rm = T)
-    }
-    
-  }
-  colnames(x_input)[4]=name
+# Kriging Predictions -----------------------------------------------------
 
-  return(x_input)
-}
