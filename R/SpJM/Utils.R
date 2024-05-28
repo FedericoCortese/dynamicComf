@@ -487,6 +487,8 @@ jumpR <- function(Y, n_states, jump_penalty=1e-5,
   s <- init_states(Y, n_states)+1
   # }
   
+  # s=sample(1:n_states,n_obs,replace = T)
+  
   # Fill-in unobserved entries
   
   for (init in 1:n_init) {
@@ -590,12 +592,52 @@ for (it in 1:max_iter) {
 return(list(states=states, feat_w=feat_w))
 }
 
+Mode <- function(x,na.rm=T) {
+  if(na.rm){
+    x <- x[!is.na(x)]
+  }
+  ux <- unique(x)
+  ux[which.max(tabulate(match(x, ux)))]
+  
+}
+
+initialize_states <- function(Y, K) {
+  n <- nrow(Y)
+  
+  ### Repeat the following few times
+  centr_indx=sample(1:n, 1)
+  centroids <- Y[centr_indx, , drop = FALSE]  # Seleziona il primo centroide a caso
+  
+  closest_dist <- as.matrix(daisy(Y, metric = "gower"))
+  closest_dist <- closest_dist[centr_indx,]
+  
+  for (i in 2:K) {
+    prob <- closest_dist / sum(closest_dist)
+    next_centr_indx <- sample(1:n, 1, prob = prob)
+    next_centroid <- Y[next_centr_indx, , drop = FALSE]
+    centroids <- rbind(centroids, next_centroid)
+  }
+  ###
+  
+  init_stats=rep(0,n)
+  for(i in 1:n){
+    init_stats[i]=which.min(gower::gower_dist(Y[i,],centroids))
+  }
+  
+  return(init_stats)
+}
+
 jump_mixed <- function(Y, n_states, jump_penalty=1e-5, 
-                  #initial_states=NULL,
-                  max_iter=10, n_init=10, tol=NULL, verbose=FALSE, method="euclidean") {
+                  initial_states=NULL,
+                  max_iter=10, n_init=10, tol=NULL, verbose=FALSE
+                  # , 
+                  # method="gower"
+                  ) {
   # Fit jump model using framework of Bemporad et al. (2018)
   
-  Y=as.matrix(Y)
+  # Y=as.matrix(Y)
+  # Y is a dataframe with mixed data types. Categoria variables must be factors.
+  
   n_states=as.integer(n_states)
 
   n_obs <- nrow(Y)
@@ -604,59 +646,98 @@ jump_mixed <- function(Y, n_states, jump_penalty=1e-5,
   best_loss <- NULL
   best_s <- NULL
   
-  # P-dim vector identifying continuous variables
-  # cont_vars <- rep(1, n_features)
+  # Which vars are categorical and which are numeric
   
+  cat.indx=which(sapply(Y, is.factor))
+  cont.indx=which(sapply(Y, is.numeric))
+  Ycont=Y[,-cat.indx]
+  Ycat=Y[,cat.indx]
   
-  # Initialize mu
-  mu <- colMeans(Y,na.rm = T)
+  n_cat=length(cat.indx)
+  n_cont=n_features-n_cat
+  
+  # Initialize mu 
+  mu <- colMeans(Ycont,na.rm = T)
+  
+  # Initialize modes
+  mo <- apply(Ycat,2,Mode)
   
   # Track missings with 0 1 matrix
-  M=ifelse(is.na(Y),T,F)
+  Mcont=ifelse(is.na(Ycont),T,F)
+  Mcat=ifelse(is.na(Ycat),T,F)
+  
+  #M=ifelse(is.na(Y),T,F)
   
   
   Ytil=Y
   # Impute missing values with mean of observed states
-  for(i in 1:n_features){
-    Y[,i]=ifelse(M[,i],mu,Y[,i])
+  for(i in 1:n_cont){
+    Ycont[,i]=ifelse(Mcont[,i],mu[i],Ycont[,i])
+  }
+  for(i in cat.indx){
+    Ycat[,i]=ifelse(Mcat[,i],mo[i],Ycat[,i])
   }
   
+  Ycat=Ycat%>%mutate_all(as.factor)
+  
+  Y[,-cat.indx]=Ycont
+  Y[,cat.indx]=Ycat
+  
   # State initialization through kmeans++
-  # if (!is.null(initial_states)) {
-  #   s <- initial_states
-  # } else {
-  s <- init_states(Y, n_states)+1
-  # }
+   if (!is.null(initial_states)) {
+     s <- initial_states
+   } else {
+     s=initialize_states(Y,n_states)
+   }
   
   # Fill-in unobserved entries
   
   for (init in 1:n_init) {
-    mu <- matrix(0, nrow=n_states, ncol=n_features)
+    mu <- matrix(0, nrow=n_states, ncol=n_features-length(cat.indx))
+    mo <- matrix(0, nrow=n_states, ncol=length(cat.indx))
     loss_old <- 1e10
     for (it in 1:max_iter) {
       
       for (i in unique(s)) {
         # Fit model by updating mean of observed states
-        if(sum(s==i)>1){
-          mu[i,] <- colMeans(Y[s==i,])
-        }
-        else{
-          mu[i,]=mean(Y[s==i,])
-        }
+        #if(sum(s==i)>1){
+          mu[i,] <- colMeans(Ycont[s==i,])
+          mo[i,]=apply(Ycat[s==i,],2,Mode)
+        # }
+        # else{
+        #   mu[i,]=mean(Y[s==i,])
+        # }
       }
       
+      mu=data.frame(mu)
+      mo=data.frame(mo,stringsAsFactors=TRUE)
+      for(i in 1:n_cat){
+        mo[,i]=factor(mo[,i],levels=levels(Ycat[,i]))
+      }
+
       # Fit state sequence
       s_old <- s
       
       # Re-fill-in missings
-      for(i in 1:n_features){
-        Y[,i]=ifelse(M[,i],mu[s,i],Y[,i])
+      for(i in 1:ncol(Ycont)){
+        Ycont[,i]=ifelse(Mcont[,i],mu[s,i],Ycont[,i])
       }
+      for(i in 1:ncol(Ycat)){
+        Ycat[,i]=ifelse(Mcat[,i],mo[s,i],Ycat[,i])
+      }
+      Ycat=Ycat%>%mutate_all(as.factor)
+      
+      Y[,-cat.indx]=Ycont
+      Y[,cat.indx]=Ycat
+      
+      mumo=data.frame(matrix(0,nrow=n_states,ncol=n_features))
+      mumo[,cat.indx]=mo
+      mumo[,cont.indx]=mu
       
       loss_by_state=matrix(0,nrow=n_obs,ncol=n_states)
       
       for(k in 1:n_states){
-        loss_by_state[,k]=apply(Y,1,function(x) dist(rbind(x,mu[k,]),method="manhattan"))
+        loss_by_state[,k]=gower::gower_dist(Y,mumo[k,])
       }
       
       
@@ -691,8 +772,50 @@ jump_mixed <- function(Y, n_states, jump_penalty=1e-5,
       best_loss <- loss_old
       best_s <- s
     }
-    s <- init_states(Y, n_states)+1
+    #s <- init_states(Y, n_states)+1
+    s=initialize_states(Y,n_states)
   }
   
-  return(best_s)
+  return(list(best_s=best_s,
+              Y=Y))
+}
+
+sim_JMmixed=function(n=1000,reg=3,pers=.90,init=NULL){
+  #markov chain simulation
+  reg=nrow(coeff)
+  Q <- matrix(rep((1-pers)/(reg-1),reg*reg), 
+              ncol = reg,
+              byrow = TRUE)
+  diag(Q)=rep(pers,reg)
+  if(is.null(init)){
+    init=rep(1/reg,reg)
+  }
+  #reg = dim(Q)[1]
+  x <- numeric(n)
+  set.seed(seed)
+  x[1] <- sample(1:reg, 1, prob = init)
+  for(i in 2:n){
+    x[i] <- sample(1:reg, 1, prob = Q[x[i - 1], ])
+  }
+  
+  #d1
+  #d2
+  Sim1 = matrix(0, n, d1 * reg)
+  Sim2 = matrix(0, n, d2 * reg)
+  SimData1 = matrix(0, n, d1)
+  SimData2 = matrix(0, n, d2)
+  
+  for (k in 1:reg) {
+    u = X%*%coeff[k,]+ rnorm(n = nrow(X), mean = 0, sd = sigma)
+    Sim1[, (d1 * k - d1 + 1):(d1 * k)] = u
+  }
+  
+  for (i in 1:n) {
+    k = x[i]
+    SimData1[i, ] = Sim[i, (d1 * k - d1 + 1):(d1 * k)]
+    SimData2[i, ] = Sim[i, (d2 * k - d2 + 1):(d2 * k)]
+    
+  }
+  
+  return(SimData)
 }

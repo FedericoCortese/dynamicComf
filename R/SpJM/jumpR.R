@@ -6,12 +6,12 @@ source("Utils.R")
 # Ktrue=2 -----------------------------------------------------------------
 
 pers1=.99
-Ns=c(300,600,1000)
+Ns=c(300,600,100)
 seed=123
 corsK2=c(.8,.4)
 # YYs_K2_300=lapply(seed,sim_data,Ktrue=2,N=Ns[1],P=100,cors=corsK2,pers=pers1,m=2)
 # YYs_K2_600=lapply(seed,sim_data,Ktrue=2,N=Ns[2],P=100,cors=corsK2,pers=pers1,m=2)
-YYs_K2_1000=lapply(seed,sim_data,Ktrue=2,N=Ns[3],P=100,cors=corsK2,pers=pers1,m=2)
+YYs_K2_1000=lapply(seed,sim_data,Ktrue=2,N=Ns[3],P=2,cors=corsK2,pers=pers1,m=1)
 
 Ytrue=YYs_K2_1000[[1]]$YY
 dim(Ytrue)
@@ -25,22 +25,45 @@ true.st=YYs_K2_1000[[1]]$true_states
 
 n_states=2
 
+# Add cat vars
+Ytrue[,1]=sample(1:2,Ns[3],replace = T)
+Ytrue[,2]=sample(1:4,Ns[3],replace = T)
 
 # 20% NAs
 Y=Ytrue
 set.seed(12345)
 Y[sample(1:Ns[3],Ns[3]*.1),]=NA
 head(Y)
+Y=data.frame(Y)
+Y$X1=factor(Y$X1)
+Y$X2=factor(Y$X2)
 
+
+str(Y)
 Amelia::missmap(data.frame(Y))
 
-jump_penalty=10
+jump_penalty=0.1
+
+n_obs <- nrow(Y)
+
+set.seed(12345)
+#initial_states=sample(1:n_states,n_obs,replace = T)
+prv=jump_mixed(Y,n_states,jump_penalty = jump_penalty,verbose = T)
+
+table(prv$best_s)
+prv$best_s
+
+dfYs=data.frame(prv$Y,s=prv$best_s)
+tapply(dfYs$X3,dfYs$s,mean)
+tapply(dfYs$X1,dfYs$s,Mode)
+tapply(dfYs$X2,dfYs$s,Mode)
 
 
-j_eucl=jumpR(Y,n_states,jump_penalty = 50,verbose = F)
-adj.rand.index(true.st,j_eucl)
-j_manh=jumpR(Y,n_states,jump_penalty = 50,verbose = F,method="manhattan")
-adj.rand.index(true.st,j_manh)
+
+# j_eucl=jumpR(Y,n_states,jump_penalty = 50,verbose = F)
+# adj.rand.index(true.st,j_eucl)
+# j_manh=jumpR(Y,n_states,jump_penalty = 50,verbose = F,method="manhattan")
+# adj.rand.index(true.st,j_manh)
 
 table(true.st)
 table(prv)
