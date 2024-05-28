@@ -35,6 +35,8 @@ order_states=function(states){
 }
 
 
+# Ordinary JM -------------------------------------------------------------
+
 sim_data=function(seed,Ktrue,N,P,cors,pers,m){
   
   # Function to simulate data from a multivariate Gaussian HMM
@@ -77,7 +79,8 @@ sim_data=function(seed,Ktrue,N,P,cors,pers,m){
                                       "A" = A, 
                                       "Mu" = Mu, 
                                       "Sigma" = Sigma, 
-                                      "Pi" = Pi))
+                                      "Pi" = Pi)
+                                )
   set.seed(seed)
   observationSequence <- generateObservations(HMM.cont.multi, N)
   Y=t(observationSequence$Y)
@@ -360,6 +363,9 @@ GIC=function(simest,satmod,Ksat=6,alpha0,K0){
   return(res_av)
 }
 
+
+# GLM-JM ------------------------------------------------------------------
+
 MClinregSim=function(n,
                    coeff,
                    X,
@@ -452,6 +458,119 @@ MClinregSim=function(n,
   return(list(SimData=SimData,mc=x))
   
 }
+
+jumpLR <- function(Y,X, n_states, jump_penalty=1e-5, initial_states=NULL,
+                   max_iter=10, n_init=10, tol=NULL, verbose=FALSE,family="gaussian") {
+  # Fit jump model using framework of Bemporad et al. (2018)
+  
+  # state initialization, can be provided as input or computed via init_states
+  if (!is.null(initial_states)) {
+    s <- initial_states
+  } else {
+    s <- init_states(Y, n_states)+1
+  }
+  
+  n_obs <- nrow(Y)
+  n_features <- ncol(X)
+  Gamma <- jump_penalty * (1 - diag(n_states))
+  best_loss <- NULL
+  best_s <- NULL
+  
+  
+  for (init in 1:n_init) {
+    mu <- matrix(0, nrow=n_states, ncol=1)
+    #mu <- matrix(0, nrow=n_states, ncol=n_obs)
+    
+    cfs=matrix(0,nrow=n_states,ncol=n_features+1)
+    loss_old <- 1e10
+    for (it in 1:max_iter) {
+      
+      for (i in unique(s)) {
+        # Fit model by updating mean of observed states
+        #if(sum(s==i)>1){
+        mod <- glm(Y[s==i,] ~ X[s==i,],
+                   family = family)
+        #mu[i,] <- colMeans(Y[s==i,])
+        temp=coefficients(mod)
+        cfs[i,]=as.vector(temp)
+        
+        
+        switch(family,
+               gaussian={
+                 mu[i,]=mean(cbind(1,X[s==i,])%*%cfs[i,])
+               },
+               poisson={
+                 mu[i,]=mean(exp(cbind(1,X[s==i,])%*%cfs[i,]))
+               },
+               binomial={
+                 tmp=cbind(1,X[s==i,])%*%cfs[i,]
+                 #map mu to [0,1]
+                 mu[i,]=mean(1/(1+exp(-tmp)))
+               }
+        )
+        #}
+        # else{
+        #   mu[i,]=mean(Y[s==i,])
+        # }
+      }
+      
+      # Order states here?
+      s=order_states(s)
+      
+      # Fit state sequence
+      s_old <- s
+      
+      loss_by_state=matrix(0,nrow=n_obs,ncol=n_states)
+      for(k in 1:n_states){
+        loss_by_state[,k]=
+          apply(Y,1,function(x)dist(rbind(x,mu[k,]),method="euclidean"))^2
+        
+      }
+      
+      V <- loss_by_state
+      for (t in (n_obs-1):1) {
+        V[t-1,] <- loss_by_state[t-1,] + apply(V[t,] + Gamma, 2, min)
+      }
+      
+      s[1] <- which.min(V[1,])
+      for (t in 2:n_obs) {
+        s[t] <- which.min(V[t,] + Gamma[s[t-1],])
+      }
+      
+      if (length(unique(s)) == 1) {
+        break
+      }
+      loss <- min(V[1,])
+      if (verbose) {
+        cat(sprintf('Iteration %d: %.6e\n', it, loss))
+      }
+      if (!is.null(tol)) {
+        epsilon <- loss_old - loss
+        if (epsilon < tol) {
+          break
+        }
+      } else if (all(s == s_old)) {
+        break
+      }
+      loss_old <- loss
+    }
+    if (is.null(best_s) || (loss_old < best_loss)) {
+      best_loss <- loss_old
+      best_s <- s
+    }
+    if(is.null(initial_states)){
+      s <- init_states(Y, n_states)+1
+    }
+    else{
+      s <- initial_states
+    }
+  }
+  
+  return(list(s=best_s,coefs=cfs))
+}
+
+
+# SJM with missings -------------------------------------------------------
 
 jumpR <- function(Y, n_states, jump_penalty=1e-5, 
                   #initial_states=NULL,
@@ -592,6 +711,9 @@ for (it in 1:max_iter) {
 return(list(states=states, feat_w=feat_w))
 }
 
+
+# Mixed JM with missings --------------------------------------------------
+
 Mode <- function(x,na.rm=T) {
   if(na.rm){
     x <- x[!is.na(x)]
@@ -604,7 +726,7 @@ Mode <- function(x,na.rm=T) {
 initialize_states <- function(Y, K) {
   n <- nrow(Y)
   
-  ### Repeat the following few times
+  ### Repeat the following few times?
   centr_indx=sample(1:n, 1)
   centroids <- Y[centr_indx, , drop = FALSE]  # Seleziona il primo centroide a caso
   
@@ -780,42 +902,94 @@ jump_mixed <- function(Y, n_states, jump_penalty=1e-5,
               Y=Y))
 }
 
-sim_JMmixed=function(n=1000,reg=3,pers=.90,init=NULL){
-  #markov chain simulation
-  reg=nrow(coeff)
-  Q <- matrix(rep((1-pers)/(reg-1),reg*reg), 
-              ncol = reg,
+
+sim_data_mixed=function(TT,P,Ktrue,pers, seed=123){
+  
+  # Function to simulate mixed data
+  
+  # Arguments:
+  # TT: number of observations
+  # P: number of features
+  # Ktrue: number of states
+  # pers: self-transition probability
+  # seed: seed for the random number generator
+  
+  # Value:
+  # SimData: matrix of simulated data
+  # mchain: vector of simulated states
+  
+  
+  # Markov chain simulation
+  x <- numeric(TT)
+  Q <- matrix(rep((1-pers)/(Ktrue-1),Ktrue*Ktrue), 
+              ncol = Ktrue,
               byrow = TRUE)
-  diag(Q)=rep(pers,reg)
-  if(is.null(init)){
-    init=rep(1/reg,reg)
-  }
-  #reg = dim(Q)[1]
-  x <- numeric(n)
+  diag(Q)=rep(pers,Ktrue)
+  init <- rep(1/Ktrue,Ktrue)
   set.seed(seed)
-  x[1] <- sample(1:reg, 1, prob = init)
-  for(i in 2:n){
-    x[i] <- sample(1:reg, 1, prob = Q[x[i - 1], ])
+  x[1] <- sample(1:Ktrue, 1, prob = init)
+  for(i in 2:TT){
+    x[i] <- sample(1:Ktrue, 1, prob = Q[x[i - 1], ])
   }
   
-  #d1
-  #d2
-  Sim1 = matrix(0, n, d1 * reg)
-  Sim2 = matrix(0, n, d2 * reg)
-  SimData1 = matrix(0, n, d1)
-  SimData2 = matrix(0, n, d2)
+  # Continuous variables simulation
+  Pcont=P/2
+  SimCont = matrix(0, TT, Pcont * Ktrue)
+  SimDataCont = matrix(0, TT, Pcont)
   
-  for (k in 1:reg) {
-    u = X%*%coeff[k,]+ rnorm(n = nrow(X), mean = 0, sd = sigma)
-    Sim1[, (d1 * k - d1 + 1):(d1 * k)] = u
+  Sigma <- array(0, dim =c(Pcont,Pcont,Ktrue))
+  
+  set.seed(seed)
+  for(i in 1:Ktrue){
+    Sigma[,,i] <- matrix(0, ncol = Pcont,  
+                         byrow = TRUE)
+    diag(Sigma[,,i])=runif(Pcont,.2,2)
   }
   
-  for (i in 1:n) {
-    k = x[i]
-    SimData1[i, ] = Sim[i, (d1 * k - d1 + 1):(d1 * k)]
-    SimData2[i, ] = Sim[i, (d2 * k - d2 + 1):(d2 * k)]
+  set.seed(seed)
+  Mu <- matrix(runif(Pcont*Ktrue,min=-5,max=5), 
+               nrow = Pcont, 
+               byrow = TRUE)
+  
+  for(k in 1:Ktrue){
+    u = MASS::mvrnorm(TT,Mu[,k],Sigma[,,k])
+    SimCont[, (Pcont * k - Pcont + 1):(k * Pcont)] = u
+  }
+  
+  # Categorical variables simulation
+  Pcat=P/2
+  SimCat = matrix(0, TT, Pcat* Ktrue)
+  SimDataCat = matrix(0, TT, Pcat)
+  
+  
+  set.seed(seed)
+  Np=sample(2:6,Pcat,repl=TRUE)
+  u=rep(0,Pcat)
+  for(p in 1:Pcat){
+    B <- matrix(dirmult::rdirichlet(n=Ktrue, alpha=rep(1,Np[p])),
+                nrow = Ktrue,
+                byrow =F)
+    for(k in 1:Ktrue){
+      u=sample(1:Np[p],TT,replace=TRUE,prob=B[k,])
+      SimCat[, Pcat*(k-1)+p]=u
+    }
     
   }
   
-  return(SimData)
+  
+  for (i in 1:TT) {
+    k = x[i]
+    SimDataCont[i, ] = SimCont[i, (Pcont * k - Pcont + 1):(Pcont * k)]
+    SimDataCat[i, ] = SimCat[i, (Pcat * k - Pcat + 1):(Pcat * k)]
+  }
+  
+  SimDataCont=as.data.frame(SimDataCont)
+  library(dplyr)
+  SimDataCat=as.data.frame(SimDataCat)
+  SimDataCat=SimDataCat%>%mutate_all(as.factor)
+  
+  SimData=cbind(SimDataCont,SimDataCat)
+  return(list(SimData=SimData,mchain=x))
+  
 }
+
