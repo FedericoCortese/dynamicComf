@@ -4,6 +4,8 @@ library(pdfCluster)
 library(boot)
 library(xtable)
 library(dplyr)
+library(cluster)
+library(StatMatch)
 #py_install("scipy")
 
 # Import the python module
@@ -757,8 +759,18 @@ jump_mixed <- function(Y, n_states, jump_penalty=1e-5,
                   ) {
   # Fit jump model using framework of Bemporad et al. (2018)
   
-  # Y=as.matrix(Y)
-  # Y is a dataframe with mixed data types. Categoria variables must be factors.
+  # Arguments:
+  # Y: data.frame with mixed data types. Categorical variables must be factors.
+  # n_states: number of states
+  # jump_penalty: penalty for the number of jumps
+  # initial_states: initial state sequence
+  # max_iter: maximum number of iterations
+  # n_init: number of initializations
+  # tol: tolerance for convergence
+  # verbose: print progress
+  
+  # Value:
+  # List with state sequence and imputed data
   
   n_states=as.integer(n_states)
 
@@ -859,9 +871,8 @@ jump_mixed <- function(Y, n_states, jump_penalty=1e-5,
       loss_by_state=matrix(0,nrow=n_obs,ncol=n_states)
       
       for(k in 1:n_states){
-        loss_by_state[,k]=gower::gower_dist(Y,mumo[k,])
+        loss_by_state[,k]=gower.dist(Y,mumo[k,])
       }
-      
       
       V <- loss_by_state
       for (t in (n_obs-1):1) {
@@ -903,9 +914,9 @@ jump_mixed <- function(Y, n_states, jump_penalty=1e-5,
 }
 
 
-sim_data_mixed=function(TT,P,Ktrue,pers, seed=123){
+sim_data_mixed_rand=function(TT,P,Ktrue,pers, seed=123){
   
-  # Function to simulate mixed data
+  # Function to simulate mixed data with random parameters for the data generating process
   
   # Arguments:
   # TT: number of observations
@@ -989,7 +1000,176 @@ sim_data_mixed=function(TT,P,Ktrue,pers, seed=123){
   SimDataCat=SimDataCat%>%mutate_all(as.factor)
   
   SimData=cbind(SimDataCont,SimDataCat)
-  return(list(SimData=SimData,mchain=x))
+  return(list(SimData=SimData,
+              mchain=x,
+              TT=TT,
+              P=P,
+              Ktrue=Ktrue,
+              pers=pers, 
+              seed=seed)
+         )
   
 }
 
+
+get_cat=function(y,mc,mu,phi){
+  # Function to simulate categorical data
+  
+  # Arguments:
+  # x: continuous variable 
+  # mc: Markov chain states
+  # mu: vector of means for the continuous variable
+  # phi: conditional probability for the categorical outcome k in state k
+  
+
+  phi1=(1-phi)/2;phi1
+
+  TT=length(y)
+  for(i in 1:TT){
+    k=mc[i]
+    switch(k,
+           "1"={
+             threshold=c(qnorm(phi1,mu[1]),qnorm(phi+phi1,mu[1]))
+             if(y[i]>threshold[1]&y[i]<threshold[2]){
+               y[i]=1
+             }
+             else if(y[i]<threshold[1]){
+               y[i]=2
+             }
+             else{
+               y[i]=3
+             }
+           },
+           "2"={
+             threshold=c(qnorm(phi1,mu[2]),qnorm(phi+phi1,mu[2]))
+             if(y[i]>threshold[1]&y[i]<threshold[2]){
+               y[i]=2
+             }
+             else if(y[i]<threshold[1]){
+               y[i]=3
+             }
+             else{
+               y[i]=1
+             }
+           },
+           "3"={
+             threshold=c(qnorm(phi1,mu[3]),qnorm(phi+phi1,mu[3]))
+             if(y[i]>threshold[1]&y[i]<threshold[2]){
+               y[i]=3
+             }
+             else if(y[i]<threshold[1]){
+               y[i]=1
+             }
+             else{
+               y[i]=2
+             }
+           }
+    )
+  }
+  return(y)
+  
+}
+
+sim_data_mixed=function(seed=123,
+                        TT,
+                        P,
+                        Ktrue=3,
+                        mu=c(-1,0,1),
+                        phi=.8,
+                        rho=0,
+                        Pcat=NULL,
+                        pers=.95){
+  
+  # Function to simulate mixed data with fixed parameters for the data generating process
+  
+  # Arguments:
+  # seed: seed for the random number generator
+  # TT: number of observations
+  # P: number of features
+  # Ktrue: number of states
+  # mu: vector of means for the continuous variables
+  # phi: conditional probability for the categorical outcome k in state k
+  # rho: correlation for the variables
+  # Pcat: number of categorical variables
+  # pers: self-transition probability
+  
+  # value:
+  # SimData: matrix of simulated data
+  
+  
+  if(is.null(Pcat)){
+    Pcat=floor(P/2)
+  }
+  # Markov chain simulation
+  x <- numeric(TT)
+  Q <- matrix(rep((1-pers)/(Ktrue-1),Ktrue*Ktrue), 
+              ncol = Ktrue,
+              byrow = TRUE)
+  diag(Q)=rep(pers,Ktrue)
+  init <- rep(1/Ktrue,Ktrue)
+  set.seed(seed)
+  x[1] <- sample(1:Ktrue, 1, prob = init)
+  for(i in 2:TT){
+    x[i] <- sample(1:Ktrue, 1, prob = Q[x[i - 1], ])
+  }
+  
+  # Continuous variables simulation
+  Sigma <- matrix(rho,ncol=P,nrow=P)
+  diag(Sigma)=1
+  
+  Sim = matrix(0, TT, P * Ktrue)
+  SimData = matrix(0, TT, P)
+  
+  set.seed(seed)
+  for(k in 1:Ktrue){
+    u = MASS::mvrnorm(TT,rep(mu[k],P),Sigma)
+    Sim[, (P * k - P + 1):(k * P)] = u
+  }
+  
+  for (i in 1:TT) {
+    k = x[i]
+    SimData[i, ] = Sim[i, (P * k - P + 1):(P * k)]
+    #SimDataCat[i, ] = SimCat[i, (Pcat * k - Pcat + 1):(Pcat * k)]
+  }
+  SimData[,1:Pcat]=apply(SimData[,1:Pcat],2,get_cat,mc=x,mu=mu,phi=phi)
+  
+  SimData=as.data.frame(SimData)
+  SimData[,1:Pcat]=SimData[,1:Pcat]%>%mutate_all(as.factor)
+  
+  return(list(SimData=SimData,
+         mchain=x,
+         TT=TT,
+         P=P,
+         Ktrue=Ktrue,
+         pers=pers, 
+         seed=seed))
+  
+}
+
+# lambda=seq(0,1,by=.1)
+# TT=c(20,50,100)
+# P=c(10,20,50)
+# seeds=1:100
+
+TT=500
+P=50
+
+datsim=sim_data_mixed(TT=500,P=50)
+Ytrue=datsim$SimData
+Y=Ytrue
+set.seed(12345)
+Y[sample(1:TT,TT*.1),]=NA
+head(Y)
+Y=data.frame(Y)
+str(Y)
+est=jump_mixed(Y,n_states=3,jump_penalty=.1,verbose = T)
+adj.rand.index(est$best_s,datsim$mchain)
+sqrt(colMeans((Ytrue[,26:50]-est$Y[,26:50])^2,na.rm = T))
+
+hp=expand.grid(TT=TT,P=P,lambda=lambda,seed=seeds)
+
+
+
+
+
+  
