@@ -5,14 +5,15 @@ library(boot)
 library(xtable)
 library(dplyr)
 library(cluster)
+library(gower)
 library(StatMatch)
 #py_install("scipy")
 
 # Import the python module
-import("scipy")
-
-# Import python functions for SJM estimation
-source_python('SJ.py')
+# import("scipy")
+# 
+# # Import python functions for SJM estimation
+# source_python('SJ.py')
 
 order_states=function(states){
   
@@ -743,10 +744,19 @@ initialize_states <- function(Y, K) {
   }
   ###
   
-  init_stats=rep(0,n)
-  for(i in 1:n){
-    init_stats[i]=which.min(gower::gower_dist(Y[i,],centroids))
-  }
+  # init_stats=rep(0,n)
+  # For cycle
+  # for(i in 1:n){
+  #   init_stats[i]=which.min(gower.dist(Y[i,],centroids))
+  # }
+  
+  # Using sapply and vapply
+  # init_stats2 <- sapply(1:n, function(i) which.min(gower.dist(Y[i,], centroids)))
+  # init_stats3 <- vapply(1:n, function(i) which.min(gower.dist(Y[i,], centroids)), integer(1))
+  
+  # Faster solution (not sure if it's correct)
+  dist_matrix <- gower.dist(Y, centroids)
+  init_stats <- apply(dist_matrix, 1, which.min)
   
   return(init_stats)
 }
@@ -824,8 +834,6 @@ jump_mixed <- function(Y, n_states, jump_penalty=1e-5,
      s=initialize_states(Y,n_states)
    }
   
-  # Fill-in unobserved entries
-  
   for (init in 1:n_init) {
     mu <- matrix(0, nrow=n_states, ncol=n_features-length(cat.indx))
     mo <- matrix(0, nrow=n_states, ncol=length(cat.indx))
@@ -868,11 +876,15 @@ jump_mixed <- function(Y, n_states, jump_penalty=1e-5,
       mumo[,cat.indx]=mo
       mumo[,cont.indx]=mu
       
-      loss_by_state=matrix(0,nrow=n_obs,ncol=n_states)
+      # loss_by_state=matrix(0,nrow=n_obs,ncol=n_states)
+      # for(k in 1:n_states){
+      #   loss_by_state[,k]=gower.dist(Y,mumo[k,])
+      # }
       
-      for(k in 1:n_states){
-        loss_by_state[,k]=gower.dist(Y,mumo[k,])
-      }
+      
+      # var.weights in gower.dist allows for weighted distance
+  
+      loss_by_state=gower.dist(Y,mumo)
       
       V <- loss_by_state
       for (t in (n_obs-1):1) {
@@ -910,7 +922,9 @@ jump_mixed <- function(Y, n_states, jump_penalty=1e-5,
   }
   
   return(list(best_s=best_s,
-              Y=Y))
+              Y=Y,
+              Y.orig=Ytil,
+              condMM=mumo))
 }
 
 
@@ -1018,10 +1032,10 @@ get_cat=function(y,mc,mu,phi){
   # Arguments:
   # x: continuous variable 
   # mc: Markov chain states
-  # mu: vector of means for the continuous variable
+  # mu: numeric mean value
   # phi: conditional probability for the categorical outcome k in state k
   
-
+  mu=c(-mu,0,mu)
   phi1=(1-phi)/2;phi1
 
   TT=length(y)
@@ -1070,15 +1084,41 @@ get_cat=function(y,mc,mu,phi){
   
 }
 
+punct=function(x,pNAs,typeNA){
+  
+  # x is a vector (column of the dataset)
+  # pNAs is the percentage of missing values
+  # typeNA is the type of missing values (0 for random, 1 for continuous, all other values will turn into no missing imputation)
+  
+  TT=length(x)
+  pTT=round(TT*pNAs)
+  if(typeNA==0){
+    NAindx=sample(1:TT,pTT,replace = F)
+    x[NAindx]=NA
+  }
+  else if(typeNA==1){
+    NAindx=sample(1:(TT-pTT),1,replace = F)
+    NAindx=seq(NAindx,NAindx+pTT)
+    x[NAindx]=NA
+  }
+  
+  return(x)
+  
+}
+
+
+
 sim_data_mixed=function(seed=123,
                         TT,
                         P,
                         Ktrue=3,
-                        mu=c(-1,0,1),
+                        mu=1,
                         phi=.8,
                         rho=0,
                         Pcat=NULL,
-                        pers=.95){
+                        pers=.95,
+                        pNAs=0,
+                        typeNA=2){
   
   # Function to simulate mixed data with fixed parameters for the data generating process
   
@@ -1087,19 +1127,23 @@ sim_data_mixed=function(seed=123,
   # TT: number of observations
   # P: number of features
   # Ktrue: number of states
-  # mu: vector of means for the continuous variables
+  # mu: mean value for the continuous variables
   # phi: conditional probability for the categorical outcome k in state k
   # rho: correlation for the variables
   # Pcat: number of categorical variables
   # pers: self-transition probability
+  # pNAs: percentage of missing values
+  # typeNA is the type of missing values (0 for random, 1 for continuous, all other values will turn into no missing imputation)
   
   # value:
   # SimData: matrix of simulated data
   
+  mu=c(-mu,0,mu)
   
   if(is.null(Pcat)){
     Pcat=floor(P/2)
   }
+
   # Markov chain simulation
   x <- numeric(TT)
   Q <- matrix(rep((1-pers)/(Ktrue-1),Ktrue*Ktrue), 
@@ -1136,37 +1180,75 @@ sim_data_mixed=function(seed=123,
   SimData=as.data.frame(SimData)
   SimData[,1:Pcat]=SimData[,1:Pcat]%>%mutate_all(as.factor)
   
-  return(list(SimData=SimData,
-         mchain=x,
-         TT=TT,
-         P=P,
-         Ktrue=Ktrue,
-         pers=pers, 
-         seed=seed))
+  if(typeNA==0|typeNA==1){
+    SimData.NA=apply(SimData,2,punct,pNAs=pNAs,type=typeNA)
+    SimData.NA=as.data.frame(SimData.NA)
+    SimData.NA[,1:Pcat]=SimData.NA[,1:Pcat]%>%mutate_all(as.factor)
+    SimData.NA[,-(1:Pcat)]=SimData.NA[,-(1:Pcat)]%>%mutate_all(as.numeric)
+  }
+  else{
+    SimData.NA=SimData
+  }
+  
+  return(list(
+    SimData.NA=SimData.NA,
+    SimData.complete=SimData,
+    mchain=x,
+    TT=TT,
+    P=P,
+    Ktrue=Ktrue,
+    pers=pers, 
+    seed=seed))
   
 }
 
-# lambda=seq(0,1,by=.1)
-# TT=c(20,50,100)
-# P=c(10,20,50)
-# seeds=1:100
+simstud_JMmixed=function(seed,lambda,TT,P,
+                         Ktrue=3,mu=1,
+                         phi=.8,rho=0,
+                         Pcat=NULL,pers=.95,
+                         pNAs=0,typeNA=2){
+  # Simulate
+  simDat=sim_data_mixed(seed=seed,
+                          TT=TT,
+                          P=P,
+                        Ktrue=Ktrue,
+                        mu=mu,
+                        phi=phi,
+                        rho=rho,
+                        Pcat=Pcat,
+                        pers=pers,
+                        pNAs=pNAs,
+                        typeNA=typeNA)
+  # Estimate
+  est=jump_mixed(simDat$SimData.NA,
+                 n_states=Ktrue,
+                 jump_penalty = lambda,
+                 verbose=F)
+  
+  
+  imput.err=gower_dist(est$Y,simDat$SimData.complete)
+  ARI=adj.rand.index(est$best_s,simDat$mchain)
+  
+  # Return
+  return(list(
+    imput.err=imput.err,
+    ARI=ARI,
+    seed=seed,
+    lambda=lambda,
+    TT=TT,
+    P=P,
+    Ktrue=Ktrue,
+    mu=mu,
+    phi=phi,
+    rho=rho,
+    Pcat=Pcat,
+    pers=pers,
+    pNAs=pNAs,
+    typeNA=typeNA))
 
-TT=500
-P=50
+}
 
-datsim=sim_data_mixed(TT=500,P=50)
-Ytrue=datsim$SimData
-Y=Ytrue
-set.seed(12345)
-Y[sample(1:TT,TT*.1),]=NA
-head(Y)
-Y=data.frame(Y)
-str(Y)
-est=jump_mixed(Y,n_states=3,jump_penalty=.1,verbose = T)
-adj.rand.index(est$best_s,datsim$mchain)
-sqrt(colMeans((Ytrue[,26:50]-est$Y[,26:50])^2,na.rm = T))
 
-hp=expand.grid(TT=TT,P=P,lambda=lambda,seed=seeds)
 
 
 
