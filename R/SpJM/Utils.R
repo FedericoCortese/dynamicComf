@@ -576,7 +576,7 @@ jumpLR <- function(Y,X, n_states, jump_penalty=1e-5, initial_states=NULL,
 # SJM with missings -------------------------------------------------------
 
 jumpR <- function(Y, n_states, jump_penalty=1e-5, 
-                  #initial_states=NULL,
+                  initial_states=NULL,
                   max_iter=10, n_init=10, tol=NULL, verbose=FALSE, method="euclidean") {
   # Fit jump model using framework of Bemporad et al. (2018)
   
@@ -708,7 +708,7 @@ for (it in 1:max_iter) {
   } else if (verbose) {
     cat('Iteration', it, ', w diff', sum(abs(new_w - feat_w)), '\n')
   }
-  feat_w <- new_w
+  feat_w <- as.numeric(new_w)
 }
 
 return(list(states=states, feat_w=feat_w))
