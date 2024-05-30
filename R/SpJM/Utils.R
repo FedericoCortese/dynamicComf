@@ -1225,13 +1225,16 @@ simstud_JMmixed=function(seed,lambda,TT,P,
                  jump_penalty = lambda,
                  verbose=F)
   
-  # Do later
-  # imput.err=gower_dist(est$Y,simDat$SimData.complete)
+  est$Y=est$Y%>%mutate_if(is.factor,factor,levels=c(1,2,3))
+  simDat$SimData.complete=simDat$SimData.complete%>%
+    mutate_if(is.factor,factor,levels=c(1,2,3))
+  
+  imput.err=gower_dist(est$Y,simDat$SimData.complete)
   ARI=adj.rand.index(est$best_s,simDat$mchain)
   
   # Return
   return(list(
-    #imput.err=imput.err,
+    imput.err=imput.err,
     ARI=ARI,
     seed=seed,
     lambda=lambda,
