@@ -10,10 +10,10 @@ library(StatMatch)
 #py_install("scipy")
 
 # Import the python module
-# import("scipy")
+ import("scipy")
 # 
 # # Import python functions for SJM estimation
-# source_python('SJ.py')
+ source_python('SJ.py')
 
 order_states=function(states){
   
@@ -91,12 +91,21 @@ sim_data=function(seed,Ktrue,N,P,cors,pers,m){
   true_states=order_states(as.factor(observationSequence$X))
   
   set.seed(seed)
-  Ytil=Y[sample(N),]
-  for(i in 2:m){
-    Ytil=cbind(Ytil,Y[sample(N),])
+  if(m>=1){
+    if(m==1){
+      Ytil=Y[sample(N),]
+    }
+    else{
+      Ytil=Y[sample(N),]
+      for(i in 2:m){
+        Ytil=cbind(Ytil,Y[sample(N),])
+      } 
+    }
+    YY=cbind(Y,Ytil) 
   }
-  
-  YY=cbind(Y,Ytil)
+  else{
+    YY=Y
+  }
   
   return(list(true_states=true_states,
               YY=YY))
@@ -570,148 +579,6 @@ jumpLR <- function(Y,X, n_states, jump_penalty=1e-5, initial_states=NULL,
   }
   
   return(list(s=best_s,coefs=cfs))
-}
-
-
-# SJM with missings -------------------------------------------------------
-
-jumpR <- function(Y, n_states, jump_penalty=1e-5, 
-                  initial_states=NULL,
-                  max_iter=10, n_init=10, tol=NULL, verbose=FALSE, method="euclidean") {
-  # Fit jump model using framework of Bemporad et al. (2018)
-  
-  Y=as.matrix(Y)
-  n_states=as.integer(n_states)
-  
-  n_obs <- nrow(Y)
-  n_features <- ncol(Y)
-  Gamma <- jump_penalty * (1 - diag(n_states))
-  best_loss <- NULL
-  best_s <- NULL
-  
-  # Initialize mu
-  mu <- colMeans(Y,na.rm = T)
-  
-  # Track missings with 0 1 matrix
-  M=ifelse(is.na(Y),T,F)
-  
-  
-  Ytil=Y
-  # Impute missing values with mean of observed states
-  for(i in 1:n_features){
-    Y[,i]=ifelse(M[,i],mu,Y[,i])
-  }
-  
-  # State initialization through kmeans++
-  # if (!is.null(initial_states)) {
-  #   s <- initial_states
-  # } else {
-  s <- init_states(Y, n_states)+1
-  # }
-  
-  # s=sample(1:n_states,n_obs,replace = T)
-  
-  # Fill-in unobserved entries
-  
-  for (init in 1:n_init) {
-    mu <- matrix(0, nrow=n_states, ncol=n_features)
-    loss_old <- 1e10
-    for (it in 1:max_iter) {
-      
-      for (i in unique(s)) {
-        # Fit model by updating mean of observed states
-        if(sum(s==i)>1){
-          mu[i,] <- colMeans(Y[s==i,])
-        }
-        else{
-          mu[i,]=mean(Y[s==i,])
-        }
-      }
-      
-      # Fit state sequence
-      s_old <- s
-      
-      # Re-fill-in missings
-      for(i in 1:n_features){
-        Y[,i]=ifelse(M[,i],mu[s,i],Y[,i])
-      }
-      
-      loss_by_state=matrix(0,nrow=n_obs,ncol=n_states)
-      switch(method,
-             euclidean={
-               for(k in 1:n_states){
-                 loss_by_state[,k]=apply(Y,1,function(x) dist(rbind(x,mu[k,]),method="euclidean"))^2
-               }
-             },
-             manhattan={
-               for(k in 1:n_states){
-                 loss_by_state[,k]=apply(Y,1,function(x) dist(rbind(x,mu[k,]),method="manhattan"))
-               }
-             })
-      
-      
-      V <- loss_by_state
-      for (t in (n_obs-1):1) {
-        V[t-1,] <- loss_by_state[t-1,] + apply(V[t,] + Gamma, 2, min)
-      }
-      
-      s[1] <- which.min(V[1,])
-      for (t in 2:n_obs) {
-        s[t] <- which.min(V[t,] + Gamma[s[t-1],])
-      }
-      
-      if (length(unique(s)) == 1) {
-        break
-      }
-      loss <- min(V[1,])
-      if (verbose) {
-        cat(sprintf('Iteration %d: %.6e\n', it, loss))
-      }
-      if (!is.null(tol)) {
-        epsilon <- loss_old - loss
-        if (epsilon < tol) {
-          break
-        }
-      } else if (all(s == s_old)) {
-        break
-      }
-      loss_old <- loss
-    }
-    if (is.null(best_s) || (loss_old < best_loss)) {
-      best_loss <- loss_old
-      best_s <- s
-    }
-    s <- init_states(Y, n_states)+1
-  }
-  
-  return(best_s)
-}
-
-sparse_jumpR <- function(Y, n_states, max_features, jump_penalty=1e-5,
-                        max_iter=10, tol=1e-4, n_init=10, verbose=FALSE) {
-  n_obs <- nrow(Y)
-  n_features <- ncol(Y)
-  max_features <- pmax(1, pmin(max_features, sqrt(n_features)))
-  feat_w <- rep(1 / sqrt(n_features), n_features)
-  states <- NULL
-
-for (it in 1:max_iter) {
-  states <- jumpR(Y * sqrt(feat_w), n_states, initial_states=states,
-                  jump_penalty=jump_penalty, n_init=n_init)
-  if (length(unique(states)) == 1) {
-    break
-  } else {
-    new_w <- get_weights(Y, states, max_features, n_states)
-  }
-  if (sum(abs(new_w - feat_w)) / sum(abs(feat_w)) < tol) {
-    break
-  } else if (verbose) {
-    cat('Iteration', it, ', w diff', sum(abs(new_w - feat_w)), '\n')
-  }
-  feat_w <- as.numeric(new_w)
-}
-
-return(list(states=states, feat_w=feat_w))
 }
 
 
@@ -1252,9 +1119,322 @@ simstud_JMmixed=function(seed,lambda,TT,P,
 }
 
 
+# Continuous SJM with missings -------------------------------------------------------
+
+initialize_states_jumpR <- function(Y, K,method="euclidean") {
+  n <- nrow(Y)
+  
+  ### Repeat the following few times?
+  centr_indx=sample(1:n, 1)
+  centroids <- Y[centr_indx, , drop = FALSE]  # Seleziona il primo centroide a caso
+  
+  closest_dist <- as.matrix(daisy(Y, metric = method))
+  closest_dist <- closest_dist[centr_indx,]
+  
+  for (i in 2:K) {
+    prob <- closest_dist / sum(closest_dist)
+    next_centr_indx <- sample(1:n, 1, prob = prob)
+    next_centroid <- Y[next_centr_indx, , drop = FALSE]
+    centroids <- rbind(centroids, next_centroid)
+  }
+  
+  #dist_matrix <- gower.dist(Y, centroids)
+  dist_matrix <- proxy::dist(Y,centroids,method=method)
+  init_stats <- apply(dist_matrix, 1, which.min)
+  
+  return(init_stats)
+}
+
+jumpR <- function(Y, n_states, jump_penalty=1e-5, 
+                  initial_states=NULL,
+                  max_iter=10, n_init=10, tol=NULL, verbose=FALSE, method="euclidean",python=F) {
+  # Fit jump model using framework of Bemporad et al. (2018)
+  
+  Y=as.matrix(Y)
+  n_states=as.integer(n_states)
+  
+  n_obs <- nrow(Y)
+  n_features <- ncol(Y)
+  Gamma <- jump_penalty * (1 - diag(n_states))
+  best_loss <- NULL
+  best_s <- NULL
+  
+  # Initialize mu
+  mu <- colMeans(Y,na.rm = T)
+  
+  # Track missings with 0 1 matrix
+  M=ifelse(is.na(Y),T,F)
+  
+  
+  Ytil=Y
+  # Impute missing values with mean of observed states
+  for(i in 1:n_features){
+    Y[,i]=ifelse(M[,i],mu[i],Y[,i])
+  }
+  
+  # State initialization through kmeans++
+  if (!is.null(initial_states)) {
+    s <- initial_states
+  } else {
+    if(python){
+      s <- init_states(Y, n_states)+1
+    }
+    else{
+      s <- initialize_states_jumpR(Y, n_states,method)
+    }
+  }
+  
+  
+  # Fill-in unobserved entries
+  
+  for (init in 1:n_init) {
+    mu <- matrix(0, nrow=n_states, ncol=n_features)
+    loss_old <- 1e10
+    for (it in 1:max_iter) {
+      
+      for (i in unique(s)) {
+        # Fit model by updating mean of observed states
+        if(sum(s==i)>1){
+          mu[i,] <- colMeans(Y[s==i,])
+        }
+        else{
+          mu[i,]=mean(Y[s==i,])
+        }
+      }
+      
+      # Fit state sequence
+      s_old <- s
+      
+      # Re-fill-in missings
+      for(i in 1:n_features){
+        # DA RIVEDERE mu[s,i], non sono sicuro di quell's forse ci va s==i o simili
+        Y[,i]=ifelse(M[,i],mu[s,i],Y[,i])
+      }
+      
+      loss_by_state=matrix(0,nrow=n_obs,ncol=n_states)
+      switch(method,
+             euclidean={
+               loss_by_state <- proxy::dist(Y,mu,method="euclidean")^2
+               # for(k in 1:n_states){
+               #   loss_by_state[,k]=apply(Y,1,function(x) 
+               #     dist(rbind(x,mu[k,]),method="euclidean"))^2
+               # }
+             },
+             manhattan={
+               loss_by_state <- proxy::dist(Y,mu,method="manhattan")^2
+               # for(k in 1:n_states){
+               #   loss_by_state[,k]=apply(Y,1,function(x) 
+               #     dist(rbind(x,mu[k,]),method="manhattan"))
+               # }
+             })
+      
+      
+      V <- loss_by_state
+      for (t in (n_obs-1):1) {
+        V[t-1,] <- loss_by_state[t-1,] + apply(V[t,] + Gamma, 2, min)
+      }
+      
+      s[1] <- which.min(V[1,])
+      for (t in 2:n_obs) {
+        s[t] <- which.min(V[t,] + Gamma[s[t-1],])
+      }
+      
+      if (length(unique(s)) == 1) {
+        break
+      }
+      loss <- min(V[1,])
+      if (verbose) {
+        cat(sprintf('Iteration %d: %.6e\n', it, loss))
+      }
+      if (!is.null(tol)) {
+        epsilon <- loss_old - loss
+        if (epsilon < tol) {
+          break
+        }
+      } else if (all(s == s_old)) {
+        break
+      }
+      loss_old <- loss
+    }
+    if (is.null(best_s) || (loss_old < best_loss)) {
+      best_loss <- loss_old
+      best_s <- s
+    }
+    if(python){
+      s <- init_states(Y, n_states)+1
+    }
+    else{
+      s <- initialize_states_jumpR(Y, n_states,method)
+    }
+  }
+  
+  return(best_s)
+}
+
+sparse_jumpR <- function(Y, n_states, max_features, jump_penalty=1e-5,
+                         max_iter=10, tol=1e-4, n_init=10, verbose=FALSE,method="euclidean",python=F) {
+  n_obs <- nrow(Y)
+  n_features <- ncol(Y)
+  max_features <- pmax(1, pmin(max_features, sqrt(n_features)))
+  feat_w <- rep(1 / sqrt(n_features), n_features)
+  states <- NULL
+  
+  for (it in 1:max_iter) {
+    states <- jumpR(Y * sqrt(feat_w), n_states, initial_states=states,
+                    jump_penalty=jump_penalty, n_init=n_init,method=method,python=python)
+    if (length(unique(states)) == 1) {
+      break
+    } else {
+      new_w <- get_weights(Y, states, max_features, n_states)
+    }
+    if (sum(abs(new_w - feat_w)) / sum(abs(feat_w)) < tol) {
+      break
+    } else if (verbose) {
+      cat('Iteration', it, ', w diff', sum(abs(new_w - feat_w)), '\n')
+    }
+    feat_w <- as.numeric(new_w)
+  }
+  
+  return(list(states=states, feat_w=feat_w))
+}
 
 
+# Spatio-temporal JM --------------------------------------------------------
 
-
+STjumpR <- function(Z, n_states, jump_penalty=1e-5, 
+                  initial_states=NULL,
+                  max_iter=10, n_init=10, tol=NULL, verbose=FALSE, method="euclidean",
+                  python=F) {
+  # Fit jump model using framework of Bemporad et al. (2018)
+  
+  Z=as.array(Z)
+  n_states=as.integer(n_states)
+  
+  D=dim(Z)
+  n_obs <- D[1]
+  n_features <- D[3]
+  n_points=D[2]
+  Gamma <- jump_penalty * (1 - diag(n_states))
+  best_loss <- NULL
+  best_s <- NULL
+  
+  # Initialize mu
+  mu <- apply(Z,3,mean)
+  
+  # Track missings with 0 1 matrix
+  M=ifelse(is.na(Z),T,F)
+  
+  
+  Ztil=Z
+  # Impute missing values with mean of observed states
+  for(i in 1:n_features){
+    Z[,,i]=ifelse(M[,,i],mu[i],Z[,,i])
+  }
+  
+  # State initialization through kmeans++ TBD
+  # if (!is.null(initial_states)) {
+    s <- initial_states
+  # } else {
+  #   if(python){
+  #     s <- init_states(Y, n_states)+1
+  #   }
+  #   else{
+  #     s <- initialize_states_jumpR(Y, n_states,method)
+  #   }
+  # }
+  
+  
+  # Fill-in unobserved entries
+  
+  for (init in 1:n_init) {
+    mu <- matrix(0, nrow=n_states, ncol=n_features)
+    loss_old <- 1e10
+    for (it in 1:max_iter) {
+      
+      #for (i in unique(s)) {
+      for (i in unique(as.vector(s))) {
+        # Fit model by updating mean of observed states
+       # if(sum(s==i)>1){
+        for(j in 1:n_features){
+          #mu[i,] <- colMeans(Y[s==i,])
+          Y=Z[,,j]
+          mu[i,j]= mean(Y[s==i])
+        }
+       # }
+        # else{
+        #   mu[i,]=mean(Y[s==i,])
+        # }
+      }
+      
+      # Fit state sequence
+      s_old <- s
+      
+      # Re-fill-in missings
+      for(i in 1:n_features){
+        for(j in 1:n_points){
+          #for(t in 1:n_obs){
+            Z[,j,i]=ifelse(M[,j,i],mu[s[,j],i],Z[,j,i])
+          #}
+        }
+      }
+      for(j in 1:n_points){
+        loss_by_state=matrix(0,nrow=n_obs,ncol=n_states)
+        switch(method,
+               euclidean={
+                 loss_by_state <- proxy::dist(Z[,j,],mu,method="euclidean")^2
+                 # for(k in 1:n_states){
+                 #   loss_by_state[,k]=apply(Y,1,function(x) 
+                 #     dist(rbind(x,mu[k,]),method="euclidean"))^2
+                 # }
+               },
+               manhattan={
+                 loss_by_state <- proxy::dist(Z[,j,],mu,method="manhattan")^2
+                 # for(k in 1:n_states){
+                 #   loss_by_state[,k]=apply(Y,1,function(x) 
+                 #     dist(rbind(x,mu[k,]),method="manhattan"))
+                 # }
+               })
+        
+        
+        V <- loss_by_state
+        for (t in (n_obs-1):1) {
+          V[t-1,] <- loss_by_state[t-1,] + apply(V[t,] + Gamma, 2, min)
+        }
+        
+        s[1,j] <- which.min(V[1,])
+        for (t in 2:n_obs) {
+          s[t,j] <- which.min(V[t,] + Gamma[s[t-1],])
+        }
+        
+        # if (length(unique(s)) == 1) {
+        #   break
+        # }
+        
+        # loss <- min(V[1,])
+        # if (verbose) {
+        #   cat(sprintf('Iteration %d: %.6e\n', it, loss))
+        # }
+        # if (!is.null(tol)) {
+        #   epsilon <- loss_old - loss
+        #   if (epsilon < tol) {
+        #     break
+        #   }
+        # } else if (all(s == s_old)) {
+        #   break
+        # }
+        # loss_old <- loss
+      }
+      if (is.null(best_s)) {
+          #|#| (loss_old < best_loss 
+       # )) {
+        best_loss <- loss_old
+        best_s <- s
+      }
+      s=initial_states
+    }
+  }
+  
+  return(best_s)
+}
 
   
