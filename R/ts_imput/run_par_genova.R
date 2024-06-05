@@ -146,7 +146,7 @@ load("air_tempGENOVA_NAs.RData")
 
 sarima_times=rep(0,3)
 st=Sys.time()
-air_5_sarima=fill_sarima(air_5[1:500,],rh_short[1:500,],period = 24)
+air_5_sarima=fill_sarima(air_5,rh_short,period = 24)
 en=Sys.time()
 sarima_times[1]=en-st
 
@@ -160,42 +160,42 @@ air_20_sarima=fill_sarima(air_20,rh_short,period = 24)
 en=Sys.time()
 sarima_times[3]=en-st
 
-windows()
-par(mfrow=c(4,3),mar=c(2,2,6,2))
-for(i in 2:ncol(air_5)){
-  plot(x=air_5$time,y=as.vector(unlist(air_5_sarima[,i])),col="red"
-       ,type="l",
-       xlab=" ",ylab=" ",
-       main=colnames(air_5[,i]))
-  lines(x=air_5$time,y=as.vector(unlist(air_5[,i])),col="black")
-  title(main=colnames(air_5)[i])
-}
-mtext("Air temperatures - 5% NAs - SARIMA", side = 3, line = - 2, outer = TRUE)
-
-windows()
-par(mfrow=c(4,3),mar=c(2,2,6,2))
-for(i in 2:ncol(air_10)){
-  plot(x=air_10$time,y=as.vector(unlist(air_10_sarima[,i])),col="red"
-       ,type="l",
-       xlab=" ",ylab=" ",
-       main=colnames(air_10[,i]))
-  lines(x=air_10$time,y=as.vector(unlist(air_10[,i])),col="black")
-  title(main=colnames(air_10)[i])
-}
-mtext("Air temperatures - 10% NAs - SARIMA", side = 3, line = - 2, outer = TRUE)
-
-windows()
-par(mfrow=c(4,3),mar=c(2,2,6,2))
-for(i in 2:ncol(air_20)){
-  plot(x=air_20$time,y=as.vector(unlist(air_20_sarima[,i])),col="red"
-       ,type="l",
-       xlab=" ",ylab=" ",
-       main=colnames(air_20[,i]))
-  lines(x=air_20$time,y=as.vector(unlist(air_20[,i])),col="black")
-  title(main=colnames(air_20)[i])
-}
-mtext("Air temperatures - 20% NAs - SARIMA", side = 3, line = - 2, outer = TRUE)
-
+# windows()
+# par(mfrow=c(4,3),mar=c(2,2,6,2))
+# for(i in 2:ncol(air_5)){
+#   plot(x=air_5$time,y=as.vector(unlist(air_5_sarima[,i])),col="red"
+#        ,type="l",
+#        xlab=" ",ylab=" ",
+#        main=colnames(air_5[,i]))
+#   lines(x=air_5$time,y=as.vector(unlist(air_5[,i])),col="black")
+#   title(main=colnames(air_5)[i])
+# }
+# mtext("Air temperatures - 5% NAs - SARIMA", side = 3, line = - 2, outer = TRUE)
+# 
+# windows()
+# par(mfrow=c(4,3),mar=c(2,2,6,2))
+# for(i in 2:ncol(air_10)){
+#   plot(x=air_10$time,y=as.vector(unlist(air_10_sarima[,i])),col="red"
+#        ,type="l",
+#        xlab=" ",ylab=" ",
+#        main=colnames(air_10[,i]))
+#   lines(x=air_10$time,y=as.vector(unlist(air_10[,i])),col="black")
+#   title(main=colnames(air_10)[i])
+# }
+# mtext("Air temperatures - 10% NAs - SARIMA", side = 3, line = - 2, outer = TRUE)
+# 
+# windows()
+# par(mfrow=c(4,3),mar=c(2,2,6,2))
+# for(i in 2:ncol(air_20)){
+#   plot(x=air_20$time,y=as.vector(unlist(air_20_sarima[,i])),col="red"
+#        ,type="l",
+#        xlab=" ",ylab=" ",
+#        main=colnames(air_20[,i]))
+#   lines(x=air_20$time,y=as.vector(unlist(air_20[,i])),col="black")
+#   title(main=colnames(air_20)[i])
+# }
+# mtext("Air temperatures - 20% NAs - SARIMA", side = 3, line = - 2, outer = TRUE)
+# 
 
 
 # 2.2) Temporal kriging --------------------------------------------------------
@@ -218,42 +218,42 @@ en=Sys.time()
 tkgr_times[3]=en-st
 
 # Plot
-windows()
-par(mfrow=c(4,3),mar=c(2,2,6,2))
-for(i in 2:ncol(air_5)){
-  plot(x=air_5$time,y=as.vector(unlist(air_5_tkr[,i])),col="red"
-       ,type="l",
-       xlab=" ",ylab=" ",
-       main=colnames(air_5[,i]))
-  lines(x=air_5$time,y=as.vector(unlist(air_5[,i])),col="black")
-  title(main=colnames(air_5)[i])
-}
-mtext("Air temperatures - 5% NAs - temporal kriging", side = 3, line = - 2, outer = TRUE)
-
-windows()
-par(mfrow=c(4,3),mar=c(2,2,6,2))
-for(i in 2:ncol(air_10)){
-  plot(x=air_10$time,y=as.vector(unlist(air_10_tkr[,i])),col="red"
-       ,type="l",
-       xlab=" ",ylab=" ",
-       main=colnames(air_10[,i]))
-  lines(x=air_10$time,y=as.vector(unlist(air_10[,i])),col="black")
-  title(main=colnames(air_10)[i])
-}
-mtext("Air temperatures - 10% NAs - temporal kriging", side = 3, line = - 2, outer = TRUE)
-
-windows()
-par(mfrow=c(4,3),mar=c(2,2,6,2))
-for(i in 2:ncol(air_20)){
-  plot(x=air_20$time,y=as.vector(unlist(air_20_tkr[,i])),col="red"
-       ,type="l",
-       xlab=" ",ylab=" ",
-       main=colnames(air_20[,i]))
-  lines(x=air_20$time,y=as.vector(unlist(air_20[,i])),col="black")
-  title(main=colnames(air_20)[i])
-}
-mtext("Air temperatures - 20% NAs - temporal kriging", side = 3, line = - 2, outer = TRUE)
-
+# windows()
+# par(mfrow=c(4,3),mar=c(2,2,6,2))
+# for(i in 2:ncol(air_5)){
+#   plot(x=air_5$time,y=as.vector(unlist(air_5_tkr[,i])),col="red"
+#        ,type="l",
+#        xlab=" ",ylab=" ",
+#        main=colnames(air_5[,i]))
+#   lines(x=air_5$time,y=as.vector(unlist(air_5[,i])),col="black")
+#   title(main=colnames(air_5)[i])
+# }
+# mtext("Air temperatures - 5% NAs - temporal kriging", side = 3, line = - 2, outer = TRUE)
+# 
+# windows()
+# par(mfrow=c(4,3),mar=c(2,2,6,2))
+# for(i in 2:ncol(air_10)){
+#   plot(x=air_10$time,y=as.vector(unlist(air_10_tkr[,i])),col="red"
+#        ,type="l",
+#        xlab=" ",ylab=" ",
+#        main=colnames(air_10[,i]))
+#   lines(x=air_10$time,y=as.vector(unlist(air_10[,i])),col="black")
+#   title(main=colnames(air_10)[i])
+# }
+# mtext("Air temperatures - 10% NAs - temporal kriging", side = 3, line = - 2, outer = TRUE)
+# 
+# windows()
+# par(mfrow=c(4,3),mar=c(2,2,6,2))
+# for(i in 2:ncol(air_20)){
+#   plot(x=air_20$time,y=as.vector(unlist(air_20_tkr[,i])),col="red"
+#        ,type="l",
+#        xlab=" ",ylab=" ",
+#        main=colnames(air_20[,i]))
+#   lines(x=air_20$time,y=as.vector(unlist(air_20[,i])),col="black")
+#   title(main=colnames(air_20)[i])
+# }
+# mtext("Air temperatures - 20% NAs - temporal kriging", side = 3, line = - 2, outer = TRUE)
+# 
 
 
 # 2.3) SDEM and NAIVE ----------------------------------------------------------
@@ -279,41 +279,41 @@ air5_SDEM=air_sdem5$SDEM
 air10_SDEM=air_sdem10$SDEM
 air20_SDEM=air_sdem20$SDEM
 
-windows()
-par(mfrow=c(4,3),mar=c(2,2,6,2))
-for(i in 2:ncol(air_5)){
-  plot(x=air_5$time,y=as.vector(unlist(air5_SDEM[,i])),col="red"
-       ,type="l",
-       xlab=" ",ylab=" ",
-       main=colnames(air_5[,i]))
-  lines(x=air_5$time,y=as.vector(unlist(air_5[,i])),col="black")
-  title(main=colnames(air_5)[i])
-}
-mtext("Air temperatures - 5% NAs - SDEM", side = 3, line = - 2, outer = TRUE)
-
-windows()
-par(mfrow=c(4,3),mar=c(2,2,6,2))
-for(i in 2:ncol(air_10)){
-  plot(x=air_10$time,y=as.vector(unlist(air10_SDEM[,i])),col="red"
-       ,type="l",
-       xlab=" ",ylab=" ",
-       main=colnames(air_10[,i]))
-  lines(x=air_10$time,y=as.vector(unlist(air_10[,i])),col="black")
-  title(main=colnames(air_10)[i])
-}
-mtext("Air temperatures - 10% NAs - SDEM", side = 3, line = - 2, outer = TRUE)
-
-windows()
-par(mfrow=c(4,3),mar=c(2,2,6,2))
-for(i in 2:ncol(air_20)){
-  plot(x=air_20$time,y=as.vector(unlist(air20_SDEM[,i])),col="red"
-       ,type="l",
-       xlab=" ",ylab=" ",
-       main=colnames(air_20[,i]))
-  lines(x=air_20$time,y=as.vector(unlist(air_20[,i])),col="black")
-  title(main=colnames(air_20)[i])
-}
-mtext("Air temperatures - 20% NAs - SDEM", side = 3, line = - 2, outer = TRUE)
+# windows()
+# par(mfrow=c(4,3),mar=c(2,2,6,2))
+# for(i in 2:ncol(air_5)){
+#   plot(x=air_5$time,y=as.vector(unlist(air5_SDEM[,i])),col="red"
+#        ,type="l",
+#        xlab=" ",ylab=" ",
+#        main=colnames(air_5[,i]))
+#   lines(x=air_5$time,y=as.vector(unlist(air_5[,i])),col="black")
+#   title(main=colnames(air_5)[i])
+# }
+# mtext("Air temperatures - 5% NAs - SDEM", side = 3, line = - 2, outer = TRUE)
+# 
+# windows()
+# par(mfrow=c(4,3),mar=c(2,2,6,2))
+# for(i in 2:ncol(air_10)){
+#   plot(x=air_10$time,y=as.vector(unlist(air10_SDEM[,i])),col="red"
+#        ,type="l",
+#        xlab=" ",ylab=" ",
+#        main=colnames(air_10[,i]))
+#   lines(x=air_10$time,y=as.vector(unlist(air_10[,i])),col="black")
+#   title(main=colnames(air_10)[i])
+# }
+# mtext("Air temperatures - 10% NAs - SDEM", side = 3, line = - 2, outer = TRUE)
+# 
+# windows()
+# par(mfrow=c(4,3),mar=c(2,2,6,2))
+# for(i in 2:ncol(air_20)){
+#   plot(x=air_20$time,y=as.vector(unlist(air20_SDEM[,i])),col="red"
+#        ,type="l",
+#        xlab=" ",ylab=" ",
+#        main=colnames(air_20[,i]))
+#   lines(x=air_20$time,y=as.vector(unlist(air_20[,i])),col="black")
+#   title(main=colnames(air_20)[i])
+# }
+# mtext("Air temperatures - 20% NAs - SDEM", side = 3, line = - 2, outer = TRUE)
 
 
 air5_naive=air_sdem5$naive
@@ -321,42 +321,42 @@ air10_naive=air_sdem10$naive
 air20_naive=air_sdem20$naive
 
 
-windows()
-par(mfrow=c(4,3),mar=c(2,2,6,2))
-for(i in 2:ncol(air_5)){
-  plot(x=air_5$time,y=as.vector(unlist(air5_naive[,i])),col="red"
-       ,type="l",
-       xlab=" ",ylab=" ",
-       main=colnames(air_5[,i]))
-  lines(x=air_5$time,y=as.vector(unlist(air_5[,i])),col="black")
-  title(main=colnames(air_5)[i])
-}
-mtext("Air temperatures - 5% NAs - Naive", side = 3, line = - 2, outer = TRUE)
-
-windows()
-par(mfrow=c(4,3),mar=c(2,2,6,2))
-for(i in 2:ncol(air_10)){
-  plot(x=air_10$time,y=as.vector(unlist(air10_naive[,i])),col="red"
-       ,type="l",
-       xlab=" ",ylab=" ",
-       main=colnames(air_10[,i]))
-  lines(x=air_10$time,y=as.vector(unlist(air_10[,i])),col="black")
-  title(main=colnames(air_10)[i])
-}
-mtext("Air temperatures - 10% NAs - Naive", side = 3, line = - 2, outer = TRUE)
-
-windows()
-par(mfrow=c(4,3),mar=c(2,2,6,2))
-for(i in 2:ncol(air_20)){
-  plot(x=air_20$time,y=as.vector(unlist(air20_naive[,i])),col="red"
-       ,type="l",
-       xlab=" ",ylab=" ",
-       main=colnames(air_20[,i]))
-  lines(x=air_20$time,y=as.vector(unlist(air_20[,i])),col="black")
-  title(main=colnames(air_20)[i])
-}
-mtext("Air temperatures - 20% NAs - Naive", side = 3, line = - 2, outer = TRUE)
-
+# windows()
+# par(mfrow=c(4,3),mar=c(2,2,6,2))
+# for(i in 2:ncol(air_5)){
+#   plot(x=air_5$time,y=as.vector(unlist(air5_naive[,i])),col="red"
+#        ,type="l",
+#        xlab=" ",ylab=" ",
+#        main=colnames(air_5[,i]))
+#   lines(x=air_5$time,y=as.vector(unlist(air_5[,i])),col="black")
+#   title(main=colnames(air_5)[i])
+# }
+# mtext("Air temperatures - 5% NAs - Naive", side = 3, line = - 2, outer = TRUE)
+# 
+# windows()
+# par(mfrow=c(4,3),mar=c(2,2,6,2))
+# for(i in 2:ncol(air_10)){
+#   plot(x=air_10$time,y=as.vector(unlist(air10_naive[,i])),col="red"
+#        ,type="l",
+#        xlab=" ",ylab=" ",
+#        main=colnames(air_10[,i]))
+#   lines(x=air_10$time,y=as.vector(unlist(air_10[,i])),col="black")
+#   title(main=colnames(air_10)[i])
+# }
+# mtext("Air temperatures - 10% NAs - Naive", side = 3, line = - 2, outer = TRUE)
+# 
+# windows()
+# par(mfrow=c(4,3),mar=c(2,2,6,2))
+# for(i in 2:ncol(air_20)){
+#   plot(x=air_20$time,y=as.vector(unlist(air20_naive[,i])),col="red"
+#        ,type="l",
+#        xlab=" ",ylab=" ",
+#        main=colnames(air_20[,i]))
+#   lines(x=air_20$time,y=as.vector(unlist(air_20[,i])),col="black")
+#   title(main=colnames(air_20)[i])
+# }
+# mtext("Air temperatures - 20% NAs - Naive", side = 3, line = - 2, outer = TRUE)
+# 
 
 # 2.4) Linear regression -------------------------------------------------------
 
@@ -365,42 +365,42 @@ air10_lr=lin_reg_imp(air_10,rh_short)
 air20_lr=lin_reg_imp(air_20,rh_short)
 
 #Plot
-windows()
-par(mfrow=c(4,3),mar=c(2,2,6,2))
-for(i in 2:ncol(air_5)){
-  plot(x=air_5$time,y=as.vector(unlist(air5_lr[,i])),col="red"
-       ,type="l",
-       xlab=" ",ylab=" ",
-       main=colnames(air_5[,i]))
-  lines(x=air_5$time,y=as.vector(unlist(air_5[,i])),col="black")
-  
-  title(main=colnames(air_5)[i])
-}
-mtext("Air temperatures - 5% NAs - Linear regression", side = 3, line = - 2, outer = TRUE)
-
-windows()
-par(mfrow=c(4,3),mar=c(2,2,6,2))
-for(i in 2:ncol(air_10)){
-  plot(x=air_10$time,y=as.vector(unlist(air10_lr[,i])),col="red"
-       ,type="l",
-       xlab=" ",ylab=" ",
-       main=colnames(air_10[,i]))
-  lines(x=air_10$time,y=as.vector(unlist(air_10[,i])),col="black")
-  title(main=colnames(air_10)[i])
-}
-mtext("Air temperatures - 10% NAs - Linear regression", side = 3, line = - 2, outer = TRUE)
-
-windows()
-par(mfrow=c(4,3),mar=c(2,2,6,2))
-for(i in 2:ncol(air_20)){
-  plot(x=air_20$time,y=as.vector(unlist(air20_lr[,i])),col="red"
-       ,type="l",
-       xlab=" ",ylab=" ",
-       main=colnames(air_20[,i]))
-  lines(x=air_20$time,y=as.vector(unlist(air_20[,i])),col="black")
-  title(main=colnames(air_20)[i])
-}
-mtext("Air temperatures - 20% NAs - Linear regression", side = 3, line = - 2, outer = TRUE)
+# windows()
+# par(mfrow=c(4,3),mar=c(2,2,6,2))
+# for(i in 2:ncol(air_5)){
+#   plot(x=air_5$time,y=as.vector(unlist(air5_lr[,i])),col="red"
+#        ,type="l",
+#        xlab=" ",ylab=" ",
+#        main=colnames(air_5[,i]))
+#   lines(x=air_5$time,y=as.vector(unlist(air_5[,i])),col="black")
+#   
+#   title(main=colnames(air_5)[i])
+# }
+# mtext("Air temperatures - 5% NAs - Linear regression", side = 3, line = - 2, outer = TRUE)
+# 
+# windows()
+# par(mfrow=c(4,3),mar=c(2,2,6,2))
+# for(i in 2:ncol(air_10)){
+#   plot(x=air_10$time,y=as.vector(unlist(air10_lr[,i])),col="red"
+#        ,type="l",
+#        xlab=" ",ylab=" ",
+#        main=colnames(air_10[,i]))
+#   lines(x=air_10$time,y=as.vector(unlist(air_10[,i])),col="black")
+#   title(main=colnames(air_10)[i])
+# }
+# mtext("Air temperatures - 10% NAs - Linear regression", side = 3, line = - 2, outer = TRUE)
+# 
+# windows()
+# par(mfrow=c(4,3),mar=c(2,2,6,2))
+# for(i in 2:ncol(air_20)){
+#   plot(x=air_20$time,y=as.vector(unlist(air20_lr[,i])),col="red"
+#        ,type="l",
+#        xlab=" ",ylab=" ",
+#        main=colnames(air_20[,i]))
+#   lines(x=air_20$time,y=as.vector(unlist(air_20[,i])),col="black")
+#   title(main=colnames(air_20)[i])
+# }
+# mtext("Air temperatures - 20% NAs - Linear regression", side = 3, line = - 2, outer = TRUE)
 
 # Comparison
 mean(unlist(as.vector(rmse(air_short,air_5_sarima))))
