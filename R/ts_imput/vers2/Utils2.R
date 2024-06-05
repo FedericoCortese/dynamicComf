@@ -27,6 +27,7 @@ library(gstat)
 library(automap)
 library(xts)
 library(geosphere)
+library(forecast)
 
 
 # Imputation --------------------------------------------------------------
@@ -46,7 +47,7 @@ fill_sarima=function(y,x,period){
     #                               
     #               ),
     #               include.mean = F)
-    fit_air=forecast::auto.arima(y[,i],d=0,D=0,
+    fit_air=auto.arima(y[,i],d=0,D=0,
                          max.p = 1,max.q = 1,
                          max.P = 1,max.Q = 1,
                          max.D=24,xreg=x[,i])
