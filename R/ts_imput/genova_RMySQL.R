@@ -87,8 +87,6 @@ map
 #                       colors = c("red","black"), 
 #                       labels = c("Stations","Participants"), title = "Legend")
 
-map
-
 # Wide format only for TEMPTRMWC0
 dat_temp_wide = dat%>%select(TEMPO_DA,LUOGO,TEMPTRMWC0)%>%
 pivot_wider(names_from = LUOGO,values_from = TEMPTRMWC0)
@@ -143,8 +141,15 @@ pivot_wider(names_from = LUOGO,values_from = UMREIGRWCO)
 
 summary(dat_umreig_wide)
 
+# Keep stations with less than 50% of NA
+na=apply(dat_umreig_wide[,-1],2,function(x){sum(is.na(x))/length(x)}); na*100
 
-Amelia::missmap(dat_umreig_wide,main="Relative humidity")
+dat_umreig_wide=dat_umreig_wide[,c(1,which(na<0.5)+1)]
+
+colnames(dat_umreig_wide)
+colnames(dat_temp_wide)
+
+# Amelia::missmap(dat_umreig_wide,main="Relative humidity")
 
 # Wide format for PRECPBIWC1
 dat_prec_wide = dat%>%select(TEMPO_DA,LUOGO,PRECPBIWC1)%>%
@@ -201,3 +206,10 @@ summary(dat_vvmdtacwan_wide)
 
 colnames(dat_vvmdtacwan_wide)
 colnames(dat_temp_wide)
+
+# Scatterplot dat_temp_wide vs dat_prec_wide for each station
+
+plot(dat_temp_wide$`GENOVA - PONTEDECIMO`,dat_prec_wide$`GENOVA - PONTEDECIMO`,
+     xlab="Temperature",ylab="Precipitation",main="GENOVA - PONTEDECIMO")
+cor(dat_temp_wide$`GENOVA - PONTEDECIMO`,dat_prec_wide$`GENOVA - PONTEDECIMO`, 
+    use="complete.obs")

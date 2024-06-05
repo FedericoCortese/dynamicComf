@@ -182,6 +182,8 @@ weightdist_imp=function(x_data,locations2){
   
   # Value:
   # xi_data: a data frame with interpolated values
+  colnames(x_data)[1]="time"
+  colnames(locations2)[1]="id"
   
   rel_stat=intersect(locations2$id, colnames(x_data))
   locations2=locations2[which(locations2$id%in%rel_stat),]
