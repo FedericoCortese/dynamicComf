@@ -39,6 +39,7 @@ fill_sarima=function(y,x,period){
   for(i in 2:ncol(y)){
     fit_air=arima(x=y[,i], order=c(1,0,1),
                   xreg=x[,i],
+                  method="CSS",
                   seasonal = list(order=c(1,0,1)
                                   ,period=period
                                   ,include.mean =T

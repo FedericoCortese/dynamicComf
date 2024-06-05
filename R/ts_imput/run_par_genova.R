@@ -78,6 +78,10 @@ diag(round(cor(dat_temp_wide3[,-1],dat_rh_wide3[,-1]),2))
 air_short=dat_temp_wide3[1:8760,]
 rh_short=dat_rh_wide3[1:8760,]
 
+
+air_short=dat_temp_wide3[1:1000,]
+rh_short=dat_rh_wide3[1:1000,]
+
 source("vers2/Utils2.R")
 TT=dim(air_short)[1]
 #TT/2-7
