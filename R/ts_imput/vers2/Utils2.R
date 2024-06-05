@@ -37,14 +37,19 @@ fill_sarima=function(y,x,period){
   # x is the matrix of covariates with time in the first column and ordered as y (same stations)
   
   for(i in 2:ncol(y)){
-    fit_air=arima(x=y[,i], order=c(1,0,1),
-                  xreg=x[,i],
-                  method="CSS",
-                  seasonal = list(order=c(1,0,1)
-                                  ,period=period
-                                  ,include.mean =T
-                                  ,method="ML"
-                  ))
+    # fit_air=arima(x=y[,i], order=c(1,0,0),
+    #               xreg=x[,i],
+    #               #optim.method="SANN",
+    #               method="CSS",
+    #               seasonal = list(order=c(1,0,1)
+    #                               ,period=period
+    #                               
+    #               ),
+    #               include.mean = F)
+    fit_air=forecast::auto.arima(y[,i],d=0,D=0,
+                         max.p = 1,max.q = 1,
+                         max.P = 1,max.Q = 1,
+                         max.D=24,xreg=x[,i])
     kr_sm=KalmanSmooth(as.numeric(unlist(y[,i])),
                        fit_air$model)
     id.na <- which(is.na(y[,i]))
@@ -53,6 +58,7 @@ fill_sarima=function(y,x,period){
       y_sm[j] <- kr_sm$smooth[j,1]
     }
     y[,i]=y_sm
+    print(i)
   }
   
   return(y)
