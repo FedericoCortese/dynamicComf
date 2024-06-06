@@ -212,12 +212,12 @@ en=Sys.time()
 tkgr_times[1]=en-st
 
 st=Sys.time()
-air_10_tkr=temp_krige(air_10)
+air_10_tkr=temp_krige(air_10,rh_short)
 en=Sys.time()
 tkgr_times[2]=en-st
 
 st=Sys.time()
-air_20_tkr=temp_krige(air_20)
+air_20_tkr=temp_krige(air_20,rh_short)
 en=Sys.time()
 tkgr_times[3]=en-st
 
