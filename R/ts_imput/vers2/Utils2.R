@@ -352,7 +352,7 @@ cvobj_STFDF=function(dat,locations,stat_col){
   dat=dat[,-stat_col]
   
   stats<- locations[locations$id %in% colnames(dat)[-1],]
-  rownames(stats)=stats[,1]
+  #rownames(stats)=stats[,1]
   
   # dat format long using dplyr
   dat_long<- dat %>%  gather(key = "station", value = "air_temperature", -time)
