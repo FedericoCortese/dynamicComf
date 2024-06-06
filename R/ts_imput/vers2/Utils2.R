@@ -520,20 +520,25 @@ CV_STkr=function(stat_ind,dat,locations,ordinary=T,plot=F){
                           values =c('blue'='blue','red'='red'), labels = c('Fitted','True'))
     return(list(
       stat_id=stat_id,
-      step1=step1,
-      step2=step2,
+      #step1=step1,
+      #step2=step2,
+      pred_x=step2$stkgr@data$var1.pred,
       RMSE=step3$rmse,
-      MAE=step3$mae,
-      plot=P))
+      #MAE=step3$mae,
+      plot=P
+      ))
   }
   
   else{
     return(list(
       stat_id=stat_id,
-      step1=step1,
-      step2=step2,
-      RMSE=step3$rmse,
-      MAE=step3$mae))
+      #step1=step1,
+      #step2=step2,
+      pred_x=step2$stkgr@data$var1.pred,
+      RMSE=step3$rmse
+      # ,
+      # MAE=step3$mae
+      ))
   }
   
 }
