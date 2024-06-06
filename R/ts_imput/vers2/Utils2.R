@@ -500,6 +500,7 @@ compute_errors=function(stkgr,cvobj){
 
 # CV (to be performed in parallel)
 CV_STkr=function(stat_ind,dat,locations,ordinary=T,plot=F){
+  colnames(locations)=c("id","longitude","latitude")
   step1=cvobj_STFDF(dat,locations,stat_ind) # It automatically excludes stat_ind
   stat_id=step1$stat_id
   step2=STkriging(step1$dat_stfdf,
