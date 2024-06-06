@@ -94,7 +94,7 @@ mixedJM_rand.miss10 <- parallel::mclapply(1:nrow(hp),
 #   library(cluster)
 #   library(gower)
 #   library(StatMatch)})
-# mixedJM_no.miss <- clusterApply(cl, 
+# mixedJM_rand.miss10 <- clusterApply(cl, 
 #                                 1:nrow(hp), 
 #                                 function(x)
 #                                   simstud_JMmixed(
@@ -205,3 +205,14 @@ elapsed_cont.miss50=end_cont.miss50-start_cont.miss50
 save.image("simres_mixedJM.RData")
 
 
+# Evaluation --------------------------------------------------------------
+
+res=data.frame(hp,ARI=unlist(lapply(mixedJM_no.miss,function(x)x$ARI)))
+head(res)
+library(dplyr)
+
+maxres=res%>%group_by(TT,P)%>%summarise(maxARI=max(ARI,na.rm=T))
+
+avres=res%>%group_by(TT,P,lambda)%>%summarise(avARI=median(ARI,na.rm=T))
+
+avres%>%group_by(TT,P)%>%summarise(maxARI=max(avARI),avlambda=mean(lambda))

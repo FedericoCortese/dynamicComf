@@ -27,3 +27,17 @@ Z[,3,]=YY3$YY
 
 initial_states=cbind(YY1$true_states,YY2$true_states,YY3$true_states);initial_states
 
+
+YY=sim_data_mixed(seed=123,
+                        100,
+                        20,
+                        Ktrue=3,
+                        mu=1,
+                        phi=.8,
+                        rho=0,
+                        Pcat=NULL,
+                        pers=.95,
+                        pNAs=0,
+                        typeNA=2)
+
+Y=YY$SimData.NA

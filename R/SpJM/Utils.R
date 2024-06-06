@@ -664,6 +664,10 @@ jump_mixed <- function(Y, n_states, jump_penalty=1e-5,
   Ycont=Y[,-cat.indx]
   Ycat=Y[,cat.indx]
   
+  n_levs=apply(Ycat, 2, function(x)length(unique(x)))
+  # n_levs=apply(Ycat, 2, function(x)levels(x))
+  
+  
   n_cat=length(cat.indx)
   n_cont=n_features-n_cat
   
@@ -689,7 +693,10 @@ jump_mixed <- function(Y, n_states, jump_penalty=1e-5,
     Ycat[,i]=ifelse(Mcat[,i],mo[i],Ycat[,i])
   }
   
-  Ycat=Ycat%>%mutate_all(as.factor)
+  # Ycat=Ycat%>%mutate_all(factor)
+  for(i in 1:n_cat){
+    Ycat[,i]=factor(Ycat[,i],levels=1:n_levs[i])
+  }
   
   Y[,-cat.indx]=Ycont
   Y[,cat.indx]=Ycat
@@ -721,7 +728,7 @@ jump_mixed <- function(Y, n_states, jump_penalty=1e-5,
       mu=data.frame(mu)
       mo=data.frame(mo,stringsAsFactors=TRUE)
       for(i in 1:n_cat){
-        mo[,i]=factor(mo[,i],levels=levels(Ycat[,i]))
+        mo[,i]=factor(mo[,i],levels=1:n_levs[i])
       }
 
       # Fit state sequence
@@ -733,8 +740,8 @@ jump_mixed <- function(Y, n_states, jump_penalty=1e-5,
       }
       for(i in 1:ncol(Ycat)){
         Ycat[,i]=ifelse(Mcat[,i],mo[s,i],Ycat[,i])
+        Ycat[,i]=factor(Ycat[,i],levels=1:n_levs[i])
       }
-      Ycat=Ycat%>%mutate_all(as.factor)
       
       Y[,-cat.indx]=Ycont
       Y[,cat.indx]=Ycat
@@ -1297,6 +1304,10 @@ sparse_jumpR <- function(Y, n_states, max_features, jump_penalty=1e-5,
   
   return(list(states=states, feat_w=feat_w))
 }
+
+
+# Spatial JM --------------------------------------------------------------
+
 
 
 # Spatio-temporal JM --------------------------------------------------------
