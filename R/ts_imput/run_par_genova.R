@@ -431,6 +431,8 @@ mean(unlist(as.vector(rmse(air_short,air20_naive))))
 
 # 3) Universal kriging (parallel) -----------------------------------------
 
+locations2=locations3
+
 indx=2:ncol(air_short)
 
 start = Sys.time()
