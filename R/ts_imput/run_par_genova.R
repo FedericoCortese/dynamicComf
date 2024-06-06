@@ -368,6 +368,9 @@ air5_lr=lin_reg_imp(air_5,rh_short)
 air10_lr=lin_reg_imp(air_10,rh_short)
 air20_lr=lin_reg_imp(air_20,rh_short)
 
+save.image("dat_genova_imput.Rdata")
+
+
 #Plot
 # windows()
 # par(mfrow=c(4,3),mar=c(2,2,6,2))
