@@ -434,6 +434,8 @@ mean(unlist(as.vector(rmse(air_short,air20_naive))))
 locations2=locations3
 
 indx=2:ncol(air_short)
+x=2
+
 
 start = Sys.time()
 air5_sarima_full <- parallel::mclapply(indx,

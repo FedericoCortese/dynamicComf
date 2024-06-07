@@ -222,7 +222,7 @@ weightdist_imp=function(x_data,locations2){
     dstats=distm(x=locations2[which(locations2$id==target),2:3],
                  y=locations2[,2:3], fun = distHaversine)/1000
     colnames(dstats)=locations2$id
-    rownames(dstats)=target
+    #rownames(dstats)=target
     dstats[which(dstats==0)]=NA
     wstats=1/(dstats)
     wstats[which(is.na(wstats))]=0
@@ -476,8 +476,10 @@ STkriging<-function(dat,
   en=Sys.time()
   elapsed=en-st
   
-  return(list(stkgr=stkgr,
-              elapsed=elapsed))
+  return(stkgr@data$var1.pred)
+  
+  # return(list(stkgr=stkgr,
+  #             elapsed=elapsed))
 }
 
 
@@ -488,9 +490,11 @@ STkriging<-function(dat,
 # lines(step2$stkgr@data$var1.pred,col='blue')
 
 # Function computing RMSE and MAE for predicted station
-compute_errors=function(stkgr,cvobj){
+compute_errors=function(pred,
+    #stkgr,
+                        cvobj){
   
-  pred=stkgr$stkgr@data$var1.pred
+  #pred=stkgr$stkgr@data$var1.pred
   obs=cvobj$dat_orig[,cvobj$stat_id]
   
   rmse=sqrt(mean((pred-obs)^2))
@@ -505,12 +509,14 @@ CV_STkr=function(stat_ind,dat,locations,ordinary=T,plot=F){
   stat_id=step1$stat_id
   step2=STkriging(step1$dat_stfdf,
                   #vgm.model,
-                  step1$loc_to_pred,ordinary = ordinary)
+                  step1$loc_to_pred,
+                  ordinary = ordinary)
   step3=compute_errors(step2,step1)
   
   if(plot){
     df=data.frame(time=dat$time,
-                  result=step2$stkgr@data$var1.pred,
+                  result=step2,
+                  #$stkgr@data$var1.pred,
                   true=step1$dat_orig[,step1$stat_id])
     P=ggplot(df)+
       geom_line(aes(x=time,y=result,col="blue"))+
@@ -522,7 +528,8 @@ CV_STkr=function(stat_ind,dat,locations,ordinary=T,plot=F){
       stat_id=stat_id,
       #step1=step1,
       #step2=step2,
-      pred_x=step2$stkgr@data$var1.pred,
+      pred_x=step2,
+      #pred_x=step2$stkgr@data$var1.pred,
       RMSE=step3$rmse,
       #MAE=step3$mae,
       plot=P
@@ -534,7 +541,8 @@ CV_STkr=function(stat_ind,dat,locations,ordinary=T,plot=F){
       stat_id=stat_id,
       #step1=step1,
       #step2=step2,
-      pred_x=step2$stkgr@data$var1.pred,
+      pred_x=step2,
+      #pred_x=step2$stkgr@data$var1.pred,
       RMSE=step3$rmse
       # ,
       # MAE=step3$mae
@@ -562,7 +570,7 @@ get_orig_series=function(x,kgrST.res,locations2,target,loess=T){
   dstats=distm(x=locations2[which(locations2$id==target),2:3],
                y=locations2[,2:3], fun = distHaversine)/1000
   colnames(dstats)=locations2$id
-  rownames(dstats)=target
+  #rownames(dstats)=target
   dstats[which(dstats==0)]=NA
   wstats=1/(dstats)
   wstats[which(is.na(wstats))]=0
