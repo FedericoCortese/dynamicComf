@@ -1314,6 +1314,15 @@ sparse_jumpR <- function(Y, n_states, max_features, jump_penalty=1e-5,
 # Spatial JM --------------------------------------------------------------
 
 Cmatrix=function(sp_indx){
+  
+  # This function creates the adjacency matrix for a spatial grid
+  
+  # Arguments:
+  # sp_indx is a matrix with the spatial indexes of the grid
+  
+  # Value:
+  # C is the adjacency matrix
+  
   nc=ncol(sp_indx)
   nr=nrow(sp_indx)
   #indx=as.vector(t(sp_indx))
@@ -1335,6 +1344,180 @@ Cmatrix=function(sp_indx){
   }
   C=C+t(C)
   return(C)
+}
+
+spatial_jump <- function(Y,C, n_states, jump_penalty=1e-5, 
+                         initial_states=NULL,
+                         max_iter=10, n_init=10, tol=NULL, verbose=FALSE
+                         # , 
+                         # method="gower"
+){
+  
+  # This function implements the spatial jump algorithm for clustering spatial data
+  
+  # Arguments:
+  # Y is a data frame with P columns (features) and M rows (spatial points)
+  # C is a  MxM adjacency matrix
+  # n_states is the number of states
+  # jump_penalty is the penalty for jumping between states
+  # initial_states is a vector of length M with the initial state of each point
+  # max_iter is the maximum number of iterations
+  # n_init is the number of initializations
+  # tol is the tolerance for stopping the algorithm
+  # verbose is a boolean for printing the loss at each iteration
+  
+  # Value:
+  # best_s is the best state sequence
+  # Y is the imputed data
+  # Y.orig is the original data
+  # condMM is the conditional mean-mode matrix
+  
+  
+  n_states=as.integer(n_states)
+  
+  n_obs <- nrow(Y)
+  n_features <- ncol(Y)
+  Gamma <- jump_penalty * (1 - diag(n_states))
+  best_loss <- NULL
+  best_s <- NULL
+  
+  # Which vars are categorical and which are numeric
+  
+  cat.indx=which(sapply(Y, is.factor))
+  cont.indx=which(sapply(Y, is.numeric))
+  Ycont=Y[,-cat.indx]
+  Ycat=Y[,cat.indx]
+  
+  n_levs=apply(Ycat, 2, function(x)length(unique(x)))
+  # n_levs=apply(Ycat, 2, function(x)levels(x))
+  
+  n_cat=length(cat.indx)
+  n_cont=n_features-n_cat
+  
+  # Initialize mu 
+  mu <- colMeans(Ycont,na.rm = T)
+  
+  # Initialize modes
+  mo <- apply(Ycat,2,Mode)
+  
+  # Track missings with 0 1 matrix
+  Mcont=ifelse(is.na(Ycont),T,F)
+  Mcat=ifelse(is.na(Ycat),T,F)
+  
+  #M=ifelse(is.na(Y),T,F)
+  
+  
+  Ytil=Y
+  # Impute missing values with mean of observed states
+  for(i in 1:n_cont){
+    Ycont[,i]=ifelse(Mcont[,i],mu[i],Ycont[,i])
+  }
+  for(i in 1:n_cat){
+    Ycat[,i]=ifelse(Mcat[,i],mo[i],Ycat[,i])
+    Ycat[,i]=factor(Ycat[,i],levels=1:n_levs[i])
+  }
+  
+  Y[,-cat.indx]=Ycont
+  Y[,cat.indx]=Ycat
+  
+  # State initialization through kmeans++
+  if (!is.null(initial_states)) {
+    s <- initial_states
+  } else {
+    s=initialize_states(Y,n_states)
+  }
+  
+  for (init in 1:n_init) {
+    mu <- matrix(0, nrow=n_states, ncol=n_features-length(cat.indx))
+    mo <- matrix(0, nrow=n_states, ncol=length(cat.indx))
+    loss_old <- 1e10
+    for (it in 1:max_iter) {
+      
+      for (i in unique(s)) {
+        # Fit model by updating mean of observed states
+        #if(sum(s==i)>1){
+        mu[i,] <- colMeans(Ycont[s==i,])
+        mo[i,]=apply(Ycat[s==i,],2,Mode)
+        # }
+        # else{
+        #   mu[i,]=mean(Y[s==i,])
+        # }
+      }
+      
+      mu=data.frame(mu)
+      mo=data.frame(mo,stringsAsFactors=TRUE)
+      for(i in 1:n_cat){
+        mo[,i]=factor(mo[,i],levels=1:n_levs[i])
+      }
+      
+      # Fit state sequence
+      s_old <- s
+      
+      # Re-fill-in missings
+      for(i in 1:ncol(Ycont)){
+        Ycont[,i]=ifelse(Mcont[,i],mu[s,i],Ycont[,i])
+      }
+      for(i in 1:ncol(Ycat)){
+        Ycat[,i]=ifelse(Mcat[,i],mo[s,i],Ycat[,i])
+        Ycat[,i]=factor(Ycat[,i],levels=1:n_levs[i])
+      }
+      
+      Y[,-cat.indx]=Ycont
+      Y[,cat.indx]=Ycat
+      
+      mumo=data.frame(matrix(0,nrow=n_states,ncol=n_features))
+      mumo[,cat.indx]=mo
+      mumo[,cont.indx]=mu
+      
+      # loss_by_state=matrix(0,nrow=n_obs,ncol=n_states)
+      # for(k in 1:n_states){
+      #   loss_by_state[,k]=gower.dist(Y,mumo[k,])
+      # }
+      
+      
+      # var.weights in gower.dist allows for weighted distance
+      
+      loss_by_state=gower.dist(Y,mumo)
+      
+      for (m in 1:n_obs) {
+        loss_by_state[m,] <- loss_by_state[m,] + Gamma[s[m],]*table(factor(s[which(C[m,]==1)],levels=1:n_states))
+      }
+      
+      s=apply(loss_by_state,1,which.min)
+      
+      # for (m in 1:n_obs) {
+      #   s[m] <- which.min(loss_by_state[m,])
+      # }
+      
+      if (length(unique(s)) == 1) {
+        break
+      }
+      loss <- mean(apply(loss_by_state,1,min))
+      if (verbose) {
+        cat(sprintf('Iteration %d: %.6e\n', it, loss))
+      }
+      if (!is.null(tol)) {
+        epsilon <- loss_old - loss
+        if (epsilon < tol) {
+          break
+        }
+      } else if (all(s == s_old)) {
+        break
+      }
+      loss_old <- loss
+    }
+    if (is.null(best_s) || (loss_old < best_loss)) {
+      best_loss <- loss_old
+      best_s <- s
+    }
+    #s <- init_states(Y, n_states)+1
+    s=initialize_states(Y,n_states)
+  }
+  
+  return(list(best_s=best_s,
+              Y=Y,
+              Y.orig=Ytil,
+              condMM=mumo))
 }
 
 
