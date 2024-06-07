@@ -1121,7 +1121,11 @@ simstud_JMmixed=function(seed,lambda,TT,P,
     Pcat=Pcat,
     pers=pers,
     pNAs=pNAs,
-    typeNA=typeNA))
+    typeNA=typeNA,
+    true_seq=simDat$mchain,
+    est_seq=est$best_s,
+    true_data=simDat$SimData.complete,
+    est_data=est$Y))
 
 }
 

@@ -136,7 +136,7 @@ library(Amelia)
 missmap(enth_out, main = "Missing values vs observed",margins = c(10,2))
 # missmap(enth_surv, main = "Missing values vs observed",margins = c(10,2))
 
-# Single user datasets
+# Single user datasets OUTDOOR
 enth01=enth_out[which(enth_out$user_id=="enth01"),]
 enth02=enth_out[which(enth_out$user_id=="enth02"),]
 enth03=enth_out[which(enth_out$user_id=="enth03"),]
@@ -154,6 +154,8 @@ enth20=enth_out[which(enth_out$user_id=="enth20"),]
 enth22=enth_out[which(enth_out$user_id=="enth22"),]
 enth25=enth_out[which(enth_out$user_id=="enth25"),]
 enth28=enth_out[which(enth_out$user_id=="enth28"),]
+
+summary(enth01)
 
 # Exploratory Data Analysis -----------------------------------------------
 library(doBy)
@@ -481,4 +483,25 @@ out3 <- lmest(responsesFormula = thermal ~ NULL,
 
 # Indoor and outdoor  -----------------------------------------------------
 
+enth01_all=enth_tab[which(enth_tab$user_id=="enth01"),]
+enth02_all=enth_tab[which(enth_tab$user_id=="enth02"),]
+enth03_all=enth_tab[which(enth_tab$user_id=="enth03"),]
+enth04_all=enth_tab[which(enth_tab$user_id=="enth04"),]
+enth05_all=enth_tab[which(enth_tab$user_id=="enth05"),]
+enth07_all=enth_tab[which(enth_tab$user_id=="enth07"),]
+enth09_all=enth_tab[which(enth_tab$user_id=="enth09"),]
+enth10_all=enth_tab[which(enth_tab$user_id=="enth10"),]
+enth11_all=enth_tab[which(enth_tab$user_id=="enth11"),]
+enth13_all=enth_tab[which(enth_tab$user_id=="enth13"),]
+enth15_all=enth_tab[which(enth_tab$user_id=="enth15"),]
+enth16_all=enth_tab[which(enth_tab$user_id=="enth16"),]
+enth17_all=enth_tab[which(enth_tab$user_id=="enth17"),]
+enth20_all=enth_tab[which(enth_tab$user_id=="enth20"),]
+enth22_all=enth_tab[which(enth_tab$user_id=="enth22"),]
+enth25_all=enth_tab[which(enth_tab$user_id=="enth25"),]
+enth28_all=enth_tab[which(enth_tab$user_id=="enth28"),]
 
+table(enth_tab$user_id)
+
+summary(enth01_all)
+summary(enth02_all)
