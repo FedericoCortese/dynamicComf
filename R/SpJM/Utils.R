@@ -691,12 +691,13 @@ jump_mixed <- function(Y, n_states, jump_penalty=1e-5,
   }
   for(i in 1:n_cat){
     Ycat[,i]=ifelse(Mcat[,i],mo[i],Ycat[,i])
+    Ycat[,i]=factor(Ycat[,i],levels=1:n_levs[i])
   }
   
   # Ycat=Ycat%>%mutate_all(factor)
-  for(i in 1:n_cat){
-    Ycat[,i]=factor(Ycat[,i],levels=1:n_levs[i])
-  }
+  # for(i in 1:n_cat){
+  #   Ycat[,i]=factor(Ycat[,i],levels=1:n_levs[i])
+  # }
   
   Y[,-cat.indx]=Ycont
   Y[,cat.indx]=Ycat

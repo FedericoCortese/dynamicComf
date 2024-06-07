@@ -64,7 +64,7 @@ mixedJM_no.miss <- parallel::mclapply(1:nrow(hp),
 
 end_no.miss=Sys.time()
 elapsed_no.miss=end_no.miss-start_no.miss
-
+save(mixedJM_no.miss,elapsed_no.miss,file"mixedJM_no_miss.RData")
 
 # Random missing ----------------------------------------------------------
 
