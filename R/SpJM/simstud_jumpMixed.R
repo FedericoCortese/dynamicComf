@@ -85,7 +85,7 @@ mixedJM_rand.miss10 <- parallel::mclapply(1:nrow(hp),
 
 end_rand.miss10=Sys.time()
 elapsed_rand.miss10=end_rand.miss10-start_rand.miss10
-save(mixedJM_rand.miss10,file="mixedJM_rand_miss10.RData")
+save(mixedJM_rand.miss10,elapsed_rand.miss10,file="mixedJM_rand_miss10.Rdata")
 
 pNAs=0.20
 start_rand.miss20=Sys.time()
@@ -103,6 +103,8 @@ mixedJM_rand.miss20 <- parallel::mclapply(1:nrow(hp),
                                           mc.cores = parallel::detectCores())
 end_rand.miss20=Sys.time()
 elapsed_rand.miss20=end_rand.miss20-start_rand.miss20
+save(mixedJM_rand.miss20,elapsed_rand.miss20,file="mixedJM_rand_miss20.Rdata")
+
 
 # pNAs=0.50
 # start_rand.miss50=Sys.time()
@@ -140,6 +142,8 @@ mixedJM_cont.miss10 <- parallel::mclapply(1:nrow(hp),
                                           mc.cores = parallel::detectCores())
 end_cont.miss10=Sys.time()
 elapsed_cont.miss10=end_cont.miss10-start_cont.miss10
+save(mixedJM_cont.miss10,elapsed_cont.miss10,file="mixedJM_cont_miss10.Rdata")
+
 
 pNAs=0.20
 start_cont.miss20=Sys.time()
@@ -157,6 +161,8 @@ mixedJM_cont.miss20 <- parallel::mclapply(1:nrow(hp),
                                           mc.cores = parallel::detectCores())
 end_cont.miss20=Sys.time()
 elapsed_cont.miss20=end_cont.miss20-start_cont.miss20
+save(mixedJM_cont.miss20,elapsed_cont.miss20,file="mixedJM_cont_miss20.Rdata")
+
 
 # pNAs=0.50
 # start_cont.miss50=Sys.time()
@@ -176,7 +182,7 @@ elapsed_cont.miss20=end_cont.miss20-start_cont.miss20
 # elapsed_cont.miss50=end_cont.miss50-start_cont.miss50
 
 # Save -------------------------------------------------------------------
-save.image("simres_mixedJM.RData")
+# save.image("simres_mixedJM.RData")
 
 
 # Evaluation --------------------------------------------------------------

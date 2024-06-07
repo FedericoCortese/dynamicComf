@@ -1346,6 +1346,44 @@ Cmatrix=function(sp_indx){
   return(C)
 }
 
+sim_spatial_JM=function(n_states,C,seed,pers_fact=4){
+  
+  # This function simulates a spatial jump model
+  
+  # Arguments:
+  # n_states: number of states
+  # C: adjacency matrix
+  # seed: seed for the random number generator
+  # pers_fact: persistence factor
+  
+  # Value:
+  # A list with the following elements:
+  # Y: a data frame with the simulated data
+  # s: a matrix with the simulated states
+  
+  M=dim(C)[1]
+  #s=matrix(0,ncol=ncg,nrow=nrg)
+  s=rep(0,M)
+  set.seed(seed)
+  s[1]=sample(1:n_states,1)
+  #eff_it=1
+  for(m in 2:M){
+    if(prod(s)==0){
+      n_prox=length(which(C[m,]==1))
+      probs=rep(1,n_states)/n_states
+      probs=probs+table(factor(s[which(C[m,]==1)],levels=1:n_states))*pers_fact
+      probs=probs/sum(probs)
+      s[which(C[m,]==1)]=sample(1:n_states,n_prox,prob=probs,replace=T) 
+      #eff_it=eff_it+1
+    }
+    else{
+      break
+    }
+  }
+  # matrix(s,ncol=6,byrow = T)
+  return(s)
+}
+
 spatial_jump <- function(Y,C, n_states, jump_penalty=1e-5, 
                          initial_states=NULL,
                          max_iter=10, n_init=10, tol=NULL, verbose=FALSE
