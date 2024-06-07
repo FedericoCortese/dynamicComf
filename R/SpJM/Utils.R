@@ -689,7 +689,7 @@ jump_mixed <- function(Y, n_states, jump_penalty=1e-5,
   for(i in 1:n_cont){
     Ycont[,i]=ifelse(Mcont[,i],mu[i],Ycont[,i])
   }
-  for(i in cat.indx){
+  for(i in 1:n_cat){
     Ycat[,i]=ifelse(Mcat[,i],mo[i],Ycat[,i])
   }
   
@@ -1312,6 +1312,29 @@ sparse_jumpR <- function(Y, n_states, max_features, jump_penalty=1e-5,
 
 # Spatial JM --------------------------------------------------------------
 
+Cmatrix=function(sp_indx){
+  nc=ncol(sp_indx)
+  nr=nrow(sp_indx)
+  #indx=as.vector(t(sp_indx))
+  M=nc*nr
+  #indx=indx[-1]
+  
+  C=matrix(0,nrow=M,ncol=M)
+  
+  for(i in 1:M){
+    # Check on top
+    if(i/nc>1){
+      C[i,(i%%nc+nc*(i%/%nc-1))]=1
+    }
+    #Check right
+    if(i%%nc!=0){
+      C[i,i+1]=1
+    }
+    
+  }
+  C=C+t(C)
+  return(C)
+}
 
 
 # Spatio-temporal JM --------------------------------------------------------
