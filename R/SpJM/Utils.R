@@ -1050,10 +1050,12 @@ sim_data_mixed=function(seed=123,
     SimData[i, ] = Sim[i, (P * k - P + 1):(P * k)]
     #SimDataCat[i, ] = SimCat[i, (Pcat * k - Pcat + 1):(Pcat * k)]
   }
-  SimData[,1:Pcat]=apply(SimData[,1:Pcat],2,get_cat,mc=x,mu=mu,phi=phi)
   
+  if(Pcat!=0){
+  SimData[,1:Pcat]=apply(SimData[,1:Pcat],2,get_cat,mc=x,mu=mu,phi=phi)
   SimData=as.data.frame(SimData)
   SimData[,1:Pcat]=SimData[,1:Pcat]%>%mutate_all(as.factor)
+  }
   
   if(typeNA==0|typeNA==1){
     SimData.NA=apply(SimData,2,punct,pNAs=pNAs,type=typeNA)
@@ -1346,21 +1348,33 @@ Cmatrix=function(sp_indx){
   return(C)
 }
 
-sim_spatial_JM=function(n_states,C,seed,pers_fact=4){
+sim_spatial_JM=function(P,C,seed,pers_fact=4,rho=0,Pcat=NULL, phi=.8,mu=1){
   
-  # This function simulates a spatial jump model
+  # This function simulates data from a spatial jump model
   
   # Arguments:
-  # n_states: number of states
-  # C: adjacency matrix
+  # P: number of features
+  # C: adjacency matrix of dimension MxM, where M is the desired number of spatial points
   # seed: seed for the random number generator
   # pers_fact: persistence factor
+  # rho: correlation for the variables
+  # Pcat: number of categorical variables
+  # phi: conditional probability for the categorical outcome k in state k
+  # mu: mean value for the continuous variables
   
   # Value:
   # A list with the following elements:
-  # Y: a data frame with the simulated data
+  # Y: a data frame with the simulated data. 
   # s: a matrix with the simulated states
   
+  # Continuous variables are simulated from a Gaussian distribution with mean specified in mumo and unitary st. dev.
+  # Categorical variables are obtained censoring the continuous variables in three intervals, the central of which has probability equal to phi
+  
+  if(is.null(Pcat)){
+    Pcat=floor(P/2)
+  }
+  
+  n_states=dim(mumo)[1]
   M=dim(C)[1]
   #s=matrix(0,ncol=ncg,nrow=nrg)
   s=rep(0,M)
@@ -1380,8 +1394,33 @@ sim_spatial_JM=function(n_states,C,seed,pers_fact=4){
       break
     }
   }
-  # matrix(s,ncol=6,byrow = T)
-  return(s)
+  
+  # Continuous variables simulation
+  mu=c(-mu,0,mu)
+  Sigma <- matrix(rho,ncol=P,nrow=P)
+  diag(Sigma)=1
+  
+  Sim = matrix(0, M, P * n_states)
+  SimData = matrix(0, M, P)
+  
+  set.seed(seed)
+  for(k in 1:Ktrue){
+    u = MASS::mvrnorm(M,rep(mu[k],P),Sigma)
+    Sim[, (P * k - P + 1):(k * P)] = u
+  }
+  
+  for (i in 1:M) {
+    k = s[i]
+    SimData[i, ] = Sim[i, (P * k - P + 1):(P * k)]
+  }
+  
+  if(Pcat!=0){
+    SimData[,1:Pcat]=apply(SimData[,1:Pcat],2,get_cat,mc=s,mu=mu,phi=phi)
+    SimData=as.data.frame(SimData)
+    SimData[,1:Pcat]=SimData[,1:Pcat]%>%mutate_all(as.factor)
+  }
+  
+  return(list(Y=SimData,s=s))
 }
 
 spatial_jump <- function(Y,C, n_states, jump_penalty=1e-5, 

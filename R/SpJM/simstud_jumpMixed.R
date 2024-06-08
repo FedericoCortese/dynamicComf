@@ -34,7 +34,7 @@ mixedJM_no.miss <- parallel::mclapply(1:nrow(hp),
                                           phi=.8,rho=0,
                                           Pcat=NULL,pers=.95,
                                           pNAs=0,typeNA=2),
-                                      mc.cores = parallel::detectCores())
+                                      mc.cores = parallel::detectCores()-1)
 
 # cl<-makeCluster(parallel::detectCores(),type="SOCK")
 # parallel::clusterExport(cl,ls())
@@ -70,18 +70,45 @@ save(mixedJM_no.miss,elapsed_no.miss,file="mixedJM_no_miss.RData")
 
 pNAs=0.1
 start_rand.miss10=Sys.time()
-mixedJM_rand.miss10 <- parallel::mclapply(1:nrow(hp),
-                                          function(x)
-                                            simstud_JMmixed(
-                                              seed=hp[x,]$seed,
-                                              lambda=hp[x,]$lambda,
-                                              TT=hp[x,]$TT,
-                                              P=hp[x,]$P,
-                                              Ktrue=3,mu=1,
-                                              phi=.8,rho=0,
-                                              Pcat=NULL,pers=.95,
-                                              pNAs=pNAs,typeNA=0),
-                                          mc.cores = parallel::detectCores())
+# mixedJM_rand.miss10 <- parallel::mclapply(1:nrow(hp),
+#                                           function(x)
+#                                             simstud_JMmixed(
+#                                               seed=hp[x,]$seed,
+#                                               lambda=hp[x,]$lambda,
+#                                               TT=hp[x,]$TT,
+#                                               P=hp[x,]$P,
+#                                               Ktrue=3,mu=1,
+#                                               phi=.8,rho=0,
+#                                               Pcat=NULL,pers=.95,
+#                                               pNAs=pNAs,typeNA=0),
+#                                           mc.cores = parallel::detectCores())
+
+ cl<-makeCluster(parallel::detectCores()-1,type="SOCK")
+ parallel::clusterExport(cl,ls())
+ parallel::clusterEvalQ(cl,{library(RcppHMM)
+   library(reticulate)
+   library(pdfCluster)
+   library(boot)
+   library(xtable)
+   library(dplyr)
+   library(cluster)
+   library(gower)
+   library(StatMatch)})
+ mixedJM_rand.miss10 <- clusterApply(cl,
+                                 1:nrow(hp),
+                                 function(x)
+                                   simstud_JMmixed(
+                                               seed=hp[x,]$seed,
+                                               lambda=hp[x,]$lambda,
+                                               TT=hp[x,]$TT,
+                                               P=hp[x,]$P,
+                                               Ktrue=3,mu=1,
+                                               phi=.8,rho=0,
+                                               Pcat=NULL,pers=.95,
+                                               pNAs=pNAs,typeNA=0)
+
+ )
+ stopCluster(cl)
 
 end_rand.miss10=Sys.time()
 elapsed_rand.miss10=end_rand.miss10-start_rand.miss10
@@ -89,22 +116,48 @@ save(mixedJM_rand.miss10,elapsed_rand.miss10,file="mixedJM_rand_miss10.Rdata")
 
 pNAs=0.20
 start_rand.miss20=Sys.time()
-mixedJM_rand.miss20 <- parallel::mclapply(1:nrow(hp),
-                                          function(x)
-                                            simstud_JMmixed(
-                                              seed=hp[x,]$seed,
-                                              lambda=hp[x,]$lambda,
-                                              TT=hp[x,]$TT,
-                                              P=hp[x,]$P,
-                                              Ktrue=3,mu=1,
-                                              phi=.8,rho=0,
-                                              Pcat=NULL,pers=.95,
-                                              pNAs=pNAs,typeNA=0),
-                                          mc.cores = parallel::detectCores())
+# mixedJM_rand.miss20 <- parallel::mclapply(1:nrow(hp),
+#                                           function(x)
+#                                             simstud_JMmixed(
+#                                               seed=hp[x,]$seed,
+#                                               lambda=hp[x,]$lambda,
+#                                               TT=hp[x,]$TT,
+#                                               P=hp[x,]$P,
+#                                               Ktrue=3,mu=1,
+#                                               phi=.8,rho=0,
+#                                               Pcat=NULL,pers=.95,
+#                                               pNAs=pNAs,typeNA=0),
+#                                           mc.cores = parallel::detectCores())
+
+cl<-makeCluster(parallel::detectCores()-1,type="SOCK")
+parallel::clusterExport(cl,ls())
+parallel::clusterEvalQ(cl,{library(RcppHMM)
+  library(reticulate)
+  library(pdfCluster)
+  library(boot)
+  library(xtable)
+  library(dplyr)
+  library(cluster)
+  library(gower)
+  library(StatMatch)})
+mixedJM_rand.miss20 <- clusterApply(cl,
+                                    1:nrow(hp),
+                                    function(x)
+                                      simstud_JMmixed(
+                                        seed=hp[x,]$seed,
+                                        lambda=hp[x,]$lambda,
+                                        TT=hp[x,]$TT,
+                                        P=hp[x,]$P,
+                                        Ktrue=3,mu=1,
+                                        phi=.8,rho=0,
+                                        Pcat=NULL,pers=.95,
+                                        pNAs=pNAs,typeNA=0)
+                                    
+)
+stopCluster(cl)
 end_rand.miss20=Sys.time()
 elapsed_rand.miss20=end_rand.miss20-start_rand.miss20
 save(mixedJM_rand.miss20,elapsed_rand.miss20,file="mixedJM_rand_miss20.Rdata")
-
 
 # pNAs=0.50
 # start_rand.miss50=Sys.time()
@@ -128,41 +181,96 @@ save(mixedJM_rand.miss20,elapsed_rand.miss20,file="mixedJM_rand_miss20.Rdata")
 
 pNAs=0.1
 start_cont.miss10=Sys.time()
-mixedJM_cont.miss10 <- parallel::mclapply(1:nrow(hp),
-                                          function(x)
-                                            simstud_JMmixed(
-                                              seed=hp[x,]$seed,
-                                              lambda=hp[x,]$lambda,
-                                              TT=hp[x,]$TT,
-                                              P=hp[x,]$P,
-                                              Ktrue=3,mu=1,
-                                              phi=.8,rho=0,
-                                              Pcat=NULL,pers=.95,
-                                              pNAs=pNAs,typeNA=1),
-                                          mc.cores = parallel::detectCores())
+# mixedJM_cont.miss10 <- parallel::mclapply(1:nrow(hp),
+#                                           function(x)
+#                                             simstud_JMmixed(
+#                                               seed=hp[x,]$seed,
+#                                               lambda=hp[x,]$lambda,
+#                                               TT=hp[x,]$TT,
+#                                               P=hp[x,]$P,
+#                                               Ktrue=3,mu=1,
+#                                               phi=.8,rho=0,
+#                                               Pcat=NULL,pers=.95,
+#                                               pNAs=pNAs,typeNA=1),
+#                                           mc.cores = parallel::detectCores())
+
+cl<-makeCluster(parallel::detectCores()-1,type="SOCK")
+parallel::clusterExport(cl,ls())
+parallel::clusterEvalQ(cl,{library(RcppHMM)
+  library(reticulate)
+  library(pdfCluster)
+  library(boot)
+  library(xtable)
+  library(dplyr)
+  library(cluster)
+  library(gower)
+  library(StatMatch)})
+mixedJM_cont.miss10 <- clusterApply(cl,
+                                    1:nrow(hp),
+                                    function(x)
+                                      simstud_JMmixed(
+                                        seed=hp[x,]$seed,
+                                        lambda=hp[x,]$lambda,
+                                        TT=hp[x,]$TT,
+                                        P=hp[x,]$P,
+                                        Ktrue=3,mu=1,
+                                        phi=.8,rho=0,
+                                        Pcat=NULL,pers=.95,
+                                        pNAs=pNAs,typeNA=1)
+                                    
+)
+stopCluster(cl)
 end_cont.miss10=Sys.time()
 elapsed_cont.miss10=end_cont.miss10-start_cont.miss10
 save(mixedJM_cont.miss10,elapsed_cont.miss10,file="mixedJM_cont_miss10.Rdata")
 
+rm(mixedJM_cont.miss10)
 
 pNAs=0.20
 start_cont.miss20=Sys.time()
-mixedJM_cont.miss20 <- parallel::mclapply(1:nrow(hp),
-                                          function(x)
-                                            simstud_JMmixed(
-                                              seed=hp[x,]$seed,
-                                              lambda=hp[x,]$lambda,
-                                              TT=hp[x,]$TT,
-                                              P=hp[x,]$P,
-                                              Ktrue=3,mu=1,
-                                              phi=.8,rho=0,
-                                              Pcat=NULL,pers=.95,
-                                              pNAs=pNAs,typeNA=1),
-                                          mc.cores = parallel::detectCores())
+# mixedJM_cont.miss20 <- parallel::mclapply(1:nrow(hp),
+#                                           function(x)
+#                                             simstud_JMmixed(
+#                                               seed=hp[x,]$seed,
+#                                               lambda=hp[x,]$lambda,
+#                                               TT=hp[x,]$TT,
+#                                               P=hp[x,]$P,
+#                                               Ktrue=3,mu=1,
+#                                               phi=.8,rho=0,
+#                                               Pcat=NULL,pers=.95,
+#                                               pNAs=pNAs,typeNA=1),
+#                                           mc.cores = parallel::detectCores())
+cl<-makeCluster(parallel::detectCores()-1,type="SOCK")
+parallel::clusterExport(cl,ls())
+parallel::clusterEvalQ(cl,{library(RcppHMM)
+  library(reticulate)
+  library(pdfCluster)
+  library(boot)
+  library(xtable)
+  library(dplyr)
+  library(cluster)
+  library(gower)
+  library(StatMatch)})
+mixedJM_cont.miss20 <- clusterApply(cl,
+                                    1:nrow(hp),
+                                    function(x)
+                                      simstud_JMmixed(
+                                        seed=hp[x,]$seed,
+                                        lambda=hp[x,]$lambda,
+                                        TT=hp[x,]$TT,
+                                        P=hp[x,]$P,
+                                        Ktrue=3,mu=1,
+                                        phi=.8,rho=0,
+                                        Pcat=NULL,pers=.95,
+                                        pNAs=pNAs,typeNA=1)
+                                    
+)
+stopCluster(cl)
 end_cont.miss20=Sys.time()
 elapsed_cont.miss20=end_cont.miss20-start_cont.miss20
 save(mixedJM_cont.miss20,elapsed_cont.miss20,file="mixedJM_cont_miss20.Rdata")
 
+rm(mixedJM_cont.miss20)
 
 # pNAs=0.50
 # start_cont.miss50=Sys.time()
