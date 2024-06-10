@@ -7,6 +7,9 @@ library(dplyr)
 library(cluster)
 library(gower)
 library(StatMatch)
+library(SpectralClMixed)
+library(multiUS)
+library(missForest)
 #py_install("scipy")
 
 # Import the python module
@@ -1130,6 +1133,180 @@ simstud_JMmixed=function(seed,lambda,TT,P,
     true_data=simDat$SimData.complete,
     est_data=est$Y))
 
+}
+
+simstud_speclust=function(seed,TT,P,
+                          Ktrue=3,mu=1,
+                          phi=.8,rho=0,
+                          Pcat=NULL,pers=.95,
+                          pNAs=0,typeNA=2){
+  # Simulate
+  simDat=sim_data_mixed(seed=seed,
+                        TT=TT,
+                        P=P,
+                        Ktrue=Ktrue,
+                        mu=mu,
+                        phi=phi,
+                        rho=rho,
+                        Pcat=Pcat,
+                        pers=pers,
+                        pNAs=pNAs,
+                        typeNA=typeNA)
+  # Estimate
+  # est=jump_mixed(simDat$SimData.NA,
+  #                n_states=Ktrue,
+  #                jump_penalty = lambda,
+  #                verbose=F)
+  est=mspec(simDat$SimData.NA, k = Ktrue,verbose=T)
+  
+  # est$Y=est$Y%>%mutate_if(is.factor,factor,levels=c(1,2,3))
+  # simDat$SimData.complete=simDat$SimData.complete%>%
+  #   mutate_if(is.factor,factor,levels=c(1,2,3))
+  # 
+  # imput.err=gower_dist(est$Y,simDat$SimData.complete)
+  ARI=adj.rand.index(est$cluster,simDat$mchain)
+  
+  # Return
+  return(list(
+    #imput.err=imput.err,
+    ARI=ARI,
+    seed=seed,
+    lambda=lambda,
+    TT=TT,
+    P=P,
+    Ktrue=Ktrue,
+    mu=mu,
+    phi=phi,
+    rho=rho,
+    Pcat=Pcat,
+    pers=pers,
+    pNAs=pNAs,
+    typeNA=typeNA,
+    true_seq=simDat$mchain,
+    est_seq=est$cluster
+    # ,
+    # true_data=simDat$SimData.complete,
+    # est_data=est$Y
+    ))
+  
+}
+
+simstud_kNN=function(seed,
+                     TT,P,
+                          Ktrue=3,mu=1,
+                          phi=.8,rho=0,
+                          Pcat=NULL,pers=.95,
+                          pNAs=0,typeNA=2){
+  # Simulate
+  simDat=sim_data_mixed(seed=seed,
+                        TT=TT,
+                        P=P,
+                        Ktrue=Ktrue,
+                        mu=mu,
+                        phi=phi,
+                        rho=rho,
+                        Pcat=Pcat,
+                        pers=pers,
+                        pNAs=pNAs,
+                        typeNA=typeNA)
+  # Estimate
+  # est=jump_mixed(simDat$SimData.NA,
+  #                n_states=Ktrue,
+  #                jump_penalty = lambda,
+  #                verbose=F)
+  est=KNNimp(simDat$SimData.NA,meth="median")
+  
+  Yimp=data.frame(est)
+  
+  # est$Y=est$Y%>%mutate_if(is.factor,factor,levels=c(1,2,3))
+  simDat$SimData.complete=simDat$SimData.complete%>%
+    mutate_if(is.factor,factor,levels=c(1,2,3))
+  # 
+  imput.err=gower_dist(Yimp,simDat$SimData.complete)
+  #ARI=adj.rand.index(est$cluster,simDat$mchain)
+  
+  # Return
+  return(list(
+    imput.err=imput.err,
+    #ARI=ARI,
+    seed=seed,
+    lambda=lambda,
+    TT=TT,
+    P=P,
+    Ktrue=Ktrue,
+    mu=mu,
+    phi=phi,
+    rho=rho,
+    Pcat=Pcat,
+    pers=pers,
+    pNAs=pNAs,
+    typeNA=typeNA,
+    # true_seq=simDat$mchain,
+    # est_seq=est$cluster
+    ,
+    true_data=simDat$SimData.complete,
+    est_data=Yimp
+  ))
+  
+}
+
+simstud_RF=function(seed,
+                     TT,P,
+                     Ktrue=3,mu=1,
+                     phi=.8,rho=0,
+                     Pcat=NULL,pers=.95,
+                     pNAs=0,typeNA=2){
+  # Simulate
+  simDat=sim_data_mixed(seed=seed,
+                        TT=TT,
+                        P=P,
+                        Ktrue=Ktrue,
+                        mu=mu,
+                        phi=phi,
+                        rho=rho,
+                        Pcat=Pcat,
+                        pers=pers,
+                        pNAs=pNAs,
+                        typeNA=typeNA)
+  # Estimate
+  # est=jump_mixed(simDat$SimData.NA,
+  #                n_states=Ktrue,
+  #                jump_penalty = lambda,
+  #                verbose=F)
+  est=missForest(simDat$SimData.NA, verbose = F)
+  
+  Yimp=est$ximp
+  
+  # est$Y=est$Y%>%mutate_if(is.factor,factor,levels=c(1,2,3))
+  simDat$SimData.complete=simDat$SimData.complete%>%
+    mutate_if(is.factor,factor,levels=c(1,2,3))
+  # 
+  imput.err=gower_dist(Yimp,simDat$SimData.complete)
+  #ARI=adj.rand.index(est$cluster,simDat$mchain)
+  
+  # Return
+  return(list(
+    imput.err=imput.err,
+    #ARI=ARI,
+    seed=seed,
+    lambda=lambda,
+    TT=TT,
+    P=P,
+    Ktrue=Ktrue,
+    mu=mu,
+    phi=phi,
+    rho=rho,
+    Pcat=Pcat,
+    pers=pers,
+    pNAs=pNAs,
+    typeNA=typeNA,
+    # true_seq=simDat$mchain,
+    # est_seq=est$cluster
+    ,
+    true_data=simDat$SimData.complete,
+    est_data=Yimp
+  ))
+  
 }
 
 
