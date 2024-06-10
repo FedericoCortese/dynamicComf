@@ -73,9 +73,10 @@ diag(round(cor(dat_temp_wide3[,-1],dat_rh_wide3[,-1]),2))
 
 # CV ----------------------------------------------------------------------
 
-# One year obs
-
 one_year=1:8760
+
+# First quarter  ----------------------------------------------------------
+
 first_seas=1:2190
 
 # air_short=dat_temp_wide3[1:8760,]
