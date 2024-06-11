@@ -1214,7 +1214,17 @@ simstud_kNN=function(seed,
   #                n_states=Ktrue,
   #                jump_penalty = lambda,
   #                verbose=F)
+  
+  
+  # Transform factors to ordinal
+  simDat$SimData.NA=simDat$SimData.NA%>%mutate_if(is.factor,factor,levels=c(1,2,3),ordered=T)
+  
   est=KNNimp(simDat$SimData.NA,meth="median")
+  
+  
+  
+
+  aml=amelia(simDat$SimData.NA,m=10)
   
   Yimp=data.frame(est)
   Yimp$Y=Yimp$Y%>%mutate_if(is.factor,factor,levels=c(1,2,3))
