@@ -1217,6 +1217,7 @@ simstud_kNN=function(seed,
   est=KNNimp(simDat$SimData.NA,meth="median")
   
   Yimp=data.frame(est)
+  Yimp$Y=Yimp$Y%>%mutate_if(is.factor,factor,levels=c(1,2,3))
   
   # est$Y=est$Y%>%mutate_if(is.factor,factor,levels=c(1,2,3))
   simDat$SimData.complete=simDat$SimData.complete%>%
@@ -1230,7 +1231,7 @@ simstud_kNN=function(seed,
     imput.err=imput.err,
     #ARI=ARI,
     seed=seed,
-    lambda=lambda,
+    #lambda=lambda,
     TT=TT,
     P=P,
     Ktrue=Ktrue,
@@ -1243,14 +1244,14 @@ simstud_kNN=function(seed,
     typeNA=typeNA,
     # true_seq=simDat$mchain,
     # est_seq=est$cluster
-    ,
+    #,
     true_data=simDat$SimData.complete,
     est_data=Yimp
   ))
   
 }
 
-simstud_RF=function(seed,
+simstud_missForest=function(seed,
                      TT,P,
                      Ktrue=3,mu=1,
                      phi=.8,rho=0,
@@ -1276,7 +1277,8 @@ simstud_RF=function(seed,
   est=missForest(simDat$SimData.NA, verbose = F)
   
   Yimp=est$ximp
-  
+  Yimp=Yimp%>%
+    mutate_if(is.factor,factor,levels=c(1,2,3))
   # est$Y=est$Y%>%mutate_if(is.factor,factor,levels=c(1,2,3))
   simDat$SimData.complete=simDat$SimData.complete%>%
     mutate_if(is.factor,factor,levels=c(1,2,3))
@@ -1289,7 +1291,7 @@ simstud_RF=function(seed,
     imput.err=imput.err,
     #ARI=ARI,
     seed=seed,
-    lambda=lambda,
+    #lambda=lambda,
     TT=TT,
     P=P,
     Ktrue=Ktrue,
@@ -1302,7 +1304,7 @@ simstud_RF=function(seed,
     typeNA=typeNA,
     # true_seq=simDat$mchain,
     # est_seq=est$cluster
-    ,
+    #,
     true_data=simDat$SimData.complete,
     est_data=Yimp
   ))

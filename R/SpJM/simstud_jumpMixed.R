@@ -297,7 +297,7 @@ rm(mixedJM_cont.miss20)
 
 library(dplyr)
 
-res_eval=function(res_obj,hp){
+res_eval=function(res_obj,hp,lambda0=F){
   library(dplyr)
   
   res=data.frame(hp,ARI=unlist(lapply(res_obj,function(x)x$ARI)),
@@ -306,24 +306,36 @@ res_eval=function(res_obj,hp){
   
   # maxres=res%>%group_by(TT,P)%>%summarise(maxARI=max(ARI,na.rm=T))
   
-  avres=res%>%group_by(TT,P,lambda)%>%summarise(avARI=median(ARI,na.rm=T),
-                                                avErr=mean(imput.err))
+  if(lambda0){
+    res=res[which(res$lambda==0),]
+    res%>%group_by(TT,P)%>%summarise(avARI=median(ARI,na.rm=T),
+                                                  avErr=mean(imput.err))
+  }
   
-  avres%>%group_by(TT,P)%>%summarise(maxARI=max(avARI),
-                                     lambda=lambda[which.max(avARI)],
-                                     avErr=avErr[which.max(avARI)])
+  else{
+    avres=res%>%group_by(TT,P,lambda)%>%summarise(avARI=median(ARI,na.rm=T),
+                                                  avErr=mean(imput.err))
+    
+    avres%>%group_by(TT,P)%>%summarise(maxARI=max(avARI),
+                                       lambda=lambda[which.max(avARI)],
+                                       avErr=avErr[which.max(avARI)])
+  }
   
 }
 
 res_eval(mixedJM_no.miss,hp)
+res_eval(mixedJM_no.miss_kMeMo,hp)
+res_eval(mixedJM_no.miss_specluster,hp)
 
-res_eval(mixedJM_cont.miss10,hp)
-res_eval(mixedJM_cont.miss20,hp)
-#res_eval(mixedJM_cont.miss50,hp)
+res_eval(mixedJM_rand.miss10,hp,lambda0=T)
+res_eval(mixedJM_rand.miss20,hp,lambda0=T)
+res_eval(mixedJM_cont.miss10,hp,lambda0=T)
+res_eval(mixedJM_cont.miss20,hp,lambda0=T)
 
-res_eval(mixedJM_rand.miss10,hp)
-res_eval(mixedJM_rand.miss20,hp)
-#res_eval(mixedJM_rand.miss50,hp)
+res_eval(mixedJM_rand.miss10,hp,lambda0=F)
+res_eval(mixedJM_rand.miss20,hp,lambda0=F)
+res_eval(mixedJM_cont.miss10,hp,lambda0=F)
+res_eval(mixedJM_cont.miss20,hp,lambda0=F)
 
 
 
