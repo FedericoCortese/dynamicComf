@@ -75,9 +75,11 @@ diag(round(cor(dat_temp_wide3[,-1],dat_rh_wide3[,-1]),2))
 
 one_year=1:8760
 
-# First quarter  ----------------------------------------------------------
+# First window  ----------------------------------------------------------
 
-first_seas=1:2190
+# first_seas=1:2190
+L=floor(dim(dat_rh_wide3)[1]/20)
+first_seas=1:L
 
 # air_short=dat_temp_wide3[1:8760,]
 # rh_short=dat_rh_wide3[1:8760,]
