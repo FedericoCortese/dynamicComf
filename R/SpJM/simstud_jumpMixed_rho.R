@@ -28,7 +28,7 @@ mixedJM_rho_no.miss <- parallel::mclapply(1:nrow(hp),
                                           TT=hp[x,]$TT,
                                           P=hp[x,]$P,
                                           Ktrue=3,mu=1,
-                                          phi=.8,rho=.5,
+                                          phi=.8,rho=rho,
                                           Pcat=NULL,pers=.95,
                                           pNAs=0,typeNA=2),
                                       mc.cores = parallel::detectCores()-1)
