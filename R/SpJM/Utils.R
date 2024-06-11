@@ -1221,11 +1221,6 @@ simstud_kNN=function(seed,
   
   est=KNNimp(simDat$SimData.NA,meth="median")
   
-  
-  
-
-  aml=amelia(simDat$SimData.NA,m=10)
-  
   Yimp=data.frame(est)
   Yimp$Y=Yimp$Y%>%mutate_if(is.factor,factor,levels=c(1,2,3))
   
