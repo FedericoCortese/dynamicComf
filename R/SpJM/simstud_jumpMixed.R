@@ -289,56 +289,6 @@ rm(mixedJM_cont.miss20)
 # end_cont.miss50=Sys.time()
 # elapsed_cont.miss50=end_cont.miss50-start_cont.miss50
 
-# Save -------------------------------------------------------------------
-# save.image("simres_mixedJM.RData")
-
-
-# Evaluation --------------------------------------------------------------
-
-library(dplyr)
-
-res_eval=function(res_obj,hp,lambda0=F){
-  library(dplyr)
-  
-  res=data.frame(hp,ARI=unlist(lapply(res_obj,function(x)x$ARI)),
-                 imput.err=unlist(lapply(res_obj,function(x)mean(x$imput.err)))
-                 )
-  
-  # maxres=res%>%group_by(TT,P)%>%summarise(maxARI=max(ARI,na.rm=T))
-  
-  if(lambda0){
-    res=res[which(res$lambda==0),]
-    res%>%group_by(TT,P)%>%summarise(avARI=median(ARI,na.rm=T),
-                                                  avErr=mean(imput.err))
-  }
-  
-  else{
-    avres=res%>%group_by(TT,P,lambda)%>%summarise(avARI=median(ARI,na.rm=T),
-                                                  avErr=mean(imput.err))
-    
-    avres%>%group_by(TT,P)%>%summarise(maxARI=max(avARI),
-                                       lambda=lambda[which.max(avARI)],
-                                       avErr=avErr[which.max(avARI)])
-  }
-  
-}
-
-res_eval(mixedJM_no.miss,hp)
-res_eval(mixedJM_no.miss_kMeMo,hp)
-res_eval(mixedJM_no.miss_specluster,hp)
-
-res_eval(mixedJM_rand.miss10,hp,lambda0=T)
-res_eval(mixedJM_rand.miss20,hp,lambda0=T)
-res_eval(mixedJM_cont.miss10,hp,lambda0=T)
-res_eval(mixedJM_cont.miss20,hp,lambda0=T)
-
-res_eval(mixedJM_rand.miss10,hp,lambda0=F)
-res_eval(mixedJM_rand.miss20,hp,lambda0=F)
-res_eval(mixedJM_cont.miss10,hp,lambda0=F)
-res_eval(mixedJM_cont.miss20,hp,lambda0=F)
-
-
-
 # Classification performance comparison --------------------------------------------------------------
 
 hp_comp=expand.grid(TT=TT,P=P,seed=seeds)
@@ -723,3 +673,69 @@ end_cont.miss20_rf=Sys.time()
 elapsed_cont.miss20_rf=end_cont.miss20_rf-start_cont.miss20_rf
 save(mixedJM_cont.miss20_rf,elapsed_cont.miss20_rf,file="mixedJM_cont_miss20_rf.Rdata")
 rm(mixedJM_cont.miss20_rf,elapsed_cont.miss20_rf)
+
+
+
+
+# Evaluation --------------------------------------------------------------
+
+library(dplyr)
+
+res_eval=function(res_obj,hp,lambda0=F,ARI=T){
+  library(dplyr)
+  
+  if(ARI){
+    res=data.frame(hp,ARI=unlist(lapply(res_obj,function(x)x$ARI)),
+                   imput.err=unlist(lapply(res_obj,function(x)mean(x$imput.err)))
+    )
+    
+    # maxres=res%>%group_by(TT,P)%>%summarise(maxARI=max(ARI,na.rm=T))
+    
+    if(lambda0){
+      res=res[which(res$lambda==0),]
+      res%>%group_by(TT,P)%>%summarise(avARI=median(ARI,na.rm=T),
+                                       avErr=mean(imput.err))
+    }
+    
+    else{
+      avres=res%>%group_by(TT,P,lambda)%>%summarise(avARI=median(ARI,na.rm=T),
+                                                    avErr=mean(imput.err))
+      
+      avres%>%group_by(TT,P)%>%summarise(maxARI=max(avARI),
+                                         lambda=lambda[which.max(avARI)],
+                                         avErr=avErr[which.max(avARI)])
+    }
+  }
+    else{
+      res=data.frame(hp,
+                     #ARI=unlist(lapply(res_obj,function(x)x$ARI)),
+                     imput.err=unlist(lapply(res_obj,function(x)mean(x$imput.err)))
+      )
+      res%>%group_by(TT,P)%>%summarise(
+        #avARI=median(ARI,na.rm=T),
+                                       avErr=mean(imput.err))
+    }
+  
+}
+
+res_eval(mixedJM_no.miss,hp)
+res_eval(mixedJM_no.miss_kMeMo,hp)
+res_eval(mixedJM_no.miss_specluster,hp)
+
+res_eval(mixedJM_rand.miss10,hp,lambda0=T)
+res_eval(mixedJM_rand.miss10,hp,lambda0=F)
+res_eval(mixedJM_rand.miss10_rf,hp_comp,lambda0=F,ARI=F)
+
+
+res_eval(mixedJM_rand.miss20,hp,lambda0=T)
+res_eval(mixedJM_rand.miss20,hp,lambda0=F)
+res_eval(mixedJM_rand.miss20_rf,hp_comp,lambda0=F,ARI=F)
+
+res_eval(mixedJM_cont.miss10,hp,lambda0=T)
+res_eval(mixedJM_cont.miss10,hp,lambda0=F)
+res_eval(mixedJM_cont.miss10_rf,hp_comp,lambda0=F,ARI=F)
+
+res_eval(mixedJM_cont.miss20,hp,lambda0=T)
+res_eval(mixedJM_cont.miss20,hp,lambda0=F)
+res_eval(mixedJM_cont.miss20_rf,hp_comp,lambda0=F,ARI=F)
+
