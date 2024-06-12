@@ -28,16 +28,26 @@ Z[,3,]=YY3$YY
 initial_states=cbind(YY1$true_states,YY2$true_states,YY3$true_states);initial_states
 
 
-YY=sim_data_mixed(seed=123,
-                        100,
-                        20,
-                        Ktrue=3,
-                        mu=1,
-                        phi=.8,
-                        rho=0,
-                        Pcat=NULL,
-                        pers=.95,
-                        pNAs=0,
-                        typeNA=2)
+Mtrue=10^2
+sp_indx=matrix(1:Mtrue,ncol=sqrt(Mtrue),byrow=T)
+C=Cmatrix(sp_indx)
+P=100
+seed=1
+spDat=sim_spatial_JM(P,C,seed=sample(1:10,1),pers_fact=0.05,rho=0,Pcat=NULL, phi=.8,mu=1)
+matrix(spDat$s,ncol=sqrt(Mtrue),byrow=T)
+Y=spDat$Y
 
-Y=YY$SimData.NA
+lambdas=seq(0,.5,by=.05)
+ARIs=rep(0,length(lambdas))
+Ss=list()
+
+for(i in 1:length(lambdas)){
+  prv=spatial_jump(Y,C,3,jump_penalty = lambdas[i])
+  Ss[[i]]=prv$best_s
+  ARIs[i]=adj.rand.index(prv$best_s,spDat$s)
+  print(i)
+}
+
+plot(lambdas,ARIs,type="l")
+
+

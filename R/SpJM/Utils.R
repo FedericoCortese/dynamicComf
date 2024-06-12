@@ -10,6 +10,7 @@ library(StatMatch)
 library(SpectralClMixed)
 library(multiUS)
 library(missForest)
+library(MCMCprecision)
 #py_install("scipy")
 
 # Import the python module
@@ -1558,7 +1559,7 @@ sim_spatial_JM=function(P,C,seed,pers_fact=4,rho=0,Pcat=NULL, phi=.8,mu=1){
     Pcat=floor(P/2)
   }
   
-  n_states=dim(mumo)[1]
+  n_states=3
   M=dim(C)[1]
   #s=matrix(0,ncol=ncg,nrow=nrg)
   s=rep(0,M)
@@ -1567,11 +1568,17 @@ sim_spatial_JM=function(P,C,seed,pers_fact=4,rho=0,Pcat=NULL, phi=.8,mu=1){
   #eff_it=1
   for(m in 2:M){
     if(prod(s)==0){
-      n_prox=length(which(C[m,]==1))
-      probs=rep(1,n_states)/n_states
-      probs=probs+table(factor(s[which(C[m,]==1)],levels=1:n_states))*pers_fact
-      probs=probs/sum(probs)
-      s[which(C[m,]==1)]=sample(1:n_states,n_prox,prob=probs,replace=T) 
+      #n_prox=length(which(C[m,]==1))
+      #probs=rep(1,n_states)/n_states
+      #probs=probs+table(factor(s[which(C[m,]==1)],levels=1:n_states))+1/(pers_fact+.01)
+      #probs=probs/sum(probs)
+      #s[which(C[m,]==1)]=sample(1:n_states,n_prox,prob=probs,replace=T) 
+      
+      succ=table(factor(s[which(C[m,]==1)],levels=1:n_states))
+      
+      s[m]=sample(1:n_states,1,
+                  prob=colMeans(MCMCprecision::rdirichlet(1000,rep(pers_fact,n_states)+succ)) ,
+                  replace=T) 
       #eff_it=eff_it+1
     }
     else{
@@ -1588,7 +1595,7 @@ sim_spatial_JM=function(P,C,seed,pers_fact=4,rho=0,Pcat=NULL, phi=.8,mu=1){
   SimData = matrix(0, M, P)
   
   set.seed(seed)
-  for(k in 1:Ktrue){
+  for(k in 1:n_states){
     u = MASS::mvrnorm(M,rep(mu[k],P),Sigma)
     Sim[, (P * k - P + 1):(k * P)] = u
   }
