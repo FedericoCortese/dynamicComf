@@ -220,7 +220,7 @@ res_eval=function(res_obj,hp,lambda0=F,ARI=T){
 }
 
 res_eval(mixedJM_rho_no.miss,hp)
-res_eval(mixedJM_rho_no.miss_kMeMo,hp)
-res_eval()
+res_eval(mixedJM_rho_no.miss_kMeMo,hp,lambda0=T)
+res_eval(mixedJM_rho_no.miss_specluster,hp,lambda0=T)
 
 

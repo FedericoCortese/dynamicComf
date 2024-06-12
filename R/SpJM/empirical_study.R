@@ -47,7 +47,9 @@ count_consecutive=function(x,tol=4){
   d_t=diff(x$time)/60
   counter=d_t<tol
   av=ave(counter, cumsum(!counter), FUN = cumsum)
-  return(max(av))
+  return(list(av=av,
+              max.t=max(av),
+              t=which.max(av)))
 }
 
 count_consecutive(enth01_all)
@@ -74,3 +76,4 @@ enth_tab_av=enth_tab%>%group_by(time)%>%
 
 count_consecutive(enth_tab_av)
 # Waaaaay better
+enth_tab_av$time[(232-105):231]
