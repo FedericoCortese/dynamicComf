@@ -12,6 +12,28 @@ map3=leaflet() %>%
   )
 map3
 
+# Keep 17 of these 34 stations
+dat_temp_wide3_old=dat_temp_wide3
+dat_rh_wide3_old=dat_rh_wide3
+kstat=c("time","BARGAGLI","CROCETTADIORERO","DAVAGNA","FALLAROSA",
+        "GENOVACENTROFUNZIONALE","GENOVAQUEZZI","GENOVAS.ILARIO",
+        "ISOVERDE","MADONNADELLEGRAZIE","MONTECAPPELLINO",
+        "MONTEPENNELLO","MONTOGGIO","SELLAGIASSINA","TANADORSO",
+        "TORRIGLIAGARAVENTA","VALBREVENNAGORRA","VIGANEGO")
+dat_temp_wide3=dat_temp_wide3[,kstat]
+dat_rh_wide3=dat_rh_wide3[,kstat]
+
+map3=leaflet() %>% 
+  addTiles() %>%
+  addCircleMarkers(data=locations3[locations3$`NOME STAZIONE` %in% kstat,],
+                   radius = 4,
+                   color = 'red',
+                   stroke = FALSE, fillOpacity = 1,
+                   popup = ~paste("<br>Lat:",Latitude, "<br>Lon:", Longitude
+                                  , "<br>Height (m):", Height, "<br>Station:", `NOME STAZIONE`
+                   )
+  )
+map3
 
 # Descriptive analysis --------------------------------------------------
 
@@ -78,14 +100,14 @@ one_year=1:8760
 # First window  ----------------------------------------------------------
 
 # first_seas=1:2190
-L=floor(dim(dat_rh_wide3)[1]/20)
-first_seas=1:L
-few_stat=10+1
+# L=floor(dim(dat_rh_wide3)[1]/20)
+# first_seas=1:L
+# few_stat=10+1
 
-# air_short=dat_temp_wide3[1:8760,]
-# rh_short=dat_rh_wide3[1:8760,]
-air_short=dat_temp_wide3[first_seas,1:few_stat]
-rh_short=dat_rh_wide3[first_seas,1:few_stat]
+air_short=dat_temp_wide3[1:one_year,]
+rh_short=dat_rh_wide3[1:one_year,]
+# air_short=dat_temp_wide3[first_seas,1:few_stat]
+# rh_short=dat_rh_wide3[first_seas,1:few_stat]
 # 
 # air_short=dat_temp_wide3[1:1000,]
 # rh_short=dat_rh_wide3[1:1000,]
