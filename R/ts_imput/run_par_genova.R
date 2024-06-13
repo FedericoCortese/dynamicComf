@@ -441,7 +441,7 @@ mean(unlist(as.vector(rmse(air_short,air20_naive))))
 locations2=locations3
 
 indx=2:ncol(air_short)
-x=2
+#x=2
 
 
 start = Sys.time()
@@ -450,7 +450,7 @@ air5_sarima_full <- parallel::mclapply(indx,
                                                           air_5_sarima,
                                                           locations2,
                                                           ordinary=F),
-                                       mc.cores = parallel::detectCores())
+                                       mc.cores = parallel::detectCores()-1)
 end = Sys.time()
 elapsed_air5_sarima_full=end-start
 
