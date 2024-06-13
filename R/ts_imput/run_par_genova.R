@@ -17,9 +17,8 @@ dat_temp_wide3_old=dat_temp_wide3
 dat_rh_wide3_old=dat_rh_wide3
 kstat=c("time","BARGAGLI","CROCETTADIORERO","DAVAGNA","FALLAROSA",
         "GENOVACENTROFUNZIONALE","GENOVAQUEZZI","GENOVAS.ILARIO",
-        "ISOVERDE","MADONNADELLEGRAZIE","MONTECAPPELLINO",
-        "MONTEPENNELLO","MONTOGGIO","SELLAGIASSINA","TANADORSO",
-        "TORRIGLIAGARAVENTA","VALBREVENNAGORRA","VIGANEGO")
+        "ISOVERDE","MADONNADELLEGRAZIE",
+        "MONTEPENNELLO","MONTOGGIO","SELLAGIASSINA","VIGANEGO")
 dat_temp_wide3=dat_temp_wide3[,kstat]
 dat_rh_wide3=dat_rh_wide3[,kstat]
 locations3_old=locations3
