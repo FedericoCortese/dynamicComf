@@ -22,6 +22,8 @@ kstat=c("time","BARGAGLI","CROCETTADIORERO","DAVAGNA","FALLAROSA",
         "TORRIGLIAGARAVENTA","VALBREVENNAGORRA","VIGANEGO")
 dat_temp_wide3=dat_temp_wide3[,kstat]
 dat_rh_wide3=dat_rh_wide3[,kstat]
+locations3_old=locations3
+locations3=locations3[locations3$`NOME STAZIONE` %in% kstat,]
 
 map3=leaflet() %>% 
   addTiles() %>%
@@ -96,19 +98,25 @@ diag(round(cor(dat_temp_wide3[,-1],dat_rh_wide3[,-1]),2))
 # CV ----------------------------------------------------------------------
 
 one_year=1:8760
+air_year=dat_temp_wide3[one_year,]
+rh_year=dat_rh_wide3[one_year,]
 
 # First window  ----------------------------------------------------------
 
 # first_seas=1:2190
 # L=floor(dim(dat_rh_wide3)[1]/20)
-# first_seas=1:L
+L=dim(air_year)[1]
+first_wdn=1:(L/6)
 # few_stat=10+1
 
-air_short=dat_temp_wide3[1:one_year,]
-rh_short=dat_rh_wide3[1:one_year,]
-# air_short=dat_temp_wide3[first_seas,1:few_stat]
-# rh_short=dat_rh_wide3[first_seas,1:few_stat]
-# 
+air_short=air_year[first_wdn,]
+rh_short=rh_year[first_wdn,]
+
+# air_short=dat_temp_wide3[one_year,]
+# rh_short=dat_rh_wide3[one_year,]
+# air_short=dat_temp_wide3[first_seas,]
+# rh_short=dat_rh_wide3[first_seas,]
+
 # air_short=dat_temp_wide3[1:1000,]
 # rh_short=dat_rh_wide3[1:1000,]
 
