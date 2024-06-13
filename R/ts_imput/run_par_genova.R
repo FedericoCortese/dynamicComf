@@ -80,11 +80,12 @@ one_year=1:8760
 # first_seas=1:2190
 L=floor(dim(dat_rh_wide3)[1]/20)
 first_seas=1:L
+few_stat=10+1
 
 # air_short=dat_temp_wide3[1:8760,]
 # rh_short=dat_rh_wide3[1:8760,]
-air_short=dat_temp_wide3[first_seas,]
-rh_short=dat_rh_wide3[first_seas,]
+air_short=dat_temp_wide3[first_seas,1:few_stat]
+rh_short=dat_rh_wide3[first_seas,1:few_stat]
 # 
 # air_short=dat_temp_wide3[1:1000,]
 # rh_short=dat_rh_wide3[1:1000,]
