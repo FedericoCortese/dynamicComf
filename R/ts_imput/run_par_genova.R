@@ -111,6 +111,26 @@ first_wdn=1:(L/6)
 air_short=air_year[first_wdn,]
 rh_short=rh_year[first_wdn,]
 
+windows()
+par(mfrow=c(4,4),mar=c(2,2,6,2))
+for(i in 2:ncol(air_short)){
+  plot(x=air_short$time,y=as.vector(unlist(air_short[,i])),type="l",col="black",
+       xlab=" ",ylab=" ",
+       main=colnames(air_short[,i]))
+  title(main=colnames(air_short)[i])
+}
+mtext("Air temperatures", side = 3, line = - 2, outer = TRUE)
+
+windows()
+par(mfrow=c(4,4),mar=c(2,2,6,2))
+for(i in 2:ncol(rh_short)){
+  plot(x=rh_short$time,y=as.vector(unlist(rh_short[,i])),type="l",col="black",
+       xlab=" ",ylab=" ",
+       main=colnames(rh_short[,i]))
+  title(main=colnames(rh_short)[i])
+}
+mtext("Relative humidity", side = 3, line = - 2, outer = TRUE)
+
 # air_short=dat_temp_wide3[one_year,]
 # rh_short=dat_rh_wide3[one_year,]
 # air_short=dat_temp_wide3[first_seas,]
@@ -990,4 +1010,169 @@ end = Sys.time()
 elapsed_air20_lr_loess_res=end-start
 
 save.image("run_parallel_Genova2.RData")
+
+# 6) Plots (station GENOVACENTROFUNZIONALE) ----------------------------------------------
+
+
+# 5
+time=air_short$time
+air5_sarima_full_recover=df_recover(x=air5_sarima_full,
+                                    locations2=locations2,time=time,residuals=F)
+air5_tkr_full_recover=df_recover(x=air5_tkr_full,
+                                 locations2=locations2,time=time,residuals=F)
+# air5_SDEM_full_recover=df_recover(x=air5_SDEM_full,
+#                                   locations2=locations2,time=time,residuals=F)
+air5_naive_full_recover=df_recover(x=air5_naive_full,
+                                   locations2=locations2,time=time,residuals=F)
+air5_lr_full_recover=df_recover(x=air5_linreg_full,
+                                locations2=locations2,time=time,residuals=F)
+
+miss5=range(which(is.na(air_5$GENOVACENTROFUNZIONALE)))
+plot_air5_sarima_full_recover=rmse_detrdeseas(air5_sarima_full_recover$GENOVACENTROFUNZIONALE,
+                                              air_short$GENOVACENTROFUNZIONALE,
+                                              air_short$time,type="SARIMA - Full",
+                                              miss=miss5)
+plot_air5_tkr_full_recover=rmse_detrdeseas(air5_tkr_full_recover$GENOVACENTROFUNZIONALE,
+                                           air_short$GENOVACENTROFUNZIONALE,
+                                           air_short$time,type="TKR - Full",
+                                           miss=miss5)
+# plot_air5_SDEM_full_recover=rmse_detrdeseas(air5_SDEM_full_recover$S100,
+#                                             air_short$S100,
+#                                             air_short$time,type="SDEM - Full",
+#                                             miss=miss5)
+plot_air5_naive_full_recover=rmse_detrdeseas(air5_naive_full_recover$GENOVACENTROFUNZIONALE,
+                                             air_short$GENOVACENTROFUNZIONALE,
+                                             air_short$time,type="Naive - Full",
+                                             miss=miss5)
+plot_air5_lr_full_recover=rmse_detrdeseas(air5_lr_full_recover$GENOVACENTROFUNZIONALE,
+                                          air_short$GENOVACENTROFUNZIONALE,
+                                          air_short$time,type="LinReg - Full",
+                                          miss=miss5)
+
+rmse_detrdeseas(air5_sarima_full_recover$GENOVACENTROFUNZIONALE,
+                air_short$GENOVACENTROFUNZIONALE,
+                air_short$time,
+                miss=miss5,
+                plot=F)
+
+rmse_detrdeseas(air5_tkr_full_recover$GENOVACENTROFUNZIONALE,
+                air_short$GENOVACENTROFUNZIONALE,
+                air_short$time,
+                miss=miss5,
+                plot=F)
+
+rmse_detrdeseas(air5_naive_full_recover$GENOVACENTROFUNZIONALE,
+                air_short$GENOVACENTROFUNZIONALE,
+                air_short$time,
+                miss=miss5,
+                plot=F)
+
+
+rmse_detrdeseas(air5_lr_full_recover$GENOVACENTROFUNZIONALE,
+                air_short$GENOVACENTROFUNZIONALE,
+                air_short$time,
+                miss=miss5,
+                plot=F)
+
+
+PG_5full<- ggarrange(plot_air5_sarima_full_recover$plot,
+                     plot_air5_tkr_full_recover$plot,
+                     #plot_air5_SDEM_full_recover$plot,
+                     plot_air5_lr_full_recover$plot,
+                     plot_air5_naive_full_recover$plot,
+                     ncol=2,nrow=2,
+                     common.legend = T,
+                     legend="bottom")
+
+
+windows()
+annotate_figure(PG_5full, top = text_grob("GENOVACENTROFUNZIONALE", 
+                                          color = "Black", face = "bold", size = 14))
+
+# 5 HW
+time=air_short$time[-(1:24)]
+air5_sarima_hw_res_recover=df_recover(air5_sarima_hw_res,air5_hw_sarima,loess=F,locations2,time)
+air5_tkr_hw_res_recover=df_recover(air5_tkr_hw_res,air5_hw_tkr,loess=F,locations2,time)
+#air5_SDEM_hw_res_recover=df_recover(air5_SDEM_hw_res,air5_hw_SDEM,loess=F,locations2,time)
+air5_lr_hw_res_recover=df_recover(air5_lr_hw_res,air5_hw_lr,loess=F,locations2,time)
+air5_naive_hw_res_recover=df_recover(air5_naive_hw_res,air5_hw_naive,loess=F,locations2,time)
+
+miss5=range(which(is.na(air_5$GENOVACENTROFUNZIONALE)))
+plot_air5_sarima_hw_res_recover=rmse_detrdeseas(air5_sarima_hw_res_recover$GENOVACENTROFUNZIONALE,
+                                                air_short[-(1:24),]$GENOVACENTROFUNZIONALE,
+                                                air_short$time[-(1:24)],type="ARIMA - HW",
+                                                miss=miss5)
+plot_air5_tkr_hw_res_recover=rmse_detrdeseas(air5_tkr_hw_res_recover$GENOVACENTROFUNZIONALE,
+                                             air_short[-(1:24),]$GENOVACENTROFUNZIONALE,
+                                             air_short$time[-(1:24)],type="TKR - HW",
+                                             miss=miss5)
+# plot_air5_SDEM_hw_res_recover=rmse_detrdeseas(air5_SDEM_hw_res_recover$S100,
+#                                               air_short[-(1:24),]$S100,
+#                                               air_short$time[-(1:24)],type="SDEM - HW",
+#                                               miss=miss5)
+plot_air5_lr_hw_res_recover=rmse_detrdeseas(air5_lr_hw_res_recover$GENOVACENTROFUNZIONALE,
+                                            air_short[-(1:24),]$GENOVACENTROFUNZIONALE,
+                                            air_short$time[-(1:24)],type="LinReg - HW",
+                                            miss=miss5)
+plot_air5_naive_hw_res_recover=rmse_detrdeseas(air5_naive_hw_res_recover$GENOVACENTROFUNZIONALE,
+                                               air_short[-(1:24),]$GENOVACENTROFUNZIONALE,
+                                               air_short$time[-(1:24)],type="Naive - HW",
+                                               miss=miss5)
+
+
+PG_5HW<- ggarrange(plot_air5_sarima_hw_res_recover$plot,
+                   plot_air5_tkr_hw_res_recover$plot,
+                   #plot_air5_SDEM_hw_res_recover$plot,
+                   plot_air5_lr_hw_res_recover$plot,
+                   plot_air5_naive_hw_res_recover$plot,
+                   ncol=2,nrow=2,
+                   common.legend = T,
+                   legend="bottom")
+
+windows()
+annotate_figure(PG_5HW, top = text_grob("GENOVACENTROFUNZIONALE", 
+                                        color = "Black", face = "bold", size = 14))
+
+time=air_short$time
+air5_sarima_loess_res_recover=df_recover(air5_sarima_loess_res,air5_loess_sarima,loess=T,locations2,time)
+air5_tkr_loess_res_recover=df_recover(air5_tkr_loess_res,air5_loess_tkr,loess=T,locations2,time)
+#air5_SDEM_loess_res_recover=df_recover(air5_SDEM_loess_res,air5_loess_SDEM,loess=T,locations2,time)
+air5_lr_loess_res_recover=df_recover(air5_lr_loess_res,air5_loess_lr,loess=T,locations2,time)
+air5_naive_loess_res_recover=df_recover(air5_naive_loess_res,air5_loess_naive,loess=T,locations2,time)
+
+
+plot_air5_sarima_loess_res_recover=rmse_detrdeseas(air5_sarima_loess_res_recover$GENOVACENTROFUNZIONALE,
+                                                   air_short$GENOVACENTROFUNZIONALE,
+                                                   air_short$time,type="ARIMA - LOESS",
+                                                   miss=miss5)
+plot_air5_tkr_loess_res_recover=rmse_detrdeseas(air5_tkr_loess_res_recover$GENOVACENTROFUNZIONALE,
+                                                air_short$GENOVACENTROFUNZIONALE,
+                                                air_short$time,type="TKR - LOESS",
+                                                miss=miss5)
+# plot_air5_SDEM_loess_res_recover=rmse_detrdeseas(air5_SDEM_loess_res_recover$S100,
+#                                                  air_short$S100,
+#                                                  air_short$time,type="SDEM - LOESS",
+#                                                  miss=miss5)
+plot_air5_lr_loess_res_recover=rmse_detrdeseas(air5_lr_loess_res_recover$GENOVACENTROFUNZIONALE,
+                                               air_short$GENOVACENTROFUNZIONALE,
+                                               air_short$time,type="LinReg - LOESS",
+                                               miss=miss5)
+plot_air5_naive_loess_res_recover=rmse_detrdeseas(air5_naive_loess_res_recover$GENOVACENTROFUNZIONALE,
+                                                  air_short$GENOVACENTROFUNZIONALE,
+                                                  air_short$time,type="Naive - LOESS",
+                                                  miss=miss5)
+
+
+PG_5LOESS<- ggarrange(plot_air5_sarima_loess_res_recover$plot,
+                      plot_air5_tkr_loess_res_recover$plot,
+                      #plot_air5_SDEM_loess_res_recover$plot,
+                      plot_air5_lr_loess_res_recover$plot,
+                      plot_air5_naive_loess_res_recover$plot,
+                      ncol=2,nrow=2,
+                      common.legend = T,
+                      legend="bottom")
+
+
+annotate_figure(PG_5LOESS, top = text_grob("GENOVACENTROFUNZIONALE", 
+                                           color = "Black", face = "bold", size = 14))
 

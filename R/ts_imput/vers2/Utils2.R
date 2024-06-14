@@ -566,6 +566,8 @@ get_orig_series=function(x,kgrST.res,locations2,target,loess=T){
   # Value:
   # A vector with the original series (trens, seasonal, level components plus residuals from kriging)
   
+  colnames(locations2)[1:3]=c("id","longitude","latitude")
+  
   # Compute weights
   dstats=distm(x=locations2[which(locations2$id==target),2:3],
                y=locations2[,2:3], fun = distHaversine)/1000
@@ -600,7 +602,7 @@ df_recover=function(x,x_trend_seas=NULL,loess=T,locations2,time,residuals=T){
       for(i in 1:length(x)){
         temp=get_orig_series(
           x_trend_seas,
-          x[[i]]$step2$stkgr@data$var1.pred,
+          x[[i]]$pred_x,
           locations2,
           target=x[[i]]$stat_id,
           loess=loess)
@@ -615,7 +617,7 @@ df_recover=function(x,x_trend_seas=NULL,loess=T,locations2,time,residuals=T){
   }
   else{
     for(i in 1:length(x)){
-      temp=x[[i]]$step2$stkgr@data$var1.pred
+      temp=x[[i]]$pred_x
       df=cbind(df,temp)
       colnames(df)[i]=x[[i]]$stat_id
     }
