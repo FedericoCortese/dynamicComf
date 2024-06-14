@@ -453,12 +453,12 @@ parallel::clusterEvalQ(cl,{library(RcppHMM)
   library(gower)
   library(StatMatch)})
 mixedJM_rand.miss10_knn <- clusterApply(cl,
-                                    1:nrow(hp),
+                                    1:nrow(hp_comp),
                                     function(x)
                                       simstud_kNN(
-                                        seed=hp[x,]$seed,
-                                        TT=hp[x,]$TT,
-                                        P=hp[x,]$P,
+                                        seed=hp_comp[x,]$seed,
+                                        TT=hp_comp[x,]$TT,
+                                        P=hp_comp[x,]$P,
                                         Ktrue=3,mu=1,
                                         phi=.8,rho=0,
                                         Pcat=NULL,pers=.95,
@@ -487,12 +487,12 @@ parallel::clusterEvalQ(cl,{library(RcppHMM)
   library(gower)
   library(StatMatch)})
 mixedJM_rand.miss20_knn <- clusterApply(cl,
-                                        1:nrow(hp),
+                                        1:nrow(hp_comp),
                                         function(x)
                                           simstud_kNN(
-                                            seed=hp[x,]$seed,
-                                            TT=hp[x,]$TT,
-                                            P=hp[x,]$P,
+                                            seed=hp_comp[x,]$seed,
+                                            TT=hp_comp[x,]$TT,
+                                            P=hp_comp[x,]$P,
                                             Ktrue=3,mu=1,
                                             phi=.8,rho=0,
                                             Pcat=NULL,pers=.95,
@@ -521,12 +521,12 @@ parallel::clusterEvalQ(cl,{library(RcppHMM)
   library(gower)
   library(StatMatch)})
 mixedJM_cont.miss10_knn <- clusterApply(cl,
-                                        1:nrow(hp),
+                                        1:nrow(hp_comp),
                                         function(x)
                                           simstud_kNN(
-                                            seed=hp[x,]$seed,
-                                            TT=hp[x,]$TT,
-                                            P=hp[x,]$P,
+                                            seed=hp_comp[x,]$seed,
+                                            TT=hp_comp[x,]$TT,
+                                            P=hp_comp[x,]$P,
                                             Ktrue=3,mu=1,
                                             phi=.8,rho=0,
                                             Pcat=NULL,pers=.95,
@@ -555,12 +555,12 @@ parallel::clusterEvalQ(cl,{library(RcppHMM)
   library(gower)
   library(StatMatch)})
 mixedJM_cont.miss20_knn <- clusterApply(cl,
-                                        1:nrow(hp),
+                                        1:nrow(hp_comp),
                                         function(x)
                                           simstud_kNN(
-                                            seed=hp[x,]$seed,
-                                            TT=hp[x,]$TT,
-                                            P=hp[x,]$P,
+                                            seed=hp_comp[x,]$seed,
+                                            TT=hp_comp[x,]$TT,
+                                            P=hp_comp[x,]$P,
                                             Ktrue=3,mu=1,
                                             phi=.8,rho=0,
                                             Pcat=NULL,pers=.95,
@@ -591,12 +591,12 @@ parallel::clusterEvalQ(cl,{library(RcppHMM)
   library(gower)
   library(StatMatch)})
 mixedJM_rand.miss10_rf <- clusterApply(cl,
-                                       1:nrow(hp),
+                                       1:nrow(hp_comp),
                                        function(x)
-                                         simstud_missForest(
-                                           seed=hp[x,]$seed,
-                                           TT=hp[x,]$TT,
-                                           P=hp[x,]$P,
+                                         simstud_RF(
+                                           seed=hp_comp[x,]$seed,
+                                           TT=hp_comp[x,]$TT,
+                                           P=hp_comp[x,]$P,
                                            Ktrue=3,mu=1,
                                            phi=.8,rho=0,
                                            Pcat=NULL,pers=.95,
@@ -625,12 +625,12 @@ parallel::clusterEvalQ(cl,{library(RcppHMM)
   library(gower)
   library(StatMatch)})
 mixedJM_rand.miss20_rf <- clusterApply(cl,
-                                       1:nrow(hp),
+                                       1:nrow(hp_comp),
                                        function(x)
-                                         simstud_missForest(
-                                           seed=hp[x,]$seed,
-                                           TT=hp[x,]$TT,
-                                           P=hp[x,]$P,
+                                         simstud_RF(
+                                           seed=hp_comp[x,]$seed,
+                                           TT=hp_comp[x,]$TT,
+                                           P=hp_comp[x,]$P,
                                            Ktrue=3,mu=1,
                                            phi=.8,rho=0,
                                            Pcat=NULL,pers=.95,
@@ -659,12 +659,12 @@ parallel::clusterEvalQ(cl,{library(RcppHMM)
   library(gower)
   library(StatMatch)})
 mixedJM_cont.miss10_rf <- clusterApply(cl,
-                                       1:nrow(hp),
+                                       1:nrow(hp_comp),
                                        function(x)
-                                         simstud_missForest(
-                                           seed=hp[x,]$seed,
-                                           TT=hp[x,]$TT,
-                                           P=hp[x,]$P,
+                                         simstud_RF(
+                                           seed=hp_comp[x,]$seed,
+                                           TT=hp_comp[x,]$TT,
+                                           P=hp_comp[x,]$P,
                                            Ktrue=3,mu=1,
                                            phi=.8,rho=0,
                                            Pcat=NULL,pers=.95,
@@ -693,12 +693,12 @@ parallel::clusterEvalQ(cl,{library(RcppHMM)
   library(gower)
   library(StatMatch)})
 mixedJM_cont.miss20_rf <- clusterApply(cl,
-                                       1:nrow(hp),
+                                       1:nrow(hp_comp),
                                        function(x)
-                                         simstud_missForest(
-                                           seed=hp[x,]$seed,
-                                           TT=hp[x,]$TT,
-                                           P=hp[x,]$P,
+                                         simstud_RF(
+                                           seed=hp_comp[x,]$seed,
+                                           TT=hp_comp[x,]$TT,
+                                           P=hp_comp[x,]$P,
                                            Ktrue=3,mu=1,
                                            phi=.8,rho=0,
                                            Pcat=NULL,pers=.95,

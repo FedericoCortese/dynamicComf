@@ -10,6 +10,7 @@ library(StatMatch)
 library(SpectralClMixed)
 library(multiUS)
 library(missForest)
+library(parallel)
 #py_install("scipy")
 
 # Import the python module
