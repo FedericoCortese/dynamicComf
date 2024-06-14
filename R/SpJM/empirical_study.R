@@ -68,8 +68,10 @@ apply(enth_tab3,2,function(x) sum(is.na(x))/length(x))*100
 # Remove vars with 100% NAs
 enth_tab3=subset(enth_tab3,select=-c(co2_indoor,voc_indoor,pm25_indoor,noise_indoor))
 
-enth_tab
-
-plot(enth_tab3$indoor.outdoor)
-
 Amelia::missmap(enth_tab3)
+summary(enth_tab3)
+
+colnames(enth_tab3)
+library(plyr)
+round_any(enth_tab3$comfort, c(9,10,11))
+round_any(enth_tab3$indoor.outdoor,c(9,11))
