@@ -484,7 +484,7 @@ air5_sarima_full <- parallel::mclapply(indx,
 end = Sys.time()
 elapsed_air5_sarima_full=end-start
 
-save(elapsed_air5_sarima_full,air5_sarima_full,file="elapsed_air5_sarima_full.RData")
+#save(elapsed_air5_sarima_full,air5_sarima_full,file="elapsed_air5_sarima_full.RData")
 
 start = Sys.time()
 air5_tkr_full <- parallel::mclapply(indx,
@@ -496,7 +496,7 @@ air5_tkr_full <- parallel::mclapply(indx,
 end = Sys.time()
 elapsed_air5_tkr_full=end-start
 
-save(elapsed_air5_tkr_full,air5_tkr_full,file="elapsed_air5_tkr_full.RData")
+#save(elapsed_air5_tkr_full,air5_tkr_full,file="elapsed_air5_tkr_full.RData")
 
 start = Sys.time()
 air5_SDEM_full <- parallel::mclapply(indx,
@@ -508,7 +508,7 @@ air5_SDEM_full <- parallel::mclapply(indx,
 end = Sys.time()
 elapsed_air5_SDEM_full=end-start
 
-save(elapsed_air5_SDEM_full,air5_SDEM_full,file="elapsed_air5_SDEM_full.RData")
+#save(elapsed_air5_SDEM_full,air5_SDEM_full,file="elapsed_air5_SDEM_full.RData")
 
 start = Sys.time()
 air5_naive_full <- parallel::mclapply(indx,
@@ -520,7 +520,7 @@ air5_naive_full <- parallel::mclapply(indx,
 end = Sys.time()
 elapsed_air5_naive_full=end-start
 
-save(elapsed_air5_naive_full,air5_naive_full,file="elapsed_air5_naive_full.RData")
+#save(elapsed_air5_naive_full,air5_naive_full,file="elapsed_air5_naive_full.RData")
 
 start = Sys.time()
 air10_sarima_full <- parallel::mclapply(indx,
@@ -532,7 +532,7 @@ air10_sarima_full <- parallel::mclapply(indx,
 end = Sys.time()
 elapsed_air10_sarima_full=end-start
 
-save(elapsed_air10_sarima_full,air10_sarima_full,file="elapsed_air10_sarima_full.RData")
+#save(elapsed_air10_sarima_full,air10_sarima_full,file="elapsed_air10_sarima_full.RData")
 
 start = Sys.time()
 air10_tkr_full <- parallel::mclapply(indx,
@@ -544,7 +544,7 @@ air10_tkr_full <- parallel::mclapply(indx,
 end = Sys.time()
 elapsed_air10_tkr_full=end-start
 
-save(elapsed_air10_tkr_full,air10_tkr_full,file="elapsed_air10_tkr_full.RData")
+#save(elapsed_air10_tkr_full,air10_tkr_full,file="elapsed_air10_tkr_full.RData")
 
 start = Sys.time()
 air10_SDEM_full <- parallel::mclapply(indx,
@@ -556,7 +556,7 @@ air10_SDEM_full <- parallel::mclapply(indx,
 end = Sys.time()
 elapsed_air10_SDEM_full=end-start
 
-save(elapsed_air10_SDEM_full,air10_SDEM_full,file="elapsed_air10_SDEM_full.RData")
+#save(elapsed_air10_SDEM_full,air10_SDEM_full,file="elapsed_air10_SDEM_full.RData")
 
 start = Sys.time()
 air10_naive_full <- parallel::mclapply(indx,
@@ -568,7 +568,7 @@ air10_naive_full <- parallel::mclapply(indx,
 end = Sys.time()
 elapsed_air10_naive_full=end-start
 
-save(elapsed_air10_naive_full,air10_naive_full,file="elapsed_air10_naive_full.RData")
+#save(elapsed_air10_naive_full,air10_naive_full,file="elapsed_air10_naive_full.RData")
 
 start = Sys.time()
 air20_sarima_full <- parallel::mclapply(indx,
@@ -580,7 +580,7 @@ air20_sarima_full <- parallel::mclapply(indx,
 end = Sys.time()
 elapsed_air20_sarima_full=end-start
 
-save(elapsed_air20_sarima_full,air20_sarima_full,file="elapsed_air20_sarima_full.RData")
+#save(elapsed_air20_sarima_full,air20_sarima_full,file="elapsed_air20_sarima_full.RData")
 
 start = Sys.time()
 air20_tkr_full <- parallel::mclapply(indx,
@@ -592,7 +592,7 @@ air20_tkr_full <- parallel::mclapply(indx,
 end = Sys.time()
 elapsed_air20_tkr_full=end-start
 
-save(elapsed_air20_tkr_full,air20_tkr_full,file="elapsed_air20_tkr_full.RData")
+#save(elapsed_air20_tkr_full,air20_tkr_full,file="elapsed_air20_tkr_full.RData")
 
 start = Sys.time()
 air20_SDEM_full <- parallel::mclapply(indx,
@@ -604,7 +604,7 @@ air20_SDEM_full <- parallel::mclapply(indx,
 end = Sys.time()
 elapsed_air20_SDEM_full=end-start
 
-save(elapsed_air20_SDEM_full,air20_SDEM_full,file="elapsed_air20_SDEM_full.RData")
+#save(elapsed_air20_SDEM_full,air20_SDEM_full,file="elapsed_air20_SDEM_full.RData")
 
 start = Sys.time()
 air20_naive_full <- parallel::mclapply(indx,
@@ -616,7 +616,7 @@ air20_naive_full <- parallel::mclapply(indx,
 end = Sys.time()
 elapsed_air20_naive_full=end-start
 
-save(elapsed_air20_naive_full,air20_naive_full,file="elapsed_air20_naive_full.RData")
+#save(elapsed_air20_naive_full,air20_naive_full,file="elapsed_air20_naive_full.RData")
 
 start = Sys.time()
 air5_linreg_full <- parallel::mclapply(indx,
@@ -628,7 +628,7 @@ air5_linreg_full <- parallel::mclapply(indx,
 end = Sys.time()
 elapsed_air5_lr_full=end-start
 
-save(elapsed_air5_lr_full,air5_linreg_full,file="elapsed_air5_lr_full.RData")
+#save(elapsed_air5_lr_full,air5_linreg_full,file="elapsed_air5_lr_full.RData")
 
 start = Sys.time()
 air10_linreg_full <- parallel::mclapply(indx,
@@ -640,7 +640,7 @@ air10_linreg_full <- parallel::mclapply(indx,
 end = Sys.time()
 elapsed_air10_lr_full=end-start
 
-save(elapsed_air10_lr_full,air10_linreg_full,file="elapsed_air10_lr_full.RData")
+#save(elapsed_air10_lr_full,air10_linreg_full,file="elapsed_air10_lr_full.RData")
 
 start = Sys.time()
 air20_linreg_full <- parallel::mclapply(indx,
@@ -652,7 +652,7 @@ air20_linreg_full <- parallel::mclapply(indx,
 end = Sys.time()
 elapsed_air20_lr_full=end-start
 
-save(elapsed_air20_lr_full,air20_linreg_full,file="elapsed_air20_lr_full.RData")
+#save(elapsed_air20_lr_full,air20_linreg_full,file="elapsed_air20_lr_full.RData")
 
 # 4) Preliminary detrend-deseas -------------------------------------------
 
@@ -716,7 +716,7 @@ start = Sys.time()
 air5_sarima_hw_res <- parallel::mclapply(indx,
                                          function(x)CV_STkr(x,
                                                             air5_hw_sarima$residuals,
-                                                            locations),
+                                                            locations2),
                                          mc.cores = parallel::detectCores())
 end = Sys.time()
 elapsed_air5_sarima_hw_res=end-start
@@ -725,7 +725,7 @@ start = Sys.time()
 air5_tkr_hw_res <- parallel::mclapply(indx,
                                       function(x)CV_STkr(x,
                                                          air5_hw_tkr$residuals,
-                                                         locations),
+                                                         locations2),
                                       mc.cores = parallel::detectCores())
 end = Sys.time()
 elapsed_air5_tkr_hw_res=end-start
@@ -734,7 +734,7 @@ start = Sys.time()
 air5_SDEM_hw_res <- parallel::mclapply(indx,
                                        function(x)CV_STkr(x,
                                                           air5_hw_SDEM$residuals,
-                                                          locations),
+                                                          locations2),
                                        mc.cores = parallel::detectCores())
 end = Sys.time()
 elapsed_air5_SDEM_hw_res=end-start
@@ -743,7 +743,7 @@ start = Sys.time()
 air5_naive_hw_res <- parallel::mclapply(indx,
                                         function(x)CV_STkr(x,
                                                            air5_hw_naive$residuals,
-                                                           locations),
+                                                           locations2),
                                         mc.cores = parallel::detectCores())
 end = Sys.time()
 elapsed_air5_naive_hw_res=end-start
@@ -753,7 +753,7 @@ start = Sys.time()
 air10_sarima_hw_res <- parallel::mclapply(indx,
                                           function(x)CV_STkr(x,
                                                              air10_hw_sarima$residuals,
-                                                             locations),
+                                                             locations2),
                                           mc.cores = parallel::detectCores())
 end = Sys.time()
 elapsed_air10_sarima_hw_res=end-start
@@ -762,7 +762,7 @@ start = Sys.time()
 air10_tkr_hw_res <- parallel::mclapply(indx,
                                        function(x)CV_STkr(x,
                                                           air10_hw_tkr$residuals,
-                                                          locations),
+                                                          locations2),
                                        mc.cores = parallel::detectCores())
 end = Sys.time()
 elapsed_air10_tkr_hw_res=end-start
@@ -771,7 +771,7 @@ start = Sys.time()
 air10_SDEM_hw_res <- parallel::mclapply(indx,
                                         function(x)CV_STkr(x,
                                                            air10_hw_SDEM$residuals,
-                                                           locations),
+                                                           locations2),
                                         mc.cores = parallel::detectCores())
 end = Sys.time()
 elapsed_air10_SDEM_hw_res=end-start
@@ -780,7 +780,7 @@ start = Sys.time()
 air10_naive_hw_res <- parallel::mclapply(indx,
                                          function(x)CV_STkr(x,
                                                             air10_hw_naive$residuals,
-                                                            locations),
+                                                            locations2),
                                          mc.cores = parallel::detectCores())
 end = Sys.time()
 elapsed_air10_naive_hw_res=end-start
@@ -790,7 +790,7 @@ start = Sys.time()
 air20_sarima_hw_res <- parallel::mclapply(indx,
                                           function(x)CV_STkr(x,
                                                              air20_hw_sarima$residuals,
-                                                             locations),
+                                                             locations2),
                                           mc.cores = parallel::detectCores())
 end = Sys.time()
 elapsed_air20_sarima_hw_res=end-start
@@ -799,7 +799,7 @@ start = Sys.time()
 air20_tkr_hw_res <- parallel::mclapply(indx,
                                        function(x)CV_STkr(x,
                                                           air20_hw_tkr$residuals,
-                                                          locations),
+                                                          locations2),
                                        mc.cores = parallel::detectCores())
 end = Sys.time()
 elapsed_air20_tkr_hw_res=end-start
@@ -808,7 +808,7 @@ start = Sys.time()
 air20_SDEM_hw_res <- parallel::mclapply(indx,
                                         function(x)CV_STkr(x,
                                                            air20_hw_SDEM$residuals,
-                                                           locations),
+                                                           locations2),
                                         mc.cores = parallel::detectCores())
 end = Sys.time()
 elapsed_air20_SDEM_hw_res=end-start
@@ -817,7 +817,7 @@ start = Sys.time()
 air20_naive_hw_res <- parallel::mclapply(indx,
                                          function(x)CV_STkr(x,
                                                             air20_hw_naive$residuals,
-                                                            locations),
+                                                            locations2),
                                          mc.cores = parallel::detectCores())
 end = Sys.time()
 elapsed_air20_naive_hw_res=end-start
@@ -827,7 +827,7 @@ start = Sys.time()
 air5_sarima_loess_res <- parallel::mclapply(indx,
                                             function(x)CV_STkr(x,
                                                                air5_loess_sarima$residuals,
-                                                               locations),
+                                                               locations2),
                                             mc.cores = parallel::detectCores())
 end = Sys.time()
 elapsed_air5_sarima_loess_res=end-start
@@ -836,7 +836,7 @@ start = Sys.time()
 air5_tkr_loess_res <- parallel::mclapply(indx,
                                          function(x)CV_STkr(x,
                                                             air5_loess_tkr$residuals,
-                                                            locations),
+                                                            locations2),
                                          mc.cores = parallel::detectCores())
 end = Sys.time()
 elapsed_air5_tkr_loess_res=end-start
@@ -845,7 +845,7 @@ start = Sys.time()
 air5_SDEM_loess_res <- parallel::mclapply(indx,
                                           function(x)CV_STkr(x,
                                                              air5_loess_SDEM$residuals,
-                                                             locations),
+                                                             locations2),
                                           mc.cores = parallel::detectCores())
 end = Sys.time()
 elapsed_air5_SDEM_loess_res=end-start
@@ -854,7 +854,7 @@ start = Sys.time()
 air5_naive_loess_res <- parallel::mclapply(indx,
                                            function(x)CV_STkr(x,
                                                               air5_loess_naive$residuals,
-                                                              locations),
+                                                              locations2),
                                            mc.cores = parallel::detectCores())
 end = Sys.time()
 elapsed_air5_naive_loess_res=end-start
@@ -864,7 +864,7 @@ start = Sys.time()
 air10_sarima_loess_res <- parallel::mclapply(indx,
                                              function(x)CV_STkr(x,
                                                                 air10_loess_sarima$residuals,
-                                                                locations),
+                                                                locations2),
                                              mc.cores = parallel::detectCores())
 end = Sys.time()
 elapsed_air10_sarima_loess_res=end-start
@@ -873,7 +873,7 @@ start = Sys.time()
 air10_tkr_loess_res <- parallel::mclapply(indx,
                                           function(x)CV_STkr(x,
                                                              air10_loess_tkr$residuals,
-                                                             locations),
+                                                             locations2),
                                           mc.cores = parallel::detectCores())
 end = Sys.time()
 elapsed_air10_tkr_loess_res=end-start
@@ -882,7 +882,7 @@ start = Sys.time()
 air10_SDEM_loess_res <- parallel::mclapply(indx,
                                            function(x)CV_STkr(x,
                                                               air10_loess_SDEM$residuals,
-                                                              locations),
+                                                              locations2),
                                            mc.cores = parallel::detectCores())
 end = Sys.time()
 elapsed_air10_SDEM_loess_res=end-start
@@ -891,7 +891,7 @@ start = Sys.time()
 air10_naive_loess_res <- parallel::mclapply(indx,
                                             function(x)CV_STkr(x,
                                                                air10_loess_naive$residuals,
-                                                               locations),
+                                                               locations2),
                                             mc.cores = parallel::detectCores())
 end = Sys.time()
 elapsed_air10_naive_loess_res=end-start
@@ -901,7 +901,7 @@ start = Sys.time()
 air20_sarima_loess_res <- parallel::mclapply(indx,
                                              function(x)CV_STkr(x,
                                                                 air20_loess_sarima$residuals,
-                                                                locations),
+                                                                locations2),
                                              mc.cores = parallel::detectCores())
 end = Sys.time()
 elapsed_air20_sarima_loess_res=end-start
@@ -910,7 +910,7 @@ start = Sys.time()
 air20_tkr_loess_res <- parallel::mclapply(indx,
                                           function(x)CV_STkr(x,
                                                              air20_loess_tkr$residuals,
-                                                             locations),
+                                                             locations2),
                                           mc.cores = parallel::detectCores())
 end = Sys.time()
 elapsed_air20_tkr_loess_res=end-start
@@ -919,7 +919,7 @@ start = Sys.time()
 air20_SDEM_loess_res <- parallel::mclapply(indx,
                                            function(x)CV_STkr(x,
                                                               air20_loess_SDEM$residuals,
-                                                              locations),
+                                                              locations2),
                                            mc.cores = parallel::detectCores())
 end = Sys.time()
 elapsed_air20_SDEM_loess_res=end-start
@@ -928,7 +928,7 @@ start = Sys.time()
 air20_naive_loess_res <- parallel::mclapply(indx,
                                             function(x)CV_STkr(x,
                                                                air20_loess_naive$residuals,
-                                                               locations),
+                                                               locations2),
                                             mc.cores = parallel::detectCores())
 end = Sys.time()
 elapsed_air20_naive_loess_res=end-start
@@ -938,7 +938,7 @@ start = Sys.time()
 air5_lr_hw_res <- parallel::mclapply(indx,
                                      function(x)CV_STkr(x,
                                                         air5_hw_lr$residuals,
-                                                        locations),
+                                                        locations2),
                                      mc.cores = parallel::detectCores())
 end = Sys.time()
 elapsed_air5_lr_hw_res=end-start
@@ -947,7 +947,7 @@ start = Sys.time()
 air10_lr_hw_res <- parallel::mclapply(indx,
                                       function(x)CV_STkr(x,
                                                          air10_hw_lr$residuals,
-                                                         locations),
+                                                         locations2),
                                       mc.cores = parallel::detectCores())
 end = Sys.time()
 elapsed_air10_lr_hw_res=end-start
@@ -956,7 +956,7 @@ start = Sys.time()
 air20_lr_hw_res <- parallel::mclapply(indx,
                                       function(x)CV_STkr(x,
                                                          air20_hw_lr$residuals,
-                                                         locations),
+                                                         locations2),
                                       mc.cores = parallel::detectCores())
 end = Sys.time()
 elapsed_air20_lr_hw_res=end-start
@@ -966,7 +966,7 @@ start = Sys.time()
 air5_lr_loess_res <- parallel::mclapply(indx,
                                         function(x)CV_STkr(x,
                                                            air5_loess_lr$residuals,
-                                                           locations),
+                                                           locations2),
                                         mc.cores = parallel::detectCores())
 end = Sys.time()
 elapsed_air5_lr_loess_res=end-start
@@ -975,7 +975,7 @@ start = Sys.time()
 air10_lr_loess_res <- parallel::mclapply(indx,
                                          function(x)CV_STkr(x,
                                                             air10_loess_lr$residuals,
-                                                            locations),
+                                                            locations2),
                                          mc.cores = parallel::detectCores())
 end = Sys.time()
 elapsed_air10_lr_loess_res=end-start
@@ -984,7 +984,7 @@ start = Sys.time()
 air20_lr_loess_res <- parallel::mclapply(indx,
                                          function(x)CV_STkr(x,
                                                             air20_loess_lr$residuals,
-                                                            locations),
+                                                            locations2),
                                          mc.cores = parallel::detectCores())
 end = Sys.time()
 elapsed_air20_lr_loess_res=end-start
