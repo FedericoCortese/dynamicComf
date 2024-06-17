@@ -42,6 +42,16 @@ order_states=function(states){
   return(states_temp)
 }
 
+order_states_freq=function(states){
+  
+  # This function organizes states by assigning 1 to the mostly observed state and sequentially numbering each new state as 2, 3, etc., incrementing by 1 for each newly observed state.
+  # states is a vector of observed states
+  
+  states_temp=match(states,names(sort(table(states))))
+  
+  return(states_temp)
+}
+
 
 # Ordinary JM -------------------------------------------------------------
 
@@ -1563,29 +1573,47 @@ sim_spatial_JM=function(P,C,seed,pers_fact=4,rho=0,Pcat=NULL, phi=.8,mu=1){
   n_states=3
   M=dim(C)[1]
   #s=matrix(0,ncol=ncg,nrow=nrg)
-  s=rep(0,M)
+  #s=rep(0,M)
   set.seed(seed)
-  s[1]=sample(1:n_states,1)
-  #eff_it=1
-  for(m in 2:M){
-    if(prod(s)==0){
-      #n_prox=length(which(C[m,]==1))
-      #probs=rep(1,n_states)/n_states
-      #probs=probs+table(factor(s[which(C[m,]==1)],levels=1:n_states))+1/(pers_fact+.01)
-      #probs=probs/sum(probs)
-      #s[which(C[m,]==1)]=sample(1:n_states,n_prox,prob=probs,replace=T) 
-      
-      succ=table(factor(s[which(C[m,]==1)],levels=1:n_states))
-      
-      s[m]=sample(1:n_states,1,
-                  prob=colMeans(MCMCprecision::rdirichlet(1000,rep(pers_fact,n_states)+succ)) ,
-                  replace=T) 
-      #eff_it=eff_it+1
-    }
-    else{
-      break
-    }
-  }
+  
+  require("potts")
+  ncolor = as.integer(n_states) # transizione di fase continua per 1 <= ncolor <= 4
+  nr = sqrt(M)
+  nc = sqrt(M)
+  init <- matrix(sample(ncolor, nr * nc, replace = TRUE), nrow = nr, ncol=nc)
+  init <- packPotts(init, ncol = ncolor)
+  
+  beta <- log(1 + sqrt(ncolor))
+  theta <- c(rep(0, ncolor), beta)
+  out <- potts(init, param=theta, nbatch = 200 , blen=10, nspac=1)
+  rotate <- function(x) apply(t(x), 2, rev)
+  # Recover decoded matrix
+  mat=unpackPotts(out$final)
+  mat=rotate(mat)
+  mat
+  s=c(t(mat))
+  
+  # s[1]=sample(1:n_states,1)
+  # #eff_it=1
+  # for(m in 2:M){
+  #   if(prod(s)==0){
+  #     #n_prox=length(which(C[m,]==1))
+  #     #probs=rep(1,n_states)/n_states
+  #     #probs=probs+table(factor(s[which(C[m,]==1)],levels=1:n_states))+1/(pers_fact+.01)
+  #     #probs=probs/sum(probs)
+  #     #s[which(C[m,]==1)]=sample(1:n_states,n_prox,prob=probs,replace=T) 
+  #     
+  #     succ=table(factor(s[which(C[m,]==1)],levels=1:n_states))
+  #     
+  #     s[m]=sample(1:n_states,1,
+  #                 prob=colMeans(MCMCprecision::rdirichlet(1000,rep(pers_fact,n_states)+succ)) ,
+  #                 replace=T) 
+  #     #eff_it=eff_it+1
+  #   }
+  #   else{
+  #     break
+  #   }
+  #}
   
   # Continuous variables simulation
   mu=c(-mu,0,mu)
