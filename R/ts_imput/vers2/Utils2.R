@@ -551,6 +551,13 @@ CV_STkr=function(stat_ind,dat,locations,ordinary=T,plot=F){
   
 }
 
+distance3D <- function (point1, point2) {
+  planiDist <- distm(point1[1:2], point2[1:2])
+  altiDist <- point2[3] - point1[3]
+  dist3D <- sqrt(planiDist^2+altiDist^2)
+  return(dist3D)
+}
+
 # 
 get_orig_series=function(x,kgrST.res,locations2,target,loess=T){
   
@@ -566,11 +573,13 @@ get_orig_series=function(x,kgrST.res,locations2,target,loess=T){
   # Value:
   # A vector with the original series (trens, seasonal, level components plus residuals from kriging)
   
-  colnames(locations2)[1:3]=c("id","longitude","latitude")
+  colnames(locations2)[1:4]=c("id","longitude","latitude","height")
   
   # Compute weights
-  dstats=distm(x=locations2[which(locations2$id==target),2:3],
-               y=locations2[,2:3], fun = distHaversine)/1000
+  # dstats=distm(x=locations2[which(locations2$id==target),2:3],
+  #              y=locations2[,2:3], fun = distHaversine)/1000
+  dstats=matrix(unlist(apply(locations2[which(locations2$id==target),2:4],1,
+                      function(x) distance3D(locations2[,2:4],x)))/1000,nrow=1)
   colnames(dstats)=locations2$id
   #rownames(dstats)=target
   dstats[which(dstats==0)]=NA

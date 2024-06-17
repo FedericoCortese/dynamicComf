@@ -12,7 +12,7 @@ map3=leaflet() %>%
   )
 map3
 
-# Keep 17 of these 34 stations
+# Keep 13 of these 34 stations
 dat_temp_wide3_old=dat_temp_wide3
 dat_rh_wide3_old=dat_rh_wide3
 kstat=c("time","BARGAGLI","CROCETTADIORERO","DAVAGNA","FALLAROSA",
@@ -43,7 +43,7 @@ summary(dat_rh_wide3)
 
 # Air temp
 windows()
-par(mfrow=c(5,7),mar=c(2,2,6,2))
+par(mfrow=c(3,5),mar=c(2,2,6,2))
 for(i in 2:ncol(dat_temp_wide3)){
   plot(x=dat_temp_wide3$time,y=as.vector(unlist(dat_temp_wide3[,i])),type="l",col="black",
        xlab=" ",ylab=" ",
@@ -62,7 +62,7 @@ title(main=colnames(dat_temp_wide3)[i])
 
 # Relative humidity
 windows()
-par(mfrow=c(5,7),mar=c(2,2,6,2))
+par(mfrow=c(3,5),mar=c(2,2,6,2))
 for(i in 2:ncol(dat_rh_wide3)){
   plot(x=dat_rh_wide3$time,y=as.vector(unlist(dat_rh_wide3[,i])),type="l",col="black",
        xlab=" ",ylab=" ",
@@ -81,7 +81,7 @@ title(main=colnames(dat_rh_wide3)[i])
 
 # Scatterplot of temperature and rel humidity for each station
 windows()
-par(mfrow=c(5,7),mar=c(2,2,6,2))
+par(mfrow=c(3,5),mar=c(2,2,6,2))
 for(i in 2:ncol(dat_temp_wide3)){
   plot(x=as.vector(unlist(dat_temp_wide3[,i])),y=as.vector(unlist(dat_rh_wide3[,i])),
        #xlab="Temperature (°C)",ylab="Relative humidity (%)",
@@ -1027,49 +1027,49 @@ air5_naive_full_recover=df_recover(x=air5_naive_full,
 air5_lr_full_recover=df_recover(x=air5_linreg_full,
                                 locations2=locations2,time=time,residuals=F)
 
-miss5=range(which(is.na(air_5$GENOVACENTROFUNZIONALE)))
-plot_air5_sarima_full_recover=rmse_detrdeseas(air5_sarima_full_recover$GENOVACENTROFUNZIONALE,
-                                              air_short$GENOVACENTROFUNZIONALE,
+miss5=range(which(is.na(air_5$VIGANEGO)))
+plot_air5_sarima_full_recover=rmse_detrdeseas(air5_sarima_full_recover$VIGANEGO,
+                                              air_short$VIGANEGO,
                                               air_short$time,type="SARIMA - Full",
                                               miss=miss5)
-plot_air5_tkr_full_recover=rmse_detrdeseas(air5_tkr_full_recover$GENOVACENTROFUNZIONALE,
-                                           air_short$GENOVACENTROFUNZIONALE,
+plot_air5_tkr_full_recover=rmse_detrdeseas(air5_tkr_full_recover$VIGANEGO,
+                                           air_short$VIGANEGO,
                                            air_short$time,type="TKR - Full",
                                            miss=miss5)
 # plot_air5_SDEM_full_recover=rmse_detrdeseas(air5_SDEM_full_recover$S100,
 #                                             air_short$S100,
 #                                             air_short$time,type="SDEM - Full",
 #                                             miss=miss5)
-plot_air5_naive_full_recover=rmse_detrdeseas(air5_naive_full_recover$GENOVACENTROFUNZIONALE,
-                                             air_short$GENOVACENTROFUNZIONALE,
+plot_air5_naive_full_recover=rmse_detrdeseas(air5_naive_full_recover$VIGANEGO,
+                                             air_short$VIGANEGO,
                                              air_short$time,type="Naive - Full",
                                              miss=miss5)
-plot_air5_lr_full_recover=rmse_detrdeseas(air5_lr_full_recover$GENOVACENTROFUNZIONALE,
-                                          air_short$GENOVACENTROFUNZIONALE,
+plot_air5_lr_full_recover=rmse_detrdeseas(air5_lr_full_recover$VIGANEGO,
+                                          air_short$VIGANEGO,
                                           air_short$time,type="LinReg - Full",
                                           miss=miss5)
 
-rmse_detrdeseas(air5_sarima_full_recover$GENOVACENTROFUNZIONALE,
-                air_short$GENOVACENTROFUNZIONALE,
+rmse_detrdeseas(air5_sarima_full_recover$VIGANEGO,
+                air_short$VIGANEGO,
                 air_short$time,
                 miss=miss5,
                 plot=F)
 
-rmse_detrdeseas(air5_tkr_full_recover$GENOVACENTROFUNZIONALE,
-                air_short$GENOVACENTROFUNZIONALE,
+rmse_detrdeseas(air5_tkr_full_recover$VIGANEGO,
+                air_short$VIGANEGO,
                 air_short$time,
                 miss=miss5,
                 plot=F)
 
-rmse_detrdeseas(air5_naive_full_recover$GENOVACENTROFUNZIONALE,
-                air_short$GENOVACENTROFUNZIONALE,
+rmse_detrdeseas(air5_naive_full_recover$VIGANEGO,
+                air_short$VIGANEGO,
                 air_short$time,
                 miss=miss5,
                 plot=F)
 
 
-rmse_detrdeseas(air5_lr_full_recover$GENOVACENTROFUNZIONALE,
-                air_short$GENOVACENTROFUNZIONALE,
+rmse_detrdeseas(air5_lr_full_recover$VIGANEGO,
+                air_short$VIGANEGO,
                 air_short$time,
                 miss=miss5,
                 plot=F)
@@ -1086,7 +1086,7 @@ PG_5full<- ggarrange(plot_air5_sarima_full_recover$plot,
 
 
 windows()
-annotate_figure(PG_5full, top = text_grob("GENOVACENTROFUNZIONALE", 
+annotate_figure(PG_5full, top = text_grob("VIGANEGO", 
                                           color = "Black", face = "bold", size = 14))
 
 # 5 HW
@@ -1097,25 +1097,25 @@ air5_tkr_hw_res_recover=df_recover(air5_tkr_hw_res,air5_hw_tkr,loess=F,locations
 air5_lr_hw_res_recover=df_recover(air5_lr_hw_res,air5_hw_lr,loess=F,locations2,time)
 air5_naive_hw_res_recover=df_recover(air5_naive_hw_res,air5_hw_naive,loess=F,locations2,time)
 
-miss5=range(which(is.na(air_5$GENOVACENTROFUNZIONALE)))
-plot_air5_sarima_hw_res_recover=rmse_detrdeseas(air5_sarima_hw_res_recover$GENOVACENTROFUNZIONALE,
-                                                air_short[-(1:24),]$GENOVACENTROFUNZIONALE,
+miss5=range(which(is.na(air_5$VIGANEGO)))
+plot_air5_sarima_hw_res_recover=rmse_detrdeseas(air5_sarima_hw_res_recover$VIGANEGO,
+                                                air_short[-(1:24),]$VIGANEGO,
                                                 air_short$time[-(1:24)],type="ARIMA - HW",
                                                 miss=miss5)
-plot_air5_tkr_hw_res_recover=rmse_detrdeseas(air5_tkr_hw_res_recover$GENOVACENTROFUNZIONALE,
-                                             air_short[-(1:24),]$GENOVACENTROFUNZIONALE,
+plot_air5_tkr_hw_res_recover=rmse_detrdeseas(air5_tkr_hw_res_recover$VIGANEGO,
+                                             air_short[-(1:24),]$VIGANEGO,
                                              air_short$time[-(1:24)],type="TKR - HW",
                                              miss=miss5)
 # plot_air5_SDEM_hw_res_recover=rmse_detrdeseas(air5_SDEM_hw_res_recover$S100,
 #                                               air_short[-(1:24),]$S100,
 #                                               air_short$time[-(1:24)],type="SDEM - HW",
 #                                               miss=miss5)
-plot_air5_lr_hw_res_recover=rmse_detrdeseas(air5_lr_hw_res_recover$GENOVACENTROFUNZIONALE,
-                                            air_short[-(1:24),]$GENOVACENTROFUNZIONALE,
+plot_air5_lr_hw_res_recover=rmse_detrdeseas(air5_lr_hw_res_recover$VIGANEGO,
+                                            air_short[-(1:24),]$VIGANEGO,
                                             air_short$time[-(1:24)],type="LinReg - HW",
                                             miss=miss5)
-plot_air5_naive_hw_res_recover=rmse_detrdeseas(air5_naive_hw_res_recover$GENOVACENTROFUNZIONALE,
-                                               air_short[-(1:24),]$GENOVACENTROFUNZIONALE,
+plot_air5_naive_hw_res_recover=rmse_detrdeseas(air5_naive_hw_res_recover$VIGANEGO,
+                                               air_short[-(1:24),]$VIGANEGO,
                                                air_short$time[-(1:24)],type="Naive - HW",
                                                miss=miss5)
 
@@ -1130,7 +1130,7 @@ PG_5HW<- ggarrange(plot_air5_sarima_hw_res_recover$plot,
                    legend="bottom")
 
 windows()
-annotate_figure(PG_5HW, top = text_grob("GENOVACENTROFUNZIONALE", 
+annotate_figure(PG_5HW, top = text_grob("VIGANEGO", 
                                         color = "Black", face = "bold", size = 14))
 
 time=air_short$time
@@ -1141,24 +1141,24 @@ air5_lr_loess_res_recover=df_recover(air5_lr_loess_res,air5_loess_lr,loess=T,loc
 air5_naive_loess_res_recover=df_recover(air5_naive_loess_res,air5_loess_naive,loess=T,locations2,time)
 
 
-plot_air5_sarima_loess_res_recover=rmse_detrdeseas(air5_sarima_loess_res_recover$GENOVACENTROFUNZIONALE,
-                                                   air_short$GENOVACENTROFUNZIONALE,
+plot_air5_sarima_loess_res_recover=rmse_detrdeseas(air5_sarima_loess_res_recover$VIGANEGO,
+                                                   air_short$VIGANEGO,
                                                    air_short$time,type="ARIMA - LOESS",
                                                    miss=miss5)
-plot_air5_tkr_loess_res_recover=rmse_detrdeseas(air5_tkr_loess_res_recover$GENOVACENTROFUNZIONALE,
-                                                air_short$GENOVACENTROFUNZIONALE,
+plot_air5_tkr_loess_res_recover=rmse_detrdeseas(air5_tkr_loess_res_recover$VIGANEGO,
+                                                air_short$VIGANEGO,
                                                 air_short$time,type="TKR - LOESS",
                                                 miss=miss5)
 # plot_air5_SDEM_loess_res_recover=rmse_detrdeseas(air5_SDEM_loess_res_recover$S100,
 #                                                  air_short$S100,
 #                                                  air_short$time,type="SDEM - LOESS",
 #                                                  miss=miss5)
-plot_air5_lr_loess_res_recover=rmse_detrdeseas(air5_lr_loess_res_recover$GENOVACENTROFUNZIONALE,
-                                               air_short$GENOVACENTROFUNZIONALE,
+plot_air5_lr_loess_res_recover=rmse_detrdeseas(air5_lr_loess_res_recover$VIGANEGO,
+                                               air_short$VIGANEGO,
                                                air_short$time,type="LinReg - LOESS",
                                                miss=miss5)
-plot_air5_naive_loess_res_recover=rmse_detrdeseas(air5_naive_loess_res_recover$GENOVACENTROFUNZIONALE,
-                                                  air_short$GENOVACENTROFUNZIONALE,
+plot_air5_naive_loess_res_recover=rmse_detrdeseas(air5_naive_loess_res_recover$VIGANEGO,
+                                                  air_short$VIGANEGO,
                                                   air_short$time,type="Naive - LOESS",
                                                   miss=miss5)
 
@@ -1172,7 +1172,210 @@ PG_5LOESS<- ggarrange(plot_air5_sarima_loess_res_recover$plot,
                       common.legend = T,
                       legend="bottom")
 
-
-annotate_figure(PG_5LOESS, top = text_grob("GENOVACENTROFUNZIONALE", 
+windows()
+annotate_figure(PG_5LOESS, top = text_grob("VIGANEGO", 
                                            color = "Black", face = "bold", size = 14))
 
+plotres_krg=function(stat="VIGANEGO"){
+  time=air_short$time
+  air5_sarima_full_recover=df_recover(x=air5_sarima_full,
+                                      locations2=locations2,time=time,residuals=F)
+  air5_tkr_full_recover=df_recover(x=air5_tkr_full,
+                                   locations2=locations2,time=time,residuals=F)
+  # air5_SDEM_full_recover=df_recover(x=air5_SDEM_full,
+  #                                   locations2=locations2,time=time,residuals=F)
+  air5_naive_full_recover=df_recover(x=air5_naive_full,
+                                     locations2=locations2,time=time,residuals=F)
+  air5_lr_full_recover=df_recover(x=air5_linreg_full,
+                                  locations2=locations2,time=time,residuals=F)
+  
+  miss5=range(which(is.na(air_5[stat])))
+  plot_air5_sarima_full_recover=rmse_detrdeseas(unlist(as.vector(air5_sarima_full_recover[stat])),
+                                                unlist(as.vector(air_short[stat])),
+                                                air_short$time,type="SARIMA - Full",
+                                                miss=miss5)
+  plot_air5_tkr_full_recover=rmse_detrdeseas(unlist(as.vector(air5_tkr_full_recover[stat])),
+                                             unlist(as.vector(air_short[stat])),
+                                             air_short$time,type="TKR - Full",
+                                             miss=miss5)
+  # plot_air5_SDEM_full_recover=rmse_detrdeseas(air5_SDEM_full_recover$S100,
+  #                                             air_short$S100,
+  #                                             air_short$time,type="SDEM - Full",
+  #                                             miss=miss5)
+  plot_air5_naive_full_recover=rmse_detrdeseas(unlist(as.vector(air5_naive_full_recover[stat])),
+                                               unlist(as.vector(air_short[stat])),
+                                               air_short$time,type="Naive - Full",
+                                               miss=miss5)
+  plot_air5_lr_full_recover=rmse_detrdeseas(unlist(as.vector(air5_lr_full_recover[stat])),
+                                            unlist(as.vector(air_short[stat])),
+                                            air_short$time,type="LinReg - Full",
+                                            miss=miss5)
+  
+  # rmse_detrdeseas(air5_sarima_full_recover[stat],
+  #                 air_short[stat],
+  #                 air_short$time,
+  #                 miss=miss5,
+  #                 plot=F)
+  # 
+  # rmse_detrdeseas(air5_tkr_full_recover[stat],
+  #                 air_short[stat],
+  #                 air_short$time,
+  #                 miss=miss5,
+  #                 plot=F)
+  # 
+  # rmse_detrdeseas(air5_naive_full_recover[stat],
+  #                 air_short[stat],
+  #                 air_short$time,
+  #                 miss=miss5,
+  #                 plot=F)
+  # 
+  # 
+  # rmse_detrdeseas(air5_lr_full_recover[stat],
+  #                 air_short[stat],
+  #                 air_short$time,
+  #                 miss=miss5,
+  #                 plot=F)
+  
+  
+  PG_5full<- ggarrange(plot_air5_sarima_full_recover$plot,
+                       plot_air5_tkr_full_recover$plot,
+                       #plot_air5_SDEM_full_recover$plot,
+                       plot_air5_lr_full_recover$plot,
+                       plot_air5_naive_full_recover$plot,
+                       ncol=2,nrow=2,
+                       common.legend = T,
+                       legend="bottom")
+  
+  
+  #windows()
+  PFULL=annotate_figure(PG_5full, top = text_grob(stat, 
+                                                  color = "Black", face = "bold", size = 14))
+  
+  ###
+  time=air_short$time[-(1:24)]
+  air5_sarima_hw_res_recover=df_recover(air5_sarima_hw_res,air5_hw_sarima,loess=F,locations2,time)
+  air5_tkr_hw_res_recover=df_recover(air5_tkr_hw_res,air5_hw_tkr,loess=F,locations2,time)
+  #air5_SDEM_hw_res_recover=df_recover(air5_SDEM_hw_res,air5_hw_SDEM,loess=F,locations2,time)
+  air5_lr_hw_res_recover=df_recover(air5_lr_hw_res,air5_hw_lr,loess=F,locations2,time)
+  air5_naive_hw_res_recover=df_recover(air5_naive_hw_res,air5_hw_naive,loess=F,locations2,time)
+  
+  #miss5=range(which(is.na(air_5$VIGANEGO)))
+  plot_air5_sarima_hw_res_recover=rmse_detrdeseas(unlist(as.vector(air5_sarima_hw_res_recover[stat])),
+                                                  unlist(as.vector(air_short[stat]))[-(1:24)],
+                                                  air_short$time[-(1:24)],type="ARIMA - HW",
+                                                  miss=miss5)
+  
+  
+  plot_air5_tkr_hw_res_recover=rmse_detrdeseas(unlist(as.vector(air5_tkr_hw_res_recover[stat])),
+                                               unlist(as.vector(air_short[stat]))[-(1:24)],
+                                               air_short$time[-(1:24)],type="TKR - HW",
+                                               miss=miss5)
+  plot_air5_lr_hw_res_recover=rmse_detrdeseas(unlist(as.vector(air5_lr_hw_res_recover[stat])),
+                                              unlist(as.vector(air_short[stat]))[-(1:24)],
+                                              air_short$time[-(1:24)],type="LinReg - HW",
+                                              miss=miss5)
+  
+  plot_air5_naive_hw_res_recover=rmse_detrdeseas(unlist(as.vector(air5_naive_hw_res_recover[stat])),
+                                                 unlist(as.vector(air_short[stat]))[-(1:24)],
+                                                 air_short$time[-(1:24)],type="Naive - HW",
+                                                 miss=miss5)
+  
+  
+  PG_5HW<- ggarrange(plot_air5_sarima_hw_res_recover$plot,
+                     plot_air5_tkr_hw_res_recover$plot,
+                     #plot_air5_SDEM_hw_res_recover$plot,
+                     plot_air5_lr_hw_res_recover$plot,
+                     plot_air5_naive_hw_res_recover$plot,
+                     ncol=2,nrow=2,
+                     common.legend = T,
+                     legend="bottom")
+  
+  #windows()
+  PHW=annotate_figure(PG_5HW, top = text_grob(stat, 
+                                              color = "Black", face = "bold", size = 14))
+  
+  ###
+  time=air_short$time
+  air5_sarima_loess_res_recover=df_recover(air5_sarima_loess_res,air5_loess_sarima,loess=T,locations2,time)
+  air5_tkr_loess_res_recover=df_recover(air5_tkr_loess_res,air5_loess_tkr,loess=T,locations2,time)
+  #air5_SDEM_hw_res_recover=df_recover(air5_SDEM_hw_res,air5_hw_SDEM,loess=F,locations2,time)
+  air5_lr_loess_res_recover=df_recover(air5_lr_loess_res,air5_loess_lr,loess=T,locations2,time)
+  air5_naive_loess_res_recover=df_recover(air5_naive_loess_res,air5_loess_naive,loess=T,locations2,time)
+  
+  #miss5=range(which(is.na(air_5$VIGANEGO)))
+  plot_air5_sarima_loess_res_recover=rmse_detrdeseas(unlist(as.vector(air5_sarima_loess_res_recover[stat])),
+                                                     unlist(as.vector(air_short[stat])),
+                                                     air_short$time,type="ARIMA - LOESS",
+                                                     miss=miss5)
+  
+  
+  plot_air5_tkr_loess_res_recover=rmse_detrdeseas(unlist(as.vector(air5_tkr_loess_res_recover[stat])),
+                                                  unlist(as.vector(air_short[stat])),
+                                                  air_short$time,type="TKR - LOESS",
+                                                  miss=miss5)
+  plot_air5_lr_loess_res_recover=rmse_detrdeseas(unlist(as.vector(air5_lr_loess_res_recover[stat])),
+                                                 unlist(as.vector(air_short[stat])),
+                                                 air_short$time,type="LinReg - LOESS",
+                                                 miss=miss5)
+  
+  plot_air5_naive_loess_res_recover=rmse_detrdeseas(unlist(as.vector(air5_naive_loess_res_recover[stat])),
+                                                    unlist(as.vector(air_short[stat])),
+                                                    air_short$time,type="Naive - LOESS",
+                                                    miss=miss5)
+  
+  
+  PG_5loess<- ggarrange(plot_air5_sarima_loess_res_recover$plot,
+                        plot_air5_tkr_loess_res_recover$plot,
+                        #plot_air5_SDEM_hw_res_recover$plot,
+                        plot_air5_lr_loess_res_recover$plot,
+                        plot_air5_naive_loess_res_recover$plot,
+                        ncol=2,nrow=2,
+                        common.legend = T,
+                        legend="bottom")
+  
+  #windows()
+  PLOESS=annotate_figure(PG_5loess, top = text_grob(stat, 
+                                                    color = "Black", face = "bold", size = 14))
+  return(list(PFULL,PHW,PLOESS))
+  
+}
+
+pviganego5=plotres_krg("VIGANEGO")
+windows()
+pviganego5[[1]]
+windows()
+pviganego5[[2]]
+windows()
+pviganego5[[3]]
+
+pmontepennello5=plotres_krg("MADONNADELLEGRAZIE")
+windows()
+pmontepennello5[[1]]
+windows()
+pmontepennello5[[2]]
+windows()
+pmontepennello5[[3]]
+
+pgenovaquezzi5=plotres_krg("GENOVAQUEZZI")
+windows()
+pgenovaquezzi5[[1]]
+windows()
+pgenovaquezzi5[[2]]
+windows()
+pgenovaquezzi5[[3]]
+
+pmontepennello5=plotres_krg("DAVAGNA")
+windows()
+pmontepennello5[[1]]
+windows()
+pmontepennello5[[2]]
+windows()
+pmontepennello5[[3]]
+
+psellagiassina5=plotres_krg("SELLAGIASSINA")
+windows()
+psellagiassina5[[1]]
+windows()
+psellagiassina5[[2]]
+windows()
+psellagiassina5[[3]]
