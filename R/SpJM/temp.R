@@ -27,6 +27,27 @@ Z[,3,]=YY3$YY
 
 initial_states=cbind(YY1$true_states,YY2$true_states,YY3$true_states);initial_states
 
+#####
+source("Utils.R")
+YY=sim_data_mixed(seed=123,
+                 TT=100,
+                 P=10,
+                 Ktrue=3,
+                 mu=1,
+                 phi=.8,
+                 rho=0,
+                 Pcat=NULL,
+                 pers=.95,
+                 pNAs=0,
+                 typeNA=2)
+
+Y=YY$SimData.NA
+prv=jump_mixed(Y,3,jump_penalty = 1)
+
+prvemp=jump_mixed(enth_tab4,2,jump_penalty = .1)
+prvemp$best_s
+
+
 ### spatial JM
 source("utils.R")
 Mtrue=900

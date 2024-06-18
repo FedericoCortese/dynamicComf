@@ -606,7 +606,7 @@ Mode <- function(x,na.rm=T) {
   }
   ux <- unique(x)
   ux[which.max(tabulate(match(x, ux)))]
-  
+
 }
 
 initialize_states <- function(Y, K) {
@@ -645,11 +645,11 @@ initialize_states <- function(Y, K) {
 }
 
 jump_mixed <- function(Y, n_states, jump_penalty=1e-5, 
-                  initial_states=NULL,
-                  max_iter=10, n_init=10, tol=NULL, verbose=FALSE
-                  # , 
-                  # method="gower"
-                  ) {
+                       initial_states=NULL,
+                       max_iter=10, n_init=10, tol=NULL, verbose=FALSE
+                       # , 
+                       # method="gower"
+) {
   # Fit jump model using framework of Bemporad et al. (2018)
   
   # Arguments:
@@ -666,7 +666,7 @@ jump_mixed <- function(Y, n_states, jump_penalty=1e-5,
   # List with state sequence and imputed data
   
   n_states=as.integer(n_states)
-
+  
   n_obs <- nrow(Y)
   n_features <- ncol(Y)
   Gamma <- jump_penalty * (1 - diag(n_states))
@@ -719,11 +719,11 @@ jump_mixed <- function(Y, n_states, jump_penalty=1e-5,
   Y[,cat.indx]=Ycat
   
   # State initialization through kmeans++
-   if (!is.null(initial_states)) {
-     s <- initial_states
-   } else {
-     s=initialize_states(Y,n_states)
-   }
+  if (!is.null(initial_states)) {
+    s <- initial_states
+  } else {
+    s=initialize_states(Y,n_states)
+  }
   
   for (init in 1:n_init) {
     mu <- matrix(0, nrow=n_states, ncol=n_features-length(cat.indx))
@@ -734,8 +734,8 @@ jump_mixed <- function(Y, n_states, jump_penalty=1e-5,
       for (i in unique(s)) {
         # Fit model by updating mean of observed states
         #if(sum(s==i)>1){
-          mu[i,] <- colMeans(Ycont[s==i,])
-          mo[i,]=apply(Ycat[s==i,],2,Mode)
+        mu[i,] <- colMeans(Ycont[s==i,])
+        mo[i,]=apply(Ycat[s==i,],2,Mode)
         # }
         # else{
         #   mu[i,]=mean(Y[s==i,])
@@ -747,7 +747,7 @@ jump_mixed <- function(Y, n_states, jump_penalty=1e-5,
       for(i in 1:n_cat){
         mo[,i]=factor(mo[,i],levels=1:n_levs[i])
       }
-
+      
       # Fit state sequence
       s_old <- s
       
@@ -774,7 +774,7 @@ jump_mixed <- function(Y, n_states, jump_penalty=1e-5,
       
       
       # var.weights in gower.dist allows for weighted distance
-  
+      
       loss_by_state=gower.dist(Y,mumo)
       
       V <- loss_by_state
@@ -816,6 +816,265 @@ jump_mixed <- function(Y, n_states, jump_penalty=1e-5,
               Y=Y,
               Y.orig=Ytil,
               condMM=mumo))
+}
+
+jump_mixed2 <- function(Y, n_states, jump_penalty=1e-5, 
+                  initial_states=NULL,
+                  max_iter=10, n_init=10, tol=NULL, verbose=FALSE
+                  # , 
+                  # method="gower"
+                  ) {
+  # Updated version of function jump_mixed (work in progress)
+  
+  # Fit jump model using framework of Bemporad et al. (2018)
+  
+  # Arguments:
+  # Y: data.frame with mixed data types. Categorical variables must be factors.
+  # n_states: number of states
+  # jump_penalty: penalty for the number of jumps
+  # initial_states: initial state sequence
+  # max_iter: maximum number of iterations
+  # n_init: number of initializations
+  # tol: tolerance for convergence
+  # verbose: print progress
+  
+  # Value:
+  # List with state sequence and imputed data
+  
+  
+  Ynoscaled=Y
+  
+  #########
+  ## NEW ##
+  timeflag=F
+  if(is.POSIXct(Y[,1])|is.POSIXlt(Y[,1])|is.POSIXt(Y[,1])|is.Date(Y[,1])){
+    timeflag=T
+    
+    time=Y[,1]
+    dtime=diff(time)
+    dtime=dtime/as.numeric(min(dtime))
+    dtime=as.numeric(dtime)
+    Y=Y[,-1]
+    for(i in 1:ncol(Y)){
+      if(is.numeric(Y[,i])){
+        Y[,i]=as.numeric(scale(Y[,i]))
+      }
+    }
+    Ynoscaled=Ynoscaled[,-1]
+  }
+  else{
+    for(i in 1:ncol(Y)){
+      if(is.numeric(Y[,i])){
+        Y[,i]=as.numeric(scale(Y[,i]))
+      }
+    }
+  }
+  #########
+  
+  n_states=as.integer(n_states)
+
+  n_obs <- nrow(Y)
+  n_features <- ncol(Y)
+  Gamma <- jump_penalty * (1 - diag(n_states))
+  best_loss <- NULL
+  best_s <- NULL
+  
+  # Which vars are categorical and which are numeric
+  
+  cat.indx=which(sapply(Y, is.factor))
+  cont.indx=which(sapply(Y, is.numeric))
+  Ycont=Y[,-cat.indx]
+  Ycat=Y[,cat.indx]
+  
+  n_levs=apply(Ycat, 2, function(x)length(unique(x)))
+  # n_levs=apply(Ycat, 2, function(x)levels(x))
+  
+  
+  n_cat=length(cat.indx)
+  n_cont=n_features-n_cat
+  
+  # Initialize mu 
+  mu <- colMeans(Ycont,na.rm = T)
+  
+  # Initialize modes
+  mo <- apply(Ycat,2,Mode)
+  
+  # Track missings with 0 1 matrix
+  Mcont=ifelse(is.na(Ycont),T,F)
+  Mcat=ifelse(is.na(Ycat),T,F)
+  
+  #M=ifelse(is.na(Y),T,F)
+  
+  
+  Ytil=Y
+  # Impute missing values with mean of observed states
+  for(i in 1:n_cont){
+    Ycont[,i]=ifelse(Mcont[,i],mu[i],Ycont[,i])
+  }
+  for(i in 1:n_cat){
+    x=Ycat[,i]
+    Ycat[which(is.na(Ycat[,i])),i]=mo[i]
+    #Ycat[,i]=ifelse(Mcat[,i],mo[i],Ycat[,i])
+    #Ycat[,i]=factor(Ycat[,i],levels=unique(x[!is.na(x)]))
+  }
+  
+  # Ycat=Ycat%>%mutate_all(factor)
+  # for(i in 1:n_cat){
+  #   Ycat[,i]=factor(Ycat[,i],levels=1:n_levs[i])
+  # }
+  
+  Y[,-cat.indx]=Ycont
+  Y[,cat.indx]=Ycat
+  
+  # State initialization through kmeans++
+   if (!is.null(initial_states)) {
+     s <- initial_states
+   } else {
+     s=initialize_states(Y,n_states)
+   }
+  
+  for (init in 1:n_init) {
+    mu <- matrix(0, nrow=n_states, ncol=n_features-length(cat.indx))
+    mo <- matrix(0, nrow=n_states, ncol=length(cat.indx))
+    loss_old <- 1e10
+    for (it in 1:max_iter) {
+      
+      for (i in unique(s)) {
+        # Fit model by updating mean of observed states
+        #if(sum(s==i)>1){
+          mu[i,] <- colMeans(Ycont[s==i,])
+          mo[i,]=apply(Ycat[s==i,],2,Mode)
+        # }
+        # else{
+        #   mu[i,]=mean(Y[s==i,])
+        # }
+      }
+      
+      mu=data.frame(mu)
+      mo=data.frame(mo,stringsAsFactors=TRUE)
+      for(i in 1:n_cat){
+        #mo[,i]=factor(mo[,i],levels=1:n_levs[i])
+        mo[,i]=factor(mo[,i],levels=unique(Ycat[,i]))
+        
+      }
+
+      # Fit state sequence
+      s_old <- s
+      
+      # Re-fill-in missings
+      for(i in 1:ncol(Ycont)){
+        Ycont[,i]=ifelse(Mcont[,i],mu[s,i],Ycont[,i])
+      }
+      for(i in 1:ncol(Ycat)){
+        Ycat[Mcat[,i],i]=mo[s[Mcat[,i]],i]
+        #Ycat[,i]=ifelse(Mcat[,i],mo[s,i],Ycat[,i])
+        #Ycat[,i]=factor(Ycat[,i],levels=1:n_levs[i])
+      }
+      
+      Y[,-cat.indx]=Ycont
+      Y[,cat.indx]=Ycat
+      
+      mumo=data.frame(matrix(0,nrow=n_states,ncol=n_features))
+      mumo[,cat.indx]=mo
+      mumo[,cont.indx]=mu
+      
+      # loss_by_state=matrix(0,nrow=n_obs,ncol=n_states)
+      # for(k in 1:n_states){
+      #   loss_by_state[,k]=gower.dist(Y,mumo[k,])
+      # }
+      
+      
+      # var.weights in gower.dist allows for weighted distance
+  
+      loss_by_state=gower.dist(Y,mumo)
+      
+      V <- loss_by_state
+      for (t in (n_obs-1):1) {
+        if(timeflag){
+          V[t-1,] <- loss_by_state[t-1,] + apply(V[t,]/dtime[t] + Gamma, 2, min)
+        }
+        else{
+          V[t-1,] <- loss_by_state[t-1,] + apply(V[t,] + Gamma, 2, min)
+        }
+      }
+      
+      s[1] <- which.min(V[1,])
+      for (t in 2:n_obs) {
+        s[t] <- which.min(V[t,] + Gamma[s[t-1],])
+      }
+      
+      if (length(unique(s)) == 1) {
+        break
+      }
+      loss <- min(V[1,])
+      if (verbose) {
+        cat(sprintf('Iteration %d: %.6e\n', it, loss))
+      }
+      if (!is.null(tol)) {
+        epsilon <- loss_old - loss
+        if (epsilon < tol) {
+          break
+        }
+      } else if (all(s == s_old)) {
+        break
+      }
+      loss_old <- loss
+    }
+    if (is.null(best_s) || (loss_old < best_loss)) {
+      best_loss <- loss_old
+      best_s <- s
+    }
+    #s <- init_states(Y, n_states)+1
+    s=initialize_states(Y,n_states)
+  }
+  
+  ### NEW ###
+  # Final imputation
+
+  Ycont=Ynoscaled[,-cat.indx]
+  Ycat=Ynoscaled[,cat.indx]
+  
+  rescont=data.frame(state=best_s,Ycont)
+  rescat=data.frame(state=best_s,Ycat)
+  
+  mu=matrix(0,nrow=n_states,ncol=n_cont)
+  mo=matrix(0,nrow=n_states,ncol=n_cat)
+  
+  for (i in unique(best_s)) {
+    mu[i,] <- colMeans(Ycont[s==i,],na.rm=T)
+    mo[i,] <- as.numeric(apply(Ycat[s==i,],2,Mode,na.rm=T))
+  }
+  
+  mu=data.frame(mu)
+  mo=data.frame(mo,stringsAsFactors=TRUE)
+  for(i in 1:n_cat){
+    x=Ycat[,i]
+    #mo[,i]=factor(mo[,i],levels=1:n_levs[i])
+    mo[,i]=factor(mo[,i],levels=unique(x[!is.na(x)]))
+  }
+  
+  for(i in 1:ncol(Ycont)){
+    Ycont[,i]=ifelse(Mcont[,i],mu[s,i],Ycont[,i])
+  }
+  for(i in 1:ncol(Ycat)){
+    x=Ycat[,i]
+    
+    Ycat[,i]=ifelse(Mcat[,i],mo[best_s,i],Ycat[,i])
+    Ycat[,i]=factor(Ycat[,i],levels=unique(x[!is.na(x)]))
+  }
+  Y[,-cat.indx]=Ycont
+  Y[,cat.indx]=Ycat
+  mumo=data.frame(matrix(0,nrow=n_states,ncol=n_features))
+  mumo[,cat.indx]=mo
+  mumo[,cont.indx]=mu
+  ######
+  
+  
+  return(list(best_s=best_s,
+              Y=Y,
+              Y.orig=Ytil,
+              condMM=mumo,
+              res=res))
 }
 
 
