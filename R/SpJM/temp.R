@@ -33,16 +33,17 @@ Mtrue=900
 sqMtrue=sqrt(Mtrue)
 sp_indx=matrix(1:Mtrue,ncol=sqMtrue,byrow=T)
 C=Cmatrix(sp_indx)
-P=50
+P=10
 seed=1
-spDat=sim_spatial_JM(P,C,seed=sample(1:10,1),pers_fact=0.05,rho=0.5,Pcat=NULL, phi=.8,mu=3)
+spDat=sim_spatial_JM(P,C,seed=sample(1:10,1),rho=0.5,Pcat=NULL, phi=.8,mu=3,pNAs=.1)
 Strue=matrix(order_states_freq(spDat$s),ncol=sqMtrue,byrow=T)
 im=packPotts(Strue,ncolor=3)
 windows()
 image(im,main="True states")
-Y=spDat$Y
+Y=spDat$SimData
+Y=spDat$SimData.NA
 
-lambdas=seq(0,10,by=1)
+lambdas=seq(11,20,by=1)
 ARIs=rep(0,length(lambdas))
 Ss=list()
 
@@ -53,10 +54,11 @@ for(i in 1:length(lambdas)){
   print(i)
 }
 
+windows()
 plot(lambdas,ARIs,type="l")
 ARIs
 
-est_states=matrix(order_states_freq(Ss[[11]]),ncol=sqMtrue,byrow=T)
+est_states=matrix(order_states_freq(Ss[[1]]),ncol=sqMtrue,byrow=T)
 im_est=packPotts(est_states,ncolor=3)
 windows()
 image(im_est,main="Estimated states")

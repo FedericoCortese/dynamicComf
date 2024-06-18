@@ -12,6 +12,7 @@ library(multiUS)
 library(missForest)
 library(parallel)
 library(MCMCprecision)
+require("potts")
 #py_install("scipy")
 
 # Import the python module
@@ -1544,27 +1545,33 @@ Cmatrix=function(sp_indx){
   return(C)
 }
 
-sim_spatial_JM=function(P,C,seed,pers_fact=4,rho=0,Pcat=NULL, phi=.8,mu=1){
+sim_spatial_JM=function(P,C,seed,
+                        #pers_fact=4,
+                        rho=0,Pcat=NULL, phi=.8,
+                        mu=3,pNAs=0){
   
-  # This function simulates data from a spatial jump model
+  # This function simulates data from a 3-states spatial jump model (to be updated)
   
   # Arguments:
   # P: number of features
   # C: adjacency matrix of dimension MxM, where M is the desired number of spatial points
   # seed: seed for the random number generator
-  # pers_fact: persistence factor
   # rho: correlation for the variables
   # Pcat: number of categorical variables
   # phi: conditional probability for the categorical outcome k in state k
   # mu: mean value for the continuous variables
+  # pNAs: percentage of missing values (random missing pattern by default)
   
   # Value:
   # A list with the following elements:
-  # Y: a data frame with the simulated data. 
-  # s: a matrix with the simulated states
+  # SimData: a data frame with the simulated data. 
+  # SimData.NA: a data frame with the simulated data with missing values
+  # s: a vector with the simulated states
   
   # Continuous variables are simulated from a Gaussian distribution with mean specified in mumo and unitary st. dev.
   # Categorical variables are obtained censoring the continuous variables in three intervals, the central of which has probability equal to phi
+  
+  # The function simulates only 3-states spatial JM (to be updated).
   
   if(is.null(Pcat)){
     Pcat=floor(P/2)
@@ -1576,7 +1583,7 @@ sim_spatial_JM=function(P,C,seed,pers_fact=4,rho=0,Pcat=NULL, phi=.8,mu=1){
   #s=rep(0,M)
   set.seed(seed)
   
-  require("potts")
+  #require("potts")
   ncolor = as.integer(n_states) # transizione di fase continua per 1 <= ncolor <= 4
   nr = sqrt(M)
   nc = sqrt(M)
@@ -1640,7 +1647,17 @@ sim_spatial_JM=function(P,C,seed,pers_fact=4,rho=0,Pcat=NULL, phi=.8,mu=1){
     SimData[,1:Pcat]=SimData[,1:Pcat]%>%mutate_all(as.factor)
   }
   
-  return(list(Y=SimData,s=s))
+  if(pNAs>0){
+    SimData.NA=apply(SimData,2,punct,pNAs=pNAs,type=0)
+    SimData.NA=as.data.frame(SimData.NA)
+    SimData.NA[,1:Pcat]=SimData.NA[,1:Pcat]%>%mutate_all(as.factor)
+    SimData.NA[,-(1:Pcat)]=SimData.NA[,-(1:Pcat)]%>%mutate_all(as.numeric)
+  }
+  else{
+    return(list(SimData=SimData,s=s))
+  }
+  
+  return(list(SimData=SimData,SimData.NA=SimData.NA,s=s))
 }
 
 spatial_jump <- function(Y,C, n_states, jump_penalty=1e-5, 
@@ -1815,6 +1832,64 @@ spatial_jump <- function(Y,C, n_states, jump_penalty=1e-5,
               Y=Y,
               Y.orig=Ytil,
               condMM=mumo))
+}
+
+simstud_spatialJM=function(Ktrue=3,
+                           seed,
+                           gamma,
+                           M,
+                           P,
+                           #Ktrue=3,
+                           mu=3,
+                           phi=.8,
+                           rho=0,
+                           Pcat=NULL,
+                           pNAs=0){
+  
+  # Remember to assume squared areas (M=4,100,900,...)
+  
+  sp_indx=1:M
+  sp_indx=matrix(sp_indx,ncol=sqrt(M),byrow=T)
+  
+  C=Cmatrix(sp_indx)
+  simDat=sim_spatial_JM(P,C,seed,
+                        rho=rho,Pcat=Pcat, phi=phi,
+                        mu=mu,pNAs=pNAs)
+  
+  Y=simDat$SimData.NA
+  # Estimate
+  est=spatial_jump(Y,C, n_states=Ktrue, 
+                   jump_penalty=gamma, 
+                   initial_states=NULL,
+                   max_iter=10, n_init=10, tol=NULL, 
+                   verbose=T)
+  
+  est$Y=est$Y%>%mutate_if(is.factor,factor,levels=c(1,2,3))
+  simDat$SimData=simDat$SimData%>%
+    mutate_if(is.factor,factor,levels=c(1,2,3))
+  
+  imput.err=gower_dist(est$Y,simDat$SimData)
+  ARI=adj.rand.index(est$best_s,simDat$s)
+  
+  # Return
+  return(list(
+    imput.err=imput.err,
+    ARI=ARI,
+    seed=seed,
+    gamma=gamma,
+    M=M,
+    P=P,
+    Ktrue=Ktrue,
+    mu=mu,
+    phi=phi,
+    rho=rho,
+    Pcat=Pcat,
+    pNAs=pNAs,
+    true_seq=simDat$s,
+    est_seq=est$best_s,
+    true_data=simDat$SimData,
+    est_data=est$Y))
+  
 }
 
 
