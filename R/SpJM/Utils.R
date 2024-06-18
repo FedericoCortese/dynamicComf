@@ -1654,7 +1654,7 @@ sim_spatial_JM=function(P,C,seed,
     SimData.NA[,-(1:Pcat)]=SimData.NA[,-(1:Pcat)]%>%mutate_all(as.numeric)
   }
   else{
-    return(list(SimData=SimData,s=s))
+    SimData.NA=SimData
   }
   
   return(list(SimData=SimData,SimData.NA=SimData.NA,s=s))
@@ -1862,7 +1862,7 @@ simstud_spatialJM=function(Ktrue=3,
                    jump_penalty=gamma, 
                    initial_states=NULL,
                    max_iter=10, n_init=10, tol=NULL, 
-                   verbose=T)
+                   verbose=F)
   
   est$Y=est$Y%>%mutate_if(is.factor,factor,levels=c(1,2,3))
   simDat$SimData=simDat$SimData%>%
