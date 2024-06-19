@@ -820,9 +820,8 @@ jump_mixed <- function(Y, n_states, jump_penalty=1e-5,
 
 jump_mixed2 <- function(Y, n_states, jump_penalty=1e-5, 
                   initial_states=NULL,
-                  max_iter=10, n_init=10, tol=NULL, verbose=FALSE
-                  # , 
-                  # method="gower"
+                  max_iter=10, n_init=10, tol=NULL, verbose=FALSE,
+                  timeflag=T
                   ) {
   # Updated version of function jump_mixed (work in progress)
   
@@ -841,33 +840,23 @@ jump_mixed2 <- function(Y, n_states, jump_penalty=1e-5,
   # Value:
   # List with state sequence and imputed data
   
-  
+  Y=data.frame(Y)
   Ynoscaled=Y
   
   #########
   ## NEW ##
-  timeflag=F
-  if(is.POSIXct(Y[,1])|is.POSIXlt(Y[,1])|is.POSIXt(Y[,1])|is.Date(Y[,1])){
-    timeflag=T
-    
+  #timeflag=F
+  if(timeflag){
     time=Y[,1]
     dtime=diff(time)
     dtime=dtime/as.numeric(min(dtime))
     dtime=as.numeric(dtime)
     Y=Y[,-1]
-    for(i in 1:ncol(Y)){
-      if(is.numeric(Y[,i])){
-        Y[,i]=as.numeric(scale(Y[,i]))
-      }
-    }
+    Y=Y%>%mutate_if(is.numeric,function(x)as.numeric(scale(x)))
     Ynoscaled=Ynoscaled[,-1]
   }
   else{
-    for(i in 1:ncol(Y)){
-      if(is.numeric(Y[,i])){
-        Y[,i]=as.numeric(scale(Y[,i]))
-      }
-    }
+    Y=Y%>%mutate_if(is.numeric,function(x)as.numeric(scale(x)))
   }
   #########
   
@@ -886,7 +875,7 @@ jump_mixed2 <- function(Y, n_states, jump_penalty=1e-5,
   Ycont=Y[,-cat.indx]
   Ycat=Y[,cat.indx]
   
-  n_levs=apply(Ycat, 2, function(x)length(unique(x)))
+  # n_levs=apply(Ycat, 2, function(x)length(unique(x)))
   # n_levs=apply(Ycat, 2, function(x)levels(x))
   
   
@@ -906,7 +895,7 @@ jump_mixed2 <- function(Y, n_states, jump_penalty=1e-5,
   #M=ifelse(is.na(Y),T,F)
   
   
-  Ytil=Y
+  # Ytil=Y
   # Impute missing values with mean of observed states
   for(i in 1:n_cont){
     Ycont[,i]=ifelse(Mcont[,i],mu[i],Ycont[,i])
@@ -940,21 +929,15 @@ jump_mixed2 <- function(Y, n_states, jump_penalty=1e-5,
     for (it in 1:max_iter) {
       
       for (i in unique(s)) {
-        # Fit model by updating mean of observed states
-        #if(sum(s==i)>1){
-          mu[i,] <- colMeans(Ycont[s==i,])
-          mo[i,]=apply(Ycat[s==i,],2,Mode)
-        # }
-        # else{
-        #   mu[i,]=mean(Y[s==i,])
-        # }
+        mu[i,] <- colMeans(Ycont[s==i,])
+        mo[i,]=apply(Ycat[s==i,],2,Mode)
       }
       
       mu=data.frame(mu)
       mo=data.frame(mo,stringsAsFactors=TRUE)
       for(i in 1:n_cat){
         #mo[,i]=factor(mo[,i],levels=1:n_levs[i])
-        mo[,i]=factor(mo[,i],levels=unique(Ycat[,i]))
+        mo[,i]=factor(mo[,i],levels=levels(Ycat[,i]))
         
       }
 
@@ -977,7 +960,7 @@ jump_mixed2 <- function(Y, n_states, jump_penalty=1e-5,
       mumo=data.frame(matrix(0,nrow=n_states,ncol=n_features))
       mumo[,cat.indx]=mo
       mumo[,cont.indx]=mu
-      
+      colnames(mumo)=colnames(Y)
       # loss_by_state=matrix(0,nrow=n_obs,ncol=n_states)
       # for(k in 1:n_states){
       #   loss_by_state[,k]=gower.dist(Y,mumo[k,])
@@ -1034,9 +1017,6 @@ jump_mixed2 <- function(Y, n_states, jump_penalty=1e-5,
   Ycont=Ynoscaled[,-cat.indx]
   Ycat=Ynoscaled[,cat.indx]
   
-  rescont=data.frame(state=best_s,Ycont)
-  rescat=data.frame(state=best_s,Ycat)
-  
   mu=matrix(0,nrow=n_states,ncol=n_cont)
   mo=matrix(0,nrow=n_states,ncol=n_cat)
   
@@ -1050,31 +1030,29 @@ jump_mixed2 <- function(Y, n_states, jump_penalty=1e-5,
   for(i in 1:n_cat){
     x=Ycat[,i]
     #mo[,i]=factor(mo[,i],levels=1:n_levs[i])
-    mo[,i]=factor(mo[,i],levels=unique(x[!is.na(x)]))
+    mo[,i]=factor(mo[,i],levels=levels(Ycat[,i]))
   }
   
   for(i in 1:ncol(Ycont)){
-    Ycont[,i]=ifelse(Mcont[,i],mu[s,i],Ycont[,i])
+    Ycont[,i]=ifelse(Mcont[,i],mu[best_s,i],Ycont[,i])
   }
+  
   for(i in 1:ncol(Ycat)){
-    x=Ycat[,i]
-    
-    Ycat[,i]=ifelse(Mcat[,i],mo[best_s,i],Ycat[,i])
-    Ycat[,i]=factor(Ycat[,i],levels=unique(x[!is.na(x)]))
+    Ycat[Mcat[,i],i]=mo[best_s[Mcat[,i]],i]
   }
+  
   Y[,-cat.indx]=Ycont
   Y[,cat.indx]=Ycat
   mumo=data.frame(matrix(0,nrow=n_states,ncol=n_features))
   mumo[,cat.indx]=mo
   mumo[,cont.indx]=mu
+  colnames(mumo)=colnames(Y)
   ######
-  
   
   return(list(best_s=best_s,
               Y=Y,
-              Y.orig=Ytil,
-              condMM=mumo,
-              res=res))
+              Y.orig=Ynoscaled,
+              condMM=mumo))
 }
 
 
@@ -1376,7 +1354,7 @@ simstud_JMmixed=function(seed,lambda,TT,P,
                  n_states=Ktrue,
                  jump_penalty = lambda,
                  verbose=F)
-  
+
   est$Y=est$Y%>%mutate_if(is.factor,factor,levels=c(1,2,3))
   simDat$SimData.complete=simDat$SimData.complete%>%
     mutate_if(is.factor,factor,levels=c(1,2,3))
@@ -1405,6 +1383,81 @@ simstud_JMmixed=function(seed,lambda,TT,P,
     true_data=simDat$SimData.complete,
     est_data=est$Y))
 
+}
+
+simstud_JMmixed2=function(seed,lambda,TT,P,
+                         Ktrue=3,mu=1,
+                         phi=.8,rho=0,
+                         Pcat=NULL,pers=.95,
+                         pNAs=0,typeNA=2,
+                         timeflag=T,
+                         pGap=.2){
+  
+  # Additional timeflag for unequally spaced time series
+  # pGap is the percentage of missing times 
+  # Simulate
+  simDat=sim_data_mixed(seed=seed,
+                        TT=round(TT*(1+pGap)),
+                        P=P,
+                        Ktrue=Ktrue,
+                        mu=mu,
+                        phi=phi,
+                        rho=rho,
+                        Pcat=Pcat,
+                        pers=pers,
+                        pNAs=pNAs,
+                        typeNA=typeNA)
+  set.seed(seed)
+  gaps=sort(sample(1:TT,round(TT*pGap),replace=F))
+  
+  time=1:(TT*(1+pGap))
+  time=time[-gaps]
+  time=as.Date(time)
+  
+  Y=simDat$SimData.NA[-gaps,]
+  Y=data.frame(time,Y)
+  simDat$SimData.complete=simDat$SimData.complete[-gaps,]
+  simDat$mchain=simDat$mchain[-gaps]
+  simDat$TT=TT
+
+  # Estimate
+  # est=jump_mixed(simDat$SimData.NA,
+  #                n_states=Ktrue,
+  #                jump_penalty = lambda,
+  #                verbose=F)
+  est=jump_mixed2(Y,
+                  n_states=Ktrue,
+                  jump_penalty = lambda,
+                  verbose=F,timeflag=timeflag)
+  
+  est$Y=est$Y%>%mutate_if(is.factor,factor,levels=c(1,2,3))
+  simDat$SimData.complete=simDat$SimData.complete%>%
+    mutate_if(is.factor,factor,levels=c(1,2,3))
+  
+  imput.err=gower_dist(est$Y,simDat$SimData.complete)
+  ARI=adj.rand.index(est$best_s,simDat$mchain)
+  
+  # Return
+  return(list(
+    imput.err=imput.err,
+    ARI=ARI,
+    seed=seed,
+    lambda=lambda,
+    TT=TT,
+    P=P,
+    Ktrue=Ktrue,
+    mu=mu,
+    phi=phi,
+    rho=rho,
+    Pcat=Pcat,
+    pers=pers,
+    pNAs=pNAs,
+    typeNA=typeNA,
+    true_seq=simDat$mchain,
+    est_seq=est$best_s,
+    true_data=simDat$SimData.complete,
+    est_data=est$Y))
+  
 }
 
 simstud_speclust=function(seed,TT,P,
