@@ -29,9 +29,9 @@ est=lapply(lambda,function(l){
   )
 })
 
-# ARI_res=unlist(lapply(est,function(e){adj.rand.index(e$best_s,gt_thermal)}))
-# res=data.frame(ARI_res,lambda)
-# plot(res$lambda,res$ARI_res,type="l",xlab="lambda",ylab="ARI",main="ARI vs lambda")
+ARI_res=unlist(lapply(est,function(e){adj.rand.index(e$best_s,gt_thermal)}))
+res=data.frame(ARI_res,lambda)
+plot(res$lambda,res$ARI_res,type="l",xlab="lambda",ylab="ARI",main="ARI vs lambda")
 
 res[which.max(res$ARI_res),]
 best_est=est[[which.max(res$ARI_res)]]
