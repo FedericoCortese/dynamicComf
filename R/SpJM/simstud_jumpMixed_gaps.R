@@ -3,6 +3,10 @@ TT=c(50,100,500)
 P=c(25,50,75)
 seeds=1:100
 
+# lambda=seq(0,1,by=.5)
+# TT=c(50)
+# P=c(20)
+# seeds=1:2
 source("Utils.R")
 
 hp=expand.grid(TT=TT,P=P,lambda=lambda,seed=seeds)

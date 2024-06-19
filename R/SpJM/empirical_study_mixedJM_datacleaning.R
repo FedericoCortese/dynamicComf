@@ -29,7 +29,8 @@ enth_tab$time=as.POSIXct(enth_tab$time,format="%Y-%m-%d %H:%M:%S")
 
 str(enth_tab)
 
-wdn="10 mins"
+#wdn="10 mins"
+wdn="5 mins"
 enth_tab2=enth_tab%>%
   group_by(time=floor_date(time,wdn))%>%
   summarise_if(is.numeric, mean, na.rm = TRUE) 
@@ -53,10 +54,11 @@ sort(cc$av)
 cc$max.t
 cc$t
 # Waaaaay better
-enth_tab_av$time[(156-56):155]
-
+#enth_tab_av$time[(156-56):155]
+enth_tab_av$time[(194-80):194-1]
 #wdn2=(cc$t-1-cc$max.t):cc$t
-wdn2=(156-56):155
+#wdn2=(156-56):155
+wdn2=(194-80):194-1
 
 enth_tab3=enth_tab_av[wdn2,]
 Amelia::missmap(enth_tab3)
@@ -148,33 +150,72 @@ str(enth_tab4)
 save(enth_tab4,file="enth_tab4.RData")
 
 Amelia::missmap(enth_tab4)
-source("Utils.R")
-lambda=.2
-n_states=2
+# source("Utils.R")
+# lambda=.2
+# n_states=2
+# enth_tab5=enth_tab4
+# enth_tab5=enth_tab5%>%mutate_if(is.numeric,function(x)as.numeric(scale(x)))
+# 
+# est=jump_mixed(enth_tab5[,-1], n_states, jump_penalty=lambda, 
+#                initial_states=NULL,
+#                max_iter=10, n_init=10, tol=NULL, verbose=T) 
+# 
+# res=data.frame(enth_tab4,state=est$best_s)
+# tapply(res$temp,res$state,mean,na.rm=T)
+# tapply(res$humidity,res$state,mean,na.rm=T)
+# tapply(res$pressure,res$state,mean,na.rm=T)
+# 
+# # Included? Maybe not
+# table(res$thermal,res$state)
+# 
+# # No comfort, only thermal
+# table(res$comfort,res$state)
+# 
+# tapply(res$met,res$state,Mode,na.rm=T)
+# tapply(res$indoor.outdoor,res$state,Mode,na.rm=T)
+# tapply(res$heartrate,res$state,mean,na.rm=T)
+# tapply(enth_tab4$resting_heartrate,res$state,mean,na.rm=T)
+# tapply(enth_tab4$skin_temp,res$state,mean,na.rm=T)
+# tapply(enth_tab4$nb_temp,res$state,mean,na.rm=T)
+# 
+# # Try categorical
+# tapply(enth_tab4$air_vel,res$state,mean,na.rm=T)
+
+enth_tab4$air_vel=round(enth_tab4$air_vel)
+enth_tab4$air_vel=as.factor(enth_tab4$air_vel) # 10=slightly perceived, 11=perceived
+enth_tab4$clothing=floor(enth_tab4$clothing)
+enth_tab4$clothing=as.factor(enth_tab4$clothing)
+
+# Ground truth "thermal"
+gt_thermal=enth_tab4$thermal
+enth_tab4=select(enth_tab4,subset=-c(thermal,comfort,
+                                     pm1.0_outdoor,pm10.0_outdoor,
+                                     pm2.5_outdoor))
+
+str(enth_tab4)
+
 enth_tab5=enth_tab4
-enth_tab5=enth_tab5%>%mutate_if(is.numeric,function(x)as.numeric(scale(x)))
 
-est=jump_mixed(enth_tab5[,-1], n_states, jump_penalty=lambda, 
-               initial_states=NULL,
-               max_iter=10, n_init=10, tol=NULL, verbose=T) 
+# Interaction terms
+enth_tab5$temp_hum=as.numeric(scale(enth_tab5$temp))*as.numeric(scale(enth_tab5$humidity))
+enth_tab5$temp_press=as.numeric(scale(enth_tab5$temp))*as.numeric(scale(enth_tab5$pressure))
+enth_tab5$hum_press=as.numeric(scale(enth_tab5$humidity))*as.numeric(scale(enth_tab5$pressure))
+enth_tab5$temp_heart=as.numeric(scale(enth_tab5$temp))*as.numeric(scale(enth_tab5$heartrate))
+enth_tab5$hum_heart=as.numeric(scale(enth_tab5$humidity))*as.numeric(scale(enth_tab5$heartrate))
+enth_tab5$press_heart=as.numeric(scale(enth_tab5$pressure))*as.numeric(scale(enth_tab5$heartrate))
+enth_tab5$temp_resthr=as.numeric(scale(enth_tab5$temp))*as.numeric(scale(enth_tab5$resting_heartrate))
+enth_tab5$hum_resthr=as.numeric(scale(enth_tab5$humidity))*as.numeric(scale(enth_tab5$resting_heartrate))
+enth_tab5$press_resthr=as.numeric(scale(enth_tab5$pressure))*as.numeric(scale(enth_tab5$resting_heartrate))
+enth_tab5$temp_nbtemp=as.numeric(scale(enth_tab5$temp))*as.numeric(scale(enth_tab5$nb_temp))
+enth_tab5$hum_nbtemp=as.numeric(scale(enth_tab5$humidity))*as.numeric(scale(enth_tab5$nb_temp))
+enth_tab5$press_nbtemp=as.numeric(scale(enth_tab5$pressure))*as.numeric(scale(enth_tab5$nb_temp))
+enth_tab5$temp_skintemp=as.numeric(scale(enth_tab5$temp))*as.numeric(scale(enth_tab5$skin_temp))
+enth_tab5$hum_skintemp=as.numeric(scale(enth_tab5$humidity))*as.numeric(scale(enth_tab5$skin_temp))
+enth_tab5$press_skintemp=as.numeric(scale(enth_tab5$pressure))*as.numeric(scale(enth_tab5$skin_temp))
 
-res=data.frame(enth_tab4,state=est$best_s)
-tapply(res$temp,res$state,mean,na.rm=T)
-tapply(res$humidity,res$state,mean,na.rm=T)
-tapply(res$pressure,res$state,mean,na.rm=T)
+# replaca NaN with NA
+enth_tab5[,-1]=enth_tab5[,-1]%>% mutate_if(is.numeric,~ifelse(is.nan(.), NA, .))
 
-# Included? Maybe not
-table(res$thermal,res$state)
+# Save 
 
-# No comfort, only thermal
-table(res$comfort,res$state)
-
-tapply(res$met,res$state,Mode,na.rm=T)
-tapply(res$indoor.outdoor,res$state,Mode,na.rm=T)
-tapply(res$heartrate,res$state,mean,na.rm=T)
-tapply(enth_tab4$resting_heartrate,res$state,mean,na.rm=T)
-tapply(enth_tab4$skin_temp,res$state,mean,na.rm=T)
-tapply(enth_tab4$nb_temp,res$state,mean,na.rm=T)
-
-# Try categorical
-tapply(enth_tab4$air_vel,res$state,mean,na.rm=T)
+save(enth_tab5,gt_thermal,file="enth_tab5.RData")
