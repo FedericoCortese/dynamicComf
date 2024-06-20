@@ -1,3 +1,7 @@
+library(doParallel)
+library(snow)
+library(doSNOW)
+###
 lambda=seq(0,1,by=.05)
 TT=c(50,100,500)
 P=c(25,50,75)
@@ -14,24 +18,55 @@ hp=expand.grid(TT=TT,P=P,lambda=lambda,seed=seeds)
 
 # mu=1 rho=0 --------------------------------------------------------------
 
+# start_gaps=Sys.time()
+# mixedJM_gaps <- parallel::mclapply(1:nrow(hp),
+#                                       function(x)
+#                                         simstud_JMmixed2(
+#                                           seed=hp[x,]$seed,
+#                                           lambda=hp[x,]$lambda,
+#                                           TT=hp[x,]$TT,
+#                                           P=hp[x,]$P,
+#                                           Ktrue=3,mu=1,
+#                                           phi=.8,rho=0,
+#                                           Pcat=NULL,pers=.95,
+#                                           pNAs=0,typeNA=2,timeflag=T),
+#                                       mc.cores = parallel::detectCores()-1)
+# 
+# 
+# end_gaps=Sys.time()
+# elapsed_gaps=end_gaps-start_gaps
+# save(mixedJM_gaps,elapsed_gaps,file="mixedJM_gaps.RData")
+
 start_gaps=Sys.time()
-mixedJM_gaps <- parallel::mclapply(1:nrow(hp),
-                                      function(x)
-                                        simstud_JMmixed2(
-                                          seed=hp[x,]$seed,
-                                          lambda=hp[x,]$lambda,
-                                          TT=hp[x,]$TT,
-                                          P=hp[x,]$P,
-                                          Ktrue=3,mu=1,
-                                          phi=.8,rho=0,
-                                          Pcat=NULL,pers=.95,
-                                          pNAs=0,typeNA=2,timeflag=T),
-                                      mc.cores = parallel::detectCores()-1)
-
-
+cl<-makeCluster(parallel::detectCores(),type="SOCK")
+parallel::clusterExport(cl,ls())
+parallel::clusterEvalQ(cl,{library(RcppHMM)
+  library(reticulate)
+  library(pdfCluster)
+  library(boot)
+  library(xtable)
+  library(dplyr)
+  library(cluster)
+  library(gower)
+  library(StatMatch)})
+mixedJM_gaps <- clusterApply(cl,
+                             1:nrow(hp),
+                             function(x)
+                               simstud_JMmixed2(
+                                 seed=hp[x,]$seed,
+                                 lambda=hp[x,]$lambda,
+                                 TT=hp[x,]$TT,
+                                 P=hp[x,]$P,
+                                 Ktrue=3,mu=1,
+                                 phi=.8,rho=0,
+                                 Pcat=NULL,pers=.95,
+                                 pNAs=0,typeNA=2,timeflag=T)
+)
+stopCluster(cl)
 end_gaps=Sys.time()
 elapsed_gaps=end_gaps-start_gaps
 save(mixedJM_gaps,elapsed_gaps,file="mixedJM_gaps.RData")
+rm(mixedJM_gaps,elapsed_gaps)
 
 
 # mu=1 rho=0.2 ------------------------------------------------------------

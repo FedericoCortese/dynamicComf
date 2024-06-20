@@ -1302,11 +1302,12 @@ get_cat=function(y,mc,mu,phi){
   # mu: numeric mean value
   # phi: conditional probability for the categorical outcome k in state k
   
-  #mu=c(-mu,0,mu)
-  K=length(unique(mc))
-  mu=seq(-mu,mu,length.out=K)
-  phi1=(1-phi)/(K-1)
-
+  mu=c(-mu,0,mu)
+  #K=length(unique(mc))
+  #mu=seq(-mu,mu,length.out=K)
+  #phi1=(1-phi)/(K-1)
+  phi1=(1-phi)/2
+  
   TT=length(y)
   for(i in 1:TT){
     k=mc[i]
@@ -1375,9 +1376,105 @@ punct=function(x,pNAs,typeNA){
   
 }
 
-
-
 sim_data_mixed=function(seed=123,
+                        TT,
+                        P,
+                        Ktrue=3,
+                        mu=1,
+                        phi=.8,
+                        rho=0,
+                        Pcat=NULL,
+                        pers=.95,
+                        pNAs=0,
+                        typeNA=2){
+  
+  # Function to simulate mixed data with fixed parameters for the data generating process
+  
+  # Arguments:
+  # seed: seed for the random number generator
+  # TT: number of observations
+  # P: number of features
+  # Ktrue: number of states
+  # mu: mean value for the continuous variables
+  # phi: conditional probability for the categorical outcome k in state k
+  # rho: correlation for the variables
+  # Pcat: number of categorical variables
+  # pers: self-transition probability
+  # pNAs: percentage of missing values
+  # typeNA is the type of missing values (0 for random, 1 for continuous, all other values will turn into no missing imputation)
+  
+  # value:
+  # SimData: matrix of simulated data
+  
+  mu=c(-mu,0,mu)
+  
+  if(is.null(Pcat)){
+    Pcat=floor(P/2)
+  }
+  
+  # Markov chain simulation
+  x <- numeric(TT)
+  Q <- matrix(rep((1-pers)/(Ktrue-1),Ktrue*Ktrue), 
+              ncol = Ktrue,
+              byrow = TRUE)
+  diag(Q)=rep(pers,Ktrue)
+  init <- rep(1/Ktrue,Ktrue)
+  set.seed(seed)
+  x[1] <- sample(1:Ktrue, 1, prob = init)
+  for(i in 2:TT){
+    x[i] <- sample(1:Ktrue, 1, prob = Q[x[i - 1], ])
+  }
+  
+  # Continuous variables simulation
+  Sigma <- matrix(rho,ncol=P,nrow=P)
+  diag(Sigma)=1
+  
+  Sim = matrix(0, TT, P * Ktrue)
+  SimData = matrix(0, TT, P)
+  
+  set.seed(seed)
+  for(k in 1:Ktrue){
+    u = MASS::mvrnorm(TT,rep(mu[k],P),Sigma)
+    Sim[, (P * k - P + 1):(k * P)] = u
+  }
+  
+  for (i in 1:TT) {
+    k = x[i]
+    SimData[i, ] = Sim[i, (P * k - P + 1):(P * k)]
+    #SimDataCat[i, ] = SimCat[i, (Pcat * k - Pcat + 1):(Pcat * k)]
+  }
+  
+  if(Pcat!=0){
+    SimData[,1:Pcat]=apply(SimData[,1:Pcat],2,get_cat,mc=x,mu=mu,phi=phi)
+    SimData=as.data.frame(SimData)
+    SimData[,1:Pcat]=SimData[,1:Pcat]%>%mutate_all(as.factor)
+  }
+  
+  if(typeNA==0|typeNA==1){
+    SimData.NA=apply(SimData,2,punct,pNAs=pNAs,type=typeNA)
+    SimData.NA=as.data.frame(SimData.NA)
+    SimData.NA[,1:Pcat]=SimData.NA[,1:Pcat]%>%mutate_all(as.factor)
+    SimData.NA[,-(1:Pcat)]=SimData.NA[,-(1:Pcat)]%>%mutate_all(as.numeric)
+  }
+  else{
+    SimData.NA=SimData
+  }
+  
+  return(list(
+    SimData.NA=SimData.NA,
+    SimData.complete=SimData,
+    mchain=x,
+    TT=TT,
+    P=P,
+    Ktrue=Ktrue,
+    pers=pers, 
+    seed=seed))
+  
+}
+
+
+
+sim_data_mixed2=function(seed=123,
                         TT,
                         P,
                         Ktrue=3,
