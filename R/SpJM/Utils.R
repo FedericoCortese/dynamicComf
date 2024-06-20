@@ -55,6 +55,11 @@ order_states_freq=function(states){
 
 get_BCD <- function(Y, states) {
   
+  n_states=length(unique(states))
+  n_obs <- nrow(Y)
+  n_features <- ncol(Y)
+  
+  
   Y=Y%>%mutate_if(is.numeric,function(x)as.numeric(scale(x)))
   
   cat.indx=which(sapply(Y, is.factor))
@@ -64,34 +69,6 @@ get_BCD <- function(Y, states) {
   Ycat=Y[,cat.indx]
   n_cat=length(cat.indx)
   n_cont=n_features-n_cat
-  
-  n_states=length(unique(states))
-  
-  n_obs <- nrow(Y)
-  n_features <- ncol(Y)
-  
-  # Compute conditional means and modes
-  mu=matrix(0,nrow=n_states,ncol=n_cont)
-  mo=matrix(0,nrow=n_states,ncol=n_cat)
-  
-  for (i in unique(states)) {
-    mu[i,] <- colMeans(Ycont[states==i,],na.rm=T)
-    mo[i,] <- as.numeric(apply(Ycat[states==i,],2,Mode,na.rm=T))
-  }
-  
-  mu=data.frame(mu)
-  mo=data.frame(mo,stringsAsFactors=TRUE)
-  for(i in 1:n_cat){
-    x=Ycat[,i]
-    #mo[,i]=factor(mo[,i],levels=1:n_levs[i])
-    mo[,i]=factor(mo[,i],levels=levels(Ycat[,i]))
-  }
-  
-  mumo=data.frame(matrix(0,nrow=n_states,ncol=n_features))
-  mumo[,cat.indx]=mo
-  mumo[,cont.indx]=mu
-  condMM=mumo
-  colnames(condMM)=colnames(Y)
   
   # Unconditional means
   mu <- colMeans(Ycont,na.rm = T)
@@ -118,18 +95,46 @@ get_BCD <- function(Y, states) {
     TD[j]=sum(gower.dist(Y[,j],uncondMM[,j]))
   }
   
-  
-  # The following can be written easier (TBD)
-  WCD=matrix(0,ncol=n_states,nrow=n_features)
-  
-  for (i in unique(states)) {
-    for(j in 1:n_features){
-      temp=gower.dist(Y[,j],condMM[i,j])
-      WCD[j,i]=sum(temp[states==i])
-    }    
+  if(length(unique(states))==1){
+    WCD=TD
   }
-  WCD=rowSums(WCD)
-  #}
+  
+  else{
+    # Compute conditional means and modes
+    mu=matrix(0,nrow=n_states,ncol=n_cont)
+    mo=matrix(0,nrow=n_states,ncol=n_cat)
+    
+    for (i in unique(states)) {
+      mu[i,] <- colMeans(Ycont[states==i,],na.rm=T)
+      mo[i,] <- as.numeric(apply(Ycat[states==i,],2,Mode,na.rm=T))
+    }
+    
+    mu=data.frame(mu)
+    mo=data.frame(mo,stringsAsFactors=TRUE)
+    for(i in 1:n_cat){
+      x=Ycat[,i]
+      #mo[,i]=factor(mo[,i],levels=1:n_levs[i])
+      mo[,i]=factor(mo[,i],levels=levels(Ycat[,i]))
+    }
+    
+    mumo=data.frame(matrix(0,nrow=n_states,ncol=n_features))
+    mumo[,cat.indx]=mo
+    mumo[,cont.indx]=mu
+    condMM=mumo
+    colnames(condMM)=colnames(Y)
+    
+    
+    # The following can be written easier (TBD)
+    WCD=matrix(0,ncol=n_states,nrow=n_features)
+    
+    for (i in unique(states)) {
+      for(j in 1:n_features){
+        temp=gower.dist(Y[,j],condMM[i,j])
+        WCD[j,i]=sum(temp[states==i])
+      }    
+    }
+    WCD=rowSums(WCD)
+  }
   
   BCD=TD-WCD
   
@@ -1132,12 +1137,63 @@ jump_mixed2 <- function(Y, n_states, jump_penalty=1e-5,
   colnames(mumo)=colnames(Y)
   ######
   
+  best_s=factor(best_s)
+  levels(best_s)=1:length(unique(best_s))
+  best_s=as.numeric(best_s)
+  
+  
   return(list(best_s=best_s,
               Y=Y,
               Y.orig=Ynoscaled,
               condMM=mumo))
 }
 
+GIC_mixed=function(Y,states,states_sat,K,K0=NULL,pers0=.95,timeflag=F,Ksat=6,lambda=NULL){
+  
+  # Returns error when unique(states) are less than K (TBD)
+  
+  if(is.null(K0)){
+    K0=length(unique(states))
+  }
+  
+  #K=length(unique(states))
+  if(timeflag){
+    Y=Y[,-1]
+  }
+  PP=ncol(Y)
+  N=nrow(Y)
+  kappa=sqrt(PP)
+  alpha0=PP
+  alphak=alpha0
+  
+  DD=get_BCD(Y,states)
+  DDsat=get_BCD(Y,states_sat)
+  
+  CKp=-log(K)-log(2*pi)*kappa/2
+  CKp_sat=-log(Ksat)-log(2*pi)*sqrt(PP)/2
+  CKp_diff=CKp_sat-CKp
+  
+  anFTIC=log(log(N))*log(PP)
+  anAIC=rep(2,length(N))
+  anBIC=log(N)
+  
+  pen=sum(states[1:(N-1)]!=states[2:N])
+  pen0=(1-pers0)*N*(K0-1)
+  
+  TotalPenalty=(alpha0+pen0)*K+K0*(alphak-alpha0+pen-pen0) 
+  Ln=sum(DD$BCD)
+  Lnsat=sum(DDsat$BCD)
+  Ln_diff=Lnsat-Ln
+  
+  FTIC=2*CKp_diff+(Ln_diff+anFTIC*TotalPenalty)/N
+  BIC=2*CKp_diff+(Ln_diff+anBIC*TotalPenalty)/N
+  AIC=2*CKp_diff+(Ln_diff+anAIC*TotalPenalty)/N
+  
+  
+  return(list(FTIC=FTIC,
+              BIC=BIC,
+              AIC=AIC))
+}
 
 sim_data_mixed_rand=function(TT,P,Ktrue,pers, seed=123){
   
@@ -1246,8 +1302,10 @@ get_cat=function(y,mc,mu,phi){
   # mu: numeric mean value
   # phi: conditional probability for the categorical outcome k in state k
   
-  mu=c(-mu,0,mu)
-  phi1=(1-phi)/2;phi1
+  #mu=c(-mu,0,mu)
+  K=length(unique(mc))
+  mu=seq(-mu,mu,length.out=K)
+  phi1=(1-phi)/(K-1)
 
   TT=length(y)
   for(i in 1:TT){
@@ -1349,7 +1407,9 @@ sim_data_mixed=function(seed=123,
   # value:
   # SimData: matrix of simulated data
   
-  mu=c(-mu,0,mu)
+ # mu=c(-mu,0,mu)
+  MU=mu
+  mu=seq(-mu,mu,length.out=Ktrue)
   
   if(is.null(Pcat)){
     Pcat=floor(P/2)
@@ -1388,7 +1448,7 @@ sim_data_mixed=function(seed=123,
   }
   
   if(Pcat!=0){
-  SimData[,1:Pcat]=apply(SimData[,1:Pcat],2,get_cat,mc=x,mu=mu,phi=phi)
+  SimData[,1:Pcat]=apply(SimData[,1:Pcat],2,get_cat,mc=x,mu=MU,phi=phi)
   SimData=as.data.frame(SimData)
   SimData[,1:Pcat]=SimData[,1:Pcat]%>%mutate_all(as.factor)
   }

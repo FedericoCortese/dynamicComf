@@ -28,6 +28,7 @@ Z[,3,]=YY3$YY
 initial_states=cbind(YY1$true_states,YY2$true_states,YY3$true_states);initial_states
 
 #####
+
 source("Utils.R")
 YY=sim_data_mixed(seed=123,
                  TT=100,
@@ -42,7 +43,35 @@ YY=sim_data_mixed(seed=123,
                  typeNA=2)
 
 Y=YY$SimData.NA
-prv=jump_mixed(Y,3,jump_penalty = 1)
+#prv1=jump_mixed2(Y,3,jump_penalty = .1,timeflag = F)
+
+lambda=seq(0,1,by=.025)
+res=lapply(lambda,function(x){
+  est=jump_mixed2(Y=Y,6,jump_penalty = x,timeflag = F)
+  dev=get_BCD(Y,est$best_s)
+  WCD=dev$WCD
+  BCD=dev$BCD
+  return(list(WCD=sum(WCD),
+              BCD=sum(BCD),
+              K=length(unique(est$best_s))))
+})
+
+wcd_lam=data.frame(WCD=unlist(lapply(res,function(x){x$WCD})),
+                   BCD=unlist(lapply(res,function(x){x$BCD})),
+                   K=unlist(lapply(res,function(x){x$K})),
+                   lambda)
+
+plot(wcd_lam$lambda,wcd_lam$K,type="l")
+plot(wcd_lam$lambda,wcd_lam$BCD,type="l",ylab="BCD",xlab="lambda")
+
+wcd_lam
+
+
+plot(wcd_lam$K,wcd_lam$WCD,type="l")
+
+
+states=prv$best_s
+condMM=prv$condMM
 
 prvemp=jump_mixed(enth_tab4,2,jump_penalty = .1)
 prvemp$best_s
