@@ -53,6 +53,89 @@ order_states_freq=function(states){
   return(states_temp)
 }
 
+get_BCD <- function(Y, states) {
+  
+  Y=Y%>%mutate_if(is.numeric,function(x)as.numeric(scale(x)))
+  
+  cat.indx=which(sapply(Y, is.factor))
+  cont.indx=which(sapply(Y, is.numeric))
+  
+  Ycont=Y[,-cat.indx]
+  Ycat=Y[,cat.indx]
+  n_cat=length(cat.indx)
+  n_cont=n_features-n_cat
+  
+  n_states=length(unique(states))
+  
+  n_obs <- nrow(Y)
+  n_features <- ncol(Y)
+  
+  # Compute conditional means and modes
+  mu=matrix(0,nrow=n_states,ncol=n_cont)
+  mo=matrix(0,nrow=n_states,ncol=n_cat)
+  
+  for (i in unique(states)) {
+    mu[i,] <- colMeans(Ycont[states==i,],na.rm=T)
+    mo[i,] <- as.numeric(apply(Ycat[states==i,],2,Mode,na.rm=T))
+  }
+  
+  mu=data.frame(mu)
+  mo=data.frame(mo,stringsAsFactors=TRUE)
+  for(i in 1:n_cat){
+    x=Ycat[,i]
+    #mo[,i]=factor(mo[,i],levels=1:n_levs[i])
+    mo[,i]=factor(mo[,i],levels=levels(Ycat[,i]))
+  }
+  
+  mumo=data.frame(matrix(0,nrow=n_states,ncol=n_features))
+  mumo[,cat.indx]=mo
+  mumo[,cont.indx]=mu
+  condMM=mumo
+  colnames(condMM)=colnames(Y)
+  
+  # Unconditional means
+  mu <- colMeans(Ycont,na.rm = T)
+  mu=matrix(mu,nrow=1)
+  mu=data.frame(mu)
+  # Unconditional modes
+  mo <- apply(Ycat,2,Mode)
+  mo=matrix(mo,nrow=1)
+  mo=data.frame(mo)
+  for(i in 1:n_cat){
+    x=Ycat[,i]
+    mo[,i]=factor(mo[,i],levels=levels(Ycat[,i]))
+  }
+  
+  mumo=data.frame(matrix(0,nrow=1,ncol=n_features))
+  mumo[,cat.indx]=mo
+  mumo[,-cat.indx]=mu
+  uncondMM=mumo
+  colnames(uncondMM)=colnames(Y)
+  
+  # Find TD (total deviance)
+  TD=rep(0,n_features)
+  for(j in 1:n_features){
+    TD[j]=sum(gower.dist(Y[,j],uncondMM[,j]))
+  }
+  
+  
+  # The following can be written easier (TBD)
+  WCD=matrix(0,ncol=n_states,nrow=n_features)
+  
+  for (i in unique(states)) {
+    for(j in 1:n_features){
+      temp=gower.dist(Y[,j],condMM[i,j])
+      WCD[j,i]=sum(temp[states==i])
+    }    
+  }
+  WCD=rowSums(WCD)
+  #}
+  
+  BCD=TD-WCD
+  
+  return(list(BCD=BCD,TD=TD,WCD=WCD))
+}
+
 
 # Ordinary JM -------------------------------------------------------------
 
@@ -1021,8 +1104,8 @@ jump_mixed2 <- function(Y, n_states, jump_penalty=1e-5,
   mo=matrix(0,nrow=n_states,ncol=n_cat)
   
   for (i in unique(best_s)) {
-    mu[i,] <- colMeans(Ycont[s==i,],na.rm=T)
-    mo[i,] <- as.numeric(apply(Ycat[s==i,],2,Mode,na.rm=T))
+    mu[i,] <- colMeans(Ycont[best_s==i,],na.rm=T)
+    mo[i,] <- as.numeric(apply(Ycat[best_s==i,],2,Mode,na.rm=T))
   }
   
   mu=data.frame(mu)
@@ -1412,7 +1495,7 @@ simstud_JMmixed2=function(seed,lambda,TT,P,
   
   time=1:(TT*(1+pGap))
   time=time[-gaps]
-  time=as.Date(time)
+  time=as.Date(time,origin="2000-01-01")
   
   Y=simDat$SimData.NA[-gaps,]
   Y=data.frame(time,Y)
