@@ -172,3 +172,68 @@ end_gaps_mu05=Sys.time()
 elapsed_gaps_mu05=end_gaps_mu05-start_gaps_mu05
 save(mixedJM_gaps_mu05,elapsed_gaps_mu05,file="mixedJM_gaps_mu05.RData")
 rm(mixedJM_gaps_mu05,elapsed_gaps_mu05)
+
+
+# Spectral clustering -----------------------------------------------------
+
+hp_comp=expand.grid(TT=TT,P=P,seed=seeds)
+
+
+
+
+# Results -----------------------------------------------------------------
+
+load("C:/Users/federico/OneDrive - CNR/Comfort - HMM/simres/mixJM gaps/mixedJM_gaps.RData")
+load("C:/Users/federico/OneDrive - CNR/Comfort - HMM/simres/mixJM gaps/mixedJM_gaps_mu05.RData")
+load("C:/Users/federico/OneDrive - CNR/Comfort - HMM/simres/mixJM gaps/mixedJM_gaps_rho02.RData")
+
+res_eval=function(res_obj,hp,lambda0=F,ARI=T){
+  library(dplyr)
+  
+  if(ARI){
+    res=data.frame(hp,ARI=unlist(lapply(res_obj,function(x)x$ARI)),
+                   imput.err=unlist(lapply(res_obj,function(x)mean(x$imput.err)))
+    )
+    
+    # maxres=res%>%group_by(TT,P)%>%summarise(maxARI=max(ARI,na.rm=T))
+    
+    if(lambda0){
+      res=res[which(res$lambda==0),]
+      res%>%group_by(TT,P)%>%summarise(avARI=median(ARI,na.rm=T),
+                                       avErr=mean(imput.err))
+    }
+    
+    else{
+      avres=res%>%group_by(TT,P,lambda)%>%summarise(avARI=median(ARI,na.rm=T),
+                                                    avErr=mean(imput.err))
+      
+      avres%>%group_by(TT,P)%>%summarise(maxARI=max(avARI),
+                                         lambda=lambda[which.max(avARI)],
+                                         avErr=avErr[which.max(avARI)])
+    }
+  }
+  else{
+    res=data.frame(hp,
+                   #ARI=unlist(lapply(res_obj,function(x)x$ARI)),
+                   imput.err=unlist(lapply(res_obj,function(x)mean(x$imput.err)))
+    )
+    res%>%group_by(TT,P)%>%summarise(
+      #avARI=median(ARI,na.rm=T),
+      avErr=mean(imput.err))
+  }
+  
+}
+
+res_eval(mixedJM_gaps,hp)
+res_eval(mixedJM_gaps,hp,lambda0=T)
+res_eval(mixedJM_no.miss_specluster,hp,lambda0=T)
+
+res_eval(mixedJM_gaps_mu05,hp,lambda0=F)
+res_eval(mixedJM_gaps_mu05,hp,lambda0=T)
+res_eval(mixedJM_no.miss_specluster_mu05,hp,lambda0=T)
+
+
+res_eval(mixedJM_gaps_rho02,hp,lambda0=F)
+res_eval(mixedJM_gaps_rho02,hp,lambda0=T)
+res_eval(mixedJM_no.miss_specluster_rho02,hp,lambda0=T)
+

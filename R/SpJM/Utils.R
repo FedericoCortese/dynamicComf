@@ -1756,6 +1756,77 @@ simstud_speclust=function(seed,TT,P,
   
 }
 
+simstud_speclust2=function(seed,TT,P,
+                          Ktrue=3,mu=1,
+                          phi=.8,rho=0,
+                          Pcat=NULL,pers=.95,
+                          pNAs=0,typeNA=2,pGap=.2){
+  # Simulate
+  simDat=sim_data_mixed(seed=seed,
+                        TT=round(TT*(1+pGap)),
+                        P=P,
+                        Ktrue=Ktrue,
+                        mu=mu,
+                        phi=phi,
+                        rho=rho,
+                        Pcat=Pcat,
+                        pers=pers,
+                        pNAs=pNAs,
+                        typeNA=typeNA)
+  
+  # Gaps
+  set.seed(seed)
+  gaps=sort(sample(1:TT,round(TT*pGap),replace=F))
+  
+  time=1:(TT*(1+pGap))
+  time=time[-gaps]
+  time=as.Date(time,origin="2000-01-01")
+  
+  Y=simDat$SimData.NA[-gaps,]
+  Y=data.frame(time,Y)
+  simDat$SimData.complete=simDat$SimData.complete[-gaps,]
+  simDat$mchain=simDat$mchain[-gaps]
+  simDat$TT=TT
+  
+  # Estimate
+  # est=jump_mixed(simDat$SimData.NA,
+  #                n_states=Ktrue,
+  #                jump_penalty = lambda,
+  #                verbose=F)
+  est=mspec(simDat$SimData.complete, k = Ktrue,verbose=T)
+  
+  # est$Y=est$Y%>%mutate_if(is.factor,factor,levels=c(1,2,3))
+  # simDat$SimData.complete=simDat$SimData.complete%>%
+  #   mutate_if(is.factor,factor,levels=c(1,2,3))
+  # 
+  # imput.err=gower_dist(est$Y,simDat$SimData.complete)
+  ARI=adj.rand.index(est$cluster,simDat$mchain)
+  
+  # Return
+  return(list(
+    #imput.err=imput.err,
+    ARI=ARI,
+    seed=seed,
+    lambda=lambda,
+    TT=TT,
+    P=P,
+    Ktrue=Ktrue,
+    mu=mu,
+    phi=phi,
+    rho=rho,
+    Pcat=Pcat,
+    pers=pers,
+    pNAs=pNAs,
+    typeNA=typeNA,
+    true_seq=simDat$mchain,
+    est_seq=est$cluster
+    # ,
+    # true_data=simDat$SimData.complete,
+    # est_data=est$Y
+  ))
+  
+}
+
 simstud_kNN=function(seed,
                      TT,P,
                           Ktrue=3,mu=1,
