@@ -1,5 +1,7 @@
 load("enth_tab5.Rdata")
 
+# Percentage of NAs for each var
+sapply(enth_tab5,function(x){sum(is.na(x))/length(x)})*100
 
 # Summ stat ---------------------------------------------------------------
 
