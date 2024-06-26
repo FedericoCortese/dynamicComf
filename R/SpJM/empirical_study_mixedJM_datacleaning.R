@@ -197,6 +197,73 @@ str(enth_tab4)
 enth_tab5=enth_tab4
 
 # Interaction terms
+# enth_tab5$temp_hum=as.numeric(scale(enth_tab5$temp))*as.numeric(scale(enth_tab5$humidity))
+# enth_tab5$temp_press=as.numeric(scale(enth_tab5$temp))*as.numeric(scale(enth_tab5$pressure))
+# enth_tab5$hum_press=as.numeric(scale(enth_tab5$humidity))*as.numeric(scale(enth_tab5$pressure))
+# enth_tab5$temp_heart=as.numeric(scale(enth_tab5$temp))*as.numeric(scale(enth_tab5$heartrate))
+# enth_tab5$hum_heart=as.numeric(scale(enth_tab5$humidity))*as.numeric(scale(enth_tab5$heartrate))
+# enth_tab5$press_heart=as.numeric(scale(enth_tab5$pressure))*as.numeric(scale(enth_tab5$heartrate))
+# enth_tab5$temp_resthr=as.numeric(scale(enth_tab5$temp))*as.numeric(scale(enth_tab5$resting_heartrate))
+# enth_tab5$hum_resthr=as.numeric(scale(enth_tab5$humidity))*as.numeric(scale(enth_tab5$resting_heartrate))
+# enth_tab5$press_resthr=as.numeric(scale(enth_tab5$pressure))*as.numeric(scale(enth_tab5$resting_heartrate))
+# enth_tab5$temp_nbtemp=as.numeric(scale(enth_tab5$temp))*as.numeric(scale(enth_tab5$nb_temp))
+# enth_tab5$hum_nbtemp=as.numeric(scale(enth_tab5$humidity))*as.numeric(scale(enth_tab5$nb_temp))
+# enth_tab5$press_nbtemp=as.numeric(scale(enth_tab5$pressure))*as.numeric(scale(enth_tab5$nb_temp))
+# enth_tab5$temp_skintemp=as.numeric(scale(enth_tab5$temp))*as.numeric(scale(enth_tab5$skin_temp))
+# enth_tab5$hum_skintemp=as.numeric(scale(enth_tab5$humidity))*as.numeric(scale(enth_tab5$skin_temp))
+# enth_tab5$press_skintemp=as.numeric(scale(enth_tab5$pressure))*as.numeric(scale(enth_tab5$skin_temp))
+
+# Correlations
+library(zoo)
+wdn=10
+enth_tab5$corr_temp_humidity=c(rep(NA,wdn-1),rollapply(apply(enth_tab5[,c("temp","humidity")],2,scale),
+                                                         width=wdn, function(x) cor(x[,1],x[,2],use="complete.obs"), 
+                                                         by.column=FALSE))
+enth_tab5$corr_temp_pressure=c(rep(NA,wdn-1),rollapply(apply(enth_tab5[,c("temp","pressure")],2,scale),
+                                                         width=wdn, function(x) cor(x[,1],x[,2],use="complete.obs"), 
+                                                         by.column=FALSE))
+enth_tab5$corr_humidity_pressure=c(rep(NA,wdn-1),rollapply(apply(enth_tab5[,c("humidity","pressure")],2,scale),
+                                                         width=wdn, function(x) cor(x[,1],x[,2],use="complete.obs"), 
+                                                         by.column=FALSE))
+enth_tab5$corr_temp_heart=c(rep(NA,wdn-1),rollapply(apply(enth_tab5[,c("temp","heartrate")],2,scale),
+                                                         width=wdn, function(x) cor(x[,1],x[,2],use="complete.obs"), 
+                                                         by.column=FALSE))
+enth_tab5$corr_humidity_heart=c(rep(NA,wdn-1),rollapply(apply(enth_tab5[,c("humidity","heartrate")],2,scale),
+                                                         width=wdn, function(x) cor(x[,1],x[,2],use="complete.obs"), 
+                                                         by.column=FALSE))
+enth_tab5$corr_pressure_heart=c(rep(NA,wdn-1),rollapply(apply(enth_tab5[,c("pressure","heartrate")],2,scale),
+                                                         width=wdn, function(x) cor(x[,1],x[,2],use="complete.obs"), 
+                                                         by.column=FALSE))
+enth_tab5$corr_temp_resthr=c(rep(NA,wdn-1),rollapply(apply(enth_tab5[,c("temp","resting_heartrate")],2,scale),
+                                                         width=wdn, function(x) cor(x[,1],x[,2],use="complete.obs"), 
+                                                         by.column=FALSE))
+enth_tab5$corr_humidity_resthr=c(rep(NA,wdn-1),rollapply(apply(enth_tab5[,c("humidity","resting_heartrate")],2,scale),
+                                                         width=wdn, function(x) cor(x[,1],x[,2],use="complete.obs"), 
+                                                         by.column=FALSE))
+enth_tab5$corr_pressure_resthr=c(rep(NA,wdn-1),rollapply(apply(enth_tab5[,c("pressure","resting_heartrate")],2,scale),
+                                                         width=wdn, function(x) cor(x[,1],x[,2],use="complete.obs"), 
+                                                         by.column=FALSE))
+enth_tab5$corr_temp_nbtemp=c(rep(NA,wdn-1),rollapply(apply(enth_tab5[,c("temp","nb_temp")],2,scale),
+                                                         width=wdn, function(x) cor(x[,1],x[,2],use="complete.obs"), 
+                                                         by.column=FALSE))
+enth_tab5$corr_humidity_nbtemp=c(rep(NA,wdn-1),rollapply(apply(enth_tab5[,c("humidity","nb_temp")],2,scale),
+                                                         width=wdn, function(x) cor(x[,1],x[,2],use="complete.obs"), 
+                                                         by.column=FALSE))
+enth_tab5$corr_pressure_nbtemp=c(rep(NA,wdn-1),rollapply(apply(enth_tab5[,c("pressure","nb_temp")],2,scale),
+                                                         width=wdn, function(x) cor(x[,1],x[,2],use="complete.obs"), 
+                                                         by.column=FALSE))
+enth_tab5$corr_temp_skintemp=c(rep(NA,wdn-1),rollapply(apply(enth_tab5[,c("temp","skin_temp")],2,scale),
+                                                         width=wdn, function(x) cor(x[,1],x[,2],use="complete.obs"), 
+                                                         by.column=FALSE))
+enth_tab5$corr_humidity_skintemp=c(rep(NA,wdn-1),rollapply(apply(enth_tab5[,c("humidity","skin_temp")],2,scale),
+                                                         width=wdn, function(x) cor(x[,1],x[,2],use="complete.obs"), 
+                                                         by.column=FALSE))
+enth_tab5$corr_pressure_skintemp=c(rep(NA,wdn-1),rollapply(apply(enth_tab5[,c("pressure","skin_temp")],2,scale),
+                                                         width=wdn, function(x) cor(x[,1],x[,2],use="complete.obs"), 
+                                                         by.column=FALSE))
+
+# Interaction terms
+# Interaction terms
 enth_tab5$temp_hum=as.numeric(scale(enth_tab5$temp))*as.numeric(scale(enth_tab5$humidity))
 enth_tab5$temp_press=as.numeric(scale(enth_tab5$temp))*as.numeric(scale(enth_tab5$pressure))
 enth_tab5$hum_press=as.numeric(scale(enth_tab5$humidity))*as.numeric(scale(enth_tab5$pressure))
@@ -213,7 +280,7 @@ enth_tab5$temp_skintemp=as.numeric(scale(enth_tab5$temp))*as.numeric(scale(enth_
 enth_tab5$hum_skintemp=as.numeric(scale(enth_tab5$humidity))*as.numeric(scale(enth_tab5$skin_temp))
 enth_tab5$press_skintemp=as.numeric(scale(enth_tab5$pressure))*as.numeric(scale(enth_tab5$skin_temp))
 
-# replaca NaN with NA
+# replace NaN with NA
 enth_tab5[,-1]=enth_tab5[,-1]%>% mutate_if(is.numeric,~ifelse(is.nan(.), NA, .))
 
 # Save 
