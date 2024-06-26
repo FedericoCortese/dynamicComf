@@ -29,7 +29,7 @@ enth_tab$time=as.POSIXct(enth_tab$time,format="%Y-%m-%d %H:%M:%S")
 
 str(enth_tab)
 
-#wdn="10 mins"
+#wdn="15 mins"
 wdn="5 mins"
 enth_tab2=enth_tab%>%
   group_by(time=floor_date(time,wdn))%>%
@@ -49,16 +49,19 @@ enth_tab_av=enth_tab2%>%group_by(time)%>%
   summarise_if(is.numeric, mean, na.rm = TRUE)
 
 cc=count_consecutive(enth_tab_av)
-cbind(cc$av,enth_tab_av$time)
+#cbind(cc$av,enth_tab_av$time)
 sort(cc$av)
 cc$max.t
 cc$t
 # Waaaaay better
 #enth_tab_av$time[(156-56):155]
-enth_tab_av$time[(194-80):194-1]
+enth_tab_av$time[(428-45+1):(428+1)] # 15 mins
+#enth_tab_av$time[(194-80):194-1] # 5 mins
 #wdn2=(cc$t-1-cc$max.t):cc$t
 #wdn2=(156-56):155
-wdn2=(194-80):194-1
+#wdn2=(194-80):194-1 5 mins
+
+wdn2=(428-45+1):(428+1) # 15 mins
 
 enth_tab3=enth_tab_av[wdn2,]
 Amelia::missmap(enth_tab3)
