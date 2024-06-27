@@ -1,6 +1,6 @@
 source("Utils.R")
 
-gamma=seq(0,20,by=1)
+gamma=seq(0,1,by=.05)
 M=c(100,400,900)
 P=c(25,50,75)
 seeds=1:100
@@ -88,11 +88,10 @@ acc=unlist(lapply(spatialJMrho05_no.miss,accur))
 res=data.frame(hp,acc=acc)
 avres=res%>%group_by(M,P,gamma)%>%summarise(avAcc=median(acc,na.rm=T))
 
-avres%>%group_by(M,P)%>%summarise(maxAcc=max(avAcc),gamma=mean(gamma))
-
+avres%>%group_by(M,P)%>%summarise(maxAcc=max(avAcc),gamma=gamma[which.max(avAcc)])
 
 res0=res[which(res$gamma==0),]
-res%>%group_by(M,P)%>%summarise(avAcc=median(acc,na.rm=T))
+res%>%group_by(M,P)%>%summarise(avAcc=max(acc,na.rm=T))
 
 # No missing rho=0 --------------------------------------------------------------
 
