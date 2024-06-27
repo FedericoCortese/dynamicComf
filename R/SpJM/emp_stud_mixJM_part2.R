@@ -11,6 +11,8 @@ str(enth_tab_complete)
 
 summary(enth_tab_complete)
 
+Amelia::missmap(enth_tab_complete)
+
 # Compute sd for numeric vars:
 enth_tab_complete%>%summarise_if(is.numeric,sd,na.rm=T)
 enth_tab_complete%>%summarise_if(is.numeric,mean,na.rm=T)
@@ -55,13 +57,14 @@ gt_thermal2=gt_thermal[-indx]
 gt_thermal2=order_states(gt_thermal2)
 s_est=s_est[-indx,]
 
+library(caret)
 acc=apply(s_est,2,function(x){confusionMatrix(factor(x,levels=c(1,2)),
                                           factor(gt_thermal2,levels=c(1,2)))$overall[1]}
       )
 
 data.frame(accuracy=acc,lambda)
 
-best_mod=est[[10]]
+best_mod=est[[20]]
 
 best_mod$condMM
 
@@ -69,3 +72,12 @@ res_complete=data.frame(enth_tab_complete,state=best_mod$best_s)
 tapply(res_complete$temp,res_complete$state,mean,na.rm=T)
 table(res_complete$state,res_complete$thermal)/rowSums(table(res_complete$state,res_complete$thermal))
 
+# Kruskal wallis test for numerical variables
+sapply(enth_tab5,function(x){kruskal.test(x~best_mod$best_s)$p.value})
+
+# Chisq test for categorical vars
+sapply(enth_tab5,function(x){chisq.test(table(x,best_mod$best_s))$p.value})
+
+
+chisq.test(table(res_complete$air_vel,best_mod$best_s))$p.value
+chisq.test(table(res_complete$clothing,best_mod$best_s))$p.value

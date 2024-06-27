@@ -50,18 +50,18 @@ enth_tab_av=enth_tab2%>%group_by(time)%>%
 
 cc=count_consecutive(enth_tab_av)
 #cbind(cc$av,enth_tab_av$time)
-sort(cc$av)
+sort(cc$av,decreasing = TRUE)
 cc$max.t
 cc$t
 # Waaaaay better
 #enth_tab_av$time[(156-56):155]
-enth_tab_av$time[(428-45+1):(428+1)] # 15 mins
-#enth_tab_av$time[(194-80):194-1] # 5 mins
+#enth_tab_av$time[(428-45+1):(428+1)] # 15 mins
+enth_tab_av$time[(194-80):194-1] # 5 mins
 #wdn2=(cc$t-1-cc$max.t):cc$t
 #wdn2=(156-56):155
-#wdn2=(194-80):194-1 5 mins
+wdn2=(194-80):194-1 #5 mins
 
-wdn2=(428-45+1):(428+1) # 15 mins
+#wdn2=(428-45+1):(428+1) # 15 mins
 
 enth_tab3=enth_tab_av[wdn2,]
 Amelia::missmap(enth_tab3)
@@ -198,6 +198,43 @@ enth_tab4=select(enth_tab4,subset=-c(thermal,comfort,
 str(enth_tab4)
 
 enth_tab5=enth_tab4
+enth_tab5[,-1]=enth_tab5[,-1]%>% mutate_if(is.numeric,~ifelse(is.nan(.), NA, .))
+
+# Missing %
+apply(enth_tab5,2,function(x) sum(is.na(x))/length(x))*100
+
+# Data augmentation -------------------------------------------------------
+
+env_vars=enth_tab5[,c("time","temp","humidity","pressure")]
+tmp=enth_tab5[,c("time","temp","humidity","pressure")]
+
+dt=as.numeric(diff(enth_tab5$time))/min(as.numeric(diff(enth_tab5$time)))
+env_vars$dt=c(NA,dt)
+
+str(env_vars)
+
+for(i in 2:(nrow(env_vars)-1)){
+  if(env_vars$dt[i]==1|env_vars$dt[i+1]==1){
+    if(is.na(env_vars$temp[i])){
+      env_vars$temp[i]=mean(env_vars$temp[i-1],env_vars$temp[i+1],na.rm=TRUE,trim = .5)
+    }
+    if(is.na(env_vars$humidity[i])){
+      env_vars$humidity[i]=mean(env_vars$humidity[i-1],env_vars$humidity[i+1],na.rm=TRUE,trim = .5)
+    }
+    if(is.na(env_vars$pressure[i])){
+      env_vars$pressure[i]=mean(env_vars$pressure[i-1],env_vars$pressure[i+1],na.rm=TRUE,trim = .5)
+    }
+  }
+}
+
+# % of missing values
+apply(env_vars,2,function(x) sum(is.na(x))/length(x))*100
+
+# compare with pre data augmentation
+apply(tmp,2,
+      function(x) sum(is.na(x))/length(x))*100
+
+enth_tab5[,c("temp","humidity","pressure")]=env_vars[,c("temp","humidity","pressure")]
 
 # Interaction terms
 # enth_tab5$temp_hum=as.numeric(scale(enth_tab5$temp))*as.numeric(scale(enth_tab5$humidity))
