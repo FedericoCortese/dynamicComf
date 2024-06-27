@@ -89,7 +89,7 @@ prvemp$best_s
 
 ### spatial JM
 source("utils.R")
-Mtrue=900
+Mtrue=100
 sqMtrue=sqrt(Mtrue)
 sp_indx=matrix(1:Mtrue,ncol=sqMtrue,byrow=T)
 C=Cmatrix(sp_indx)
