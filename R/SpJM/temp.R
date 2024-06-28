@@ -33,7 +33,7 @@ initial_states=cbind(YY1$true_states,YY2$true_states,YY3$true_states);initial_st
 ## ELBOW FOR SELECTION OF LAMBDA
 source("Utils.R")
 YY=sim_data_mixed(seed=123,
-                 TT=100,
+                 TT=1000,
                  P=10,
                  Ktrue=3,
                  mu=1,
@@ -47,21 +47,29 @@ YY=sim_data_mixed(seed=123,
 Y=YY$SimData.NA
 #prv1=jump_mixed2(Y,3,jump_penalty = .1,timeflag = F)
 
-lambda=seq(0,2,by=.25)
+lambda=seq(0,2,by=.05)
 res=lapply(lambda,function(x){
-  est=jump_mixed2(Y=Y,3,jump_penalty = x,timeflag = F)
+  est=jump_mixed2(Y=Y,4,jump_penalty = x,timeflag = F)
   dev=get_BCD(Y,est$best_s)
   WCD=dev$WCD
   BCD=dev$BCD
+  true_seq=order_states_freq(YY$mchain)
+  est_seq=order_states_freq(est$best_s)
+  true_seq=factor(true_seq,levels=c(1,2,3,4))
+  est_seq=factor(est_seq,levels=c(1,2,3,4))
+  BAC=bacc(true_seq,est_seq)
+ 
   return(list(WCD=sum(WCD),
               BCD=sum(BCD),
-              K=length(unique(est$best_s))))
+              K=length(unique(est$best_s)),
+              BAC=BAC))
 })
 
 wcd_lam=data.frame(WCD=unlist(lapply(res,function(x){x$WCD})),
                    BCD=unlist(lapply(res,function(x){x$BCD})),
                    K=unlist(lapply(res,function(x){x$K})),
-                   lambda)
+                   lambda,
+                   BAC=unlist(lapply(res,function(x){x$BAC})))
 
 wcd_lam
 

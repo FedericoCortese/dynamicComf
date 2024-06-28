@@ -679,11 +679,50 @@ rm(mixedJM_cont.miss20_rf,elapsed_cont.miss20_rf)
 
 # Evaluation --------------------------------------------------------------
 
+bac_mixJM=function(x){
+  
+  true=x$true_seq
+  est=x$est_seq
+  true=factor(order_states_freq(true),levels=c(1,2,3))
+  est=factor(order_states_freq(est),levels=c(1,2,3))
+  
+  return(bacc(true,est))
+  
+}
+
 library(dplyr)
 
-res_eval=function(res_obj,hp,lambda0=F,ARI=T){
-  library(dplyr)
+res_bac=function(res_obj,hp,lambda0=F){
   
+  res=data.frame(hp,ARI=unlist(lapply(res_obj,function(x)x$ARI)),
+                 BAC=unlist(lapply(res_obj,function(x)bac_mixJM(x))),
+                 imput.err=unlist(lapply(res_obj,function(x)mean(x$imput.err)))
+  )
+  
+  # maxres=res%>%group_by(TT,P)%>%summarise(maxARI=max(ARI,na.rm=T))
+  
+  if(lambda0){
+    res=res[which(res$lambda==0),]
+    res%>%group_by(TT,P)%>%summarise(avARI=median(ARI,na.rm=T),
+                                     avBAC=median(BAC,na.rm=T),
+                                     avErr=mean(imput.err))
+  }
+  
+  else{
+    avres=res%>%group_by(TT,P,lambda)%>%summarise(avARI=median(ARI,na.rm=T),
+                                                  avBAC=median(BAC,na.rm=T),
+                                                  avErr=mean(imput.err))
+    
+    avres%>%group_by(TT,P)%>%summarise(maxARI=max(avARI),
+                                       maxBAC=max(avBAC),
+                                       #lambda=lambda[which.max(avARI)],
+                                       lambdaBAC=lambda[which.max(avBAC)],
+                                       avErr=avErr[which.max(avARI)])
+  }
+}
+
+res_eval=function(res_obj,hp,lambda0=F,ARI=T){
+
   if(ARI){
     res=data.frame(hp,ARI=unlist(lapply(res_obj,function(x)x$ARI)),
                    imput.err=unlist(lapply(res_obj,function(x)mean(x$imput.err)))
