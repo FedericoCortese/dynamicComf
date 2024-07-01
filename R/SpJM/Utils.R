@@ -2417,7 +2417,8 @@ spatial_jump <- function(Y,C, n_states, jump_penalty=1e-5,
       loss_by_state=gower.dist(Y,mumo)
       
       for (m in 1:n_obs) {
-        loss_by_state[m,] <- loss_by_state[m,] + Gamma[s[m],]*table(factor(s[which(C[m,]==1)],levels=1:n_states))
+        loss_by_state[m,] <- loss_by_state[m,] + Gamma[s[m],]*table(factor(s[which(C[m,]==1)],
+                                                                           levels=1:n_states))
       }
       
       s=apply(loss_by_state,1,which.min)
