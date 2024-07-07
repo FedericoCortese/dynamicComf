@@ -1181,8 +1181,8 @@ GIC_mixed=function(Y,states,states_sat,K,K0=NULL,pers0=.95,timeflag=F,Ksat=6,lam
   pen0=(1-pers0)*N*(K0-1)
   
   TotalPenalty=(alpha0+pen0)*K+K0*(alphak-alpha0+pen-pen0) 
-  Ln=sum(DD$BCD)
-  Lnsat=sum(DDsat$BCD)
+  Ln=sum(DD$BCD,na.rm = T)
+  Lnsat=sum(DDsat$BCD,na.rm = T)
   Ln_diff=Lnsat-Ln
   
   FTIC=2*CKp_diff+(Ln_diff+anFTIC*TotalPenalty)/N

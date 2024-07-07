@@ -73,6 +73,9 @@ res_eval=function(res_obj,hp,gamma0=F,ARI=T){
 
 res_spJM_rho05=res_eval(spatialJMrho05_no.miss,hp)
 
+res_spJM_rho05_gam0=res_eval(spatialJMrho05_no.miss,hp,gamma0=T)
+res_spJM_rho05_gam0
+
 accur=function(x){
   true=order_states_freq(x$true_seq)
   est=order_states_freq(x$est_seq)
@@ -82,7 +85,7 @@ accur=function(x){
   tmp=confusionMatrix(true,est)$overall[1]
   return(tmp)
 }
-
+library(caret)
 acc=unlist(lapply(spatialJMrho05_no.miss,accur))
 
 res=data.frame(hp,acc=acc)
