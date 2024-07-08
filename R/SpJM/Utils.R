@@ -916,7 +916,7 @@ jump_mixed2 <- function(Y, n_states, jump_penalty=1e-5,
   # Fit jump model using framework of Bemporad et al. (2018)
   
   # Arguments:
-  # Y: data.frame with mixed data types. Categorical variables must be factors.
+  # Y: data.frame with mixed data types. Categorical variables must be factors with numerical levels.
   # n_states: number of states
   # jump_penalty: penalty for the number of jumps
   # initial_states: initial state sequence

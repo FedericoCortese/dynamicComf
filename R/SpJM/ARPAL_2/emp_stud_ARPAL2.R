@@ -63,6 +63,13 @@ rainfall$Date=ymd(rainfall$Date)
 rainfall[rainfall==-999]=NA
 str(rainfall)
 
+globrad=read.csv("ARPAL_2/glob_rad.csv")
+globrad=subset(globrad,select=-Id.Sensore)
+colnames(globrad)=c("Date","globrad","globrad_min","globrad_max")
+globrad$Date=ymd(globrad$Date)
+globrad[globrad==-999]=NA
+str(globrad)
+
 # Merge all data
 data=merge(pm25,pm10,by="Date",all=TRUE)
 data=merge(data,o3,by="Date",all=TRUE)
@@ -73,6 +80,7 @@ data=merge(data,temp,by="Date",all=TRUE)
 data=merge(data,rel_hum,by="Date",all=TRUE)
 data=merge(data,wind_speed,by="Date",all=TRUE)
 data=merge(data,rainfall,by="Date",all=TRUE)
+data=merge(data,globrad,by="Date",all=TRUE)
 str(data)
 
 # Plot data
@@ -89,6 +97,8 @@ plot(data$Date,data$temp,type="l",xlab="Date",ylab="temp")
 plot(data$Date,data$rel_hum,type="l",xlab="Date",ylab="rel_hum")
 plot(data$Date,data$wind_speed,type="l",xlab="Date",ylab="wind_speed")
 plot(data$Date,data$rainfall,type="l",xlab="Date",ylab="rainfall")
+plot(data$Date,data$globrad,type="l",xlab="Date",ylab="glob rad")
+
 
 # Save data
 save(data,file="ARPAL_2/data.Rdata")
@@ -100,6 +110,8 @@ save(data,file="ARPAL_2/data.Rdata")
 # Weekday
 data$weekday=weekdays(data$Date)
 data$weekday=as.factor(data$weekday)
+data$weekday=recode_factor(data$weekday,"lunedì"="1","martedì"="2","mercoledì"="3","giovedì"="4",
+                           "venerdì"="5","sabato"="6","domenica"="7")
 str(data)
 
 # Month 
@@ -108,8 +120,35 @@ data$month=as.factor(data$month)
 str(data)
 
 # Weekend?
-data$weekend=ifelse(data$weekday=="sabato" | data$weekday=="domenica",1,0)
+data$weekend=ifelse(data$weekday=="6" | data$weekday=="7",1,0)
 data$weekend=as.factor(data$weekend)
+str(data)
+
+# Holiday
+holidays=c("01-01",
+           "01-06",
+           "04-25",
+           "05-01",
+           "06-02",
+           "08-15",
+           "11-01",
+           "12-07",
+           "12-08",
+           "12-25",
+           "12-26",
+           "2021-04-04",
+           "2022-04-17",
+           "2023-04-09",
+           "2024-03-31")
+data$holiday=0
+for(i in 1:length(data$Date)){
+  for(j in 1:length(holidays)){
+    if(grepl(holidays[j], as.character(data$Date[i]))){
+      data$holiday[i]=1
+    }
+  }
+}
+data$holiday=factor(data$holiday)
 str(data)
 
 # Rainy day?
@@ -137,6 +176,9 @@ data$corr_no2_windspeed=c(rep(NA,wdn-1),rollapply(apply(data[,c("no2","wind_spee
 data$corr_no2_rainfall=c(rep(NA,wdn-1),rollapply(apply(data[,c("no2","rainfall")],2,scale),
                                             width=wdn, function(x) cor(x[,1],x[,2],use="na.or.complete"), 
                                             by.column=FALSE))
+data$corr_no2_globrad=c(rep(NA,wdn-1),rollapply(apply(data[,c("no2","globrad")],2,scale),
+                                            width=wdn, function(x) cor(x[,1],x[,2],use="na.or.complete"), 
+                                            by.column=FALSE))
 
 data$corr_pm25_temp=c(rep(NA,wdn-1),rollapply(apply(data[,c("pm25","temp")],2,scale),
                                             width=wdn, function(x) cor(x[,1],x[,2],use="na.or.complete"), 
@@ -148,6 +190,9 @@ data$corr_pm25_windspeed=c(rep(NA,wdn-1),rollapply(apply(data[,c("pm25","wind_sp
                                             width=wdn, function(x) cor(x[,1],x[,2],use="na.or.complete"), 
                                             by.column=FALSE))
 data$corr_pm25_rainfall=c(rep(NA,wdn-1),rollapply(apply(data[,c("pm25","rainfall")],2,scale),
+                                            width=wdn, function(x) cor(x[,1],x[,2],use="na.or.complete"), 
+                                            by.column=FALSE))
+data$corr_pm25_globrad=c(rep(NA,wdn-1),rollapply(apply(data[,c("pm25","globrad")],2,scale),
                                             width=wdn, function(x) cor(x[,1],x[,2],use="na.or.complete"), 
                                             by.column=FALSE))
 
@@ -163,6 +208,9 @@ data$corr_pm10_windspeed=c(rep(NA,wdn-1),rollapply(apply(data[,c("pm10","wind_sp
 data$corr_pm10_rainfall=c(rep(NA,wdn-1),rollapply(apply(data[,c("pm10","rainfall")],2,scale),
                                             width=wdn, function(x) cor(x[,1],x[,2],use="na.or.complete"), 
                                             by.column=FALSE))
+data$corr_pm10_globrad=c(rep(NA,wdn-1),rollapply(apply(data[,c("pm10","globrad")],2,scale),
+                                            width=wdn, function(x) cor(x[,1],x[,2],use="na.or.complete"), 
+                                            by.column=FALSE))
 
 data$corr_o3_temp=c(rep(NA,wdn-1),rollapply(apply(data[,c("o3","temp")],2,scale),
                                             width=wdn, function(x) cor(x[,1],x[,2],use="na.or.complete"), 
@@ -174,6 +222,9 @@ data$corr_o3_windspeed=c(rep(NA,wdn-1),rollapply(apply(data[,c("o3","wind_speed"
                                             width=wdn, function(x) cor(x[,1],x[,2],use="na.or.complete"), 
                                             by.column=FALSE))
 data$corr_o3_rainfall=c(rep(NA,wdn-1),rollapply(apply(data[,c("o3","rainfall")],2,scale),
+                                            width=wdn, function(x) cor(x[,1],x[,2],use="na.or.complete"), 
+                                            by.column=FALSE))
+data$corr_o3_globrad=c(rep(NA,wdn-1),rollapply(apply(data[,c("o3","globrad")],2,scale),
                                             width=wdn, function(x) cor(x[,1],x[,2],use="na.or.complete"), 
                                             by.column=FALSE))
 
@@ -189,7 +240,10 @@ data$ma_temp=rollapply(data$temp,width=wdn,mean,align="right",fill=NA)
 data$ma_rel_hum=rollapply(data$rel_hum,width=wdn,mean,align="right",fill=NA)
 data$ma_wind_speed=rollapply(data$wind_speed,width=wdn,mean,align="right",fill=NA)
 data$ma_rainfall=rollapply(data$rainfall,width=wdn,mean,align="right",fill=NA)
+data$ma_globrad=rollapply(data$globrad,width=wdn,mean,align="right",fill=NA)
 save(data,file="ARPAL_2/data.Rdata")
+
+Amelia::missmap(data)
 
 # AQI ---------------------------------------------------------------------
 
@@ -228,7 +282,7 @@ save(AQI_fact,file="AQI_fact.RData")
 load("ARPAL_2/data.Rdata")
 load("ARPAL_2/AQI_fact.Rdata")
 
-str(dat)
+str(data)
 
 # Percentage of missing values
 round(colMeans(is.na(data)) * 100, 2)
@@ -240,27 +294,31 @@ summary(data)
 
 # Correlation plot
 windows()
-corrplot::corrplot(cor(data[,c(2:5,8,11,14,17)],use="complete.obs"),method="number")
+corrplot::corrplot(cor(data[,c(2:5,8,11,14,17,20)],use="complete.obs"),method="number")
 
 tapply(data$pm25,data$windy,mean)
 tapply(data$pm25,data$rainy,mean)
 tapply(data$pm25,data$weekend,mean)
 tapply(data$pm25,data$weekday,mean)
+tapply(data$pm25,data$holiday,mean)
 
 tapply(data$pm10,data$windy,mean)
 tapply(data$pm10,data$rainy,mean)
 tapply(data$pm10,data$weekend,mean)
 tapply(data$pm10,data$weekday,mean)
+tapply(data$pm10,data$holiday,mean)
 
 tapply(data$o3,data$windy,mean)
 tapply(data$o3,data$rainy,mean)
 tapply(data$o3,data$weekend,mean)
 tapply(data$o3,data$weekday,mean)
+tapply(data$o3,data$holiday,mean)
 
 tapply(data$no2,data$windy,mean)
 tapply(data$no2,data$rainy,mean)
 tapply(data$no2,data$weekend,mean)
 tapply(data$no2,data$weekday,mean)
+tapply(data$no2,data$holiday,mean)
 
 source("Utils.R")
 lambda=seq(0,1,.01)
@@ -276,12 +334,18 @@ est=lapply(lambda,function(l){
 GIC=unlist(lapply(est,function(e){GIC_mixed(e$Y,e$best_s,est[[1]]$best_s,K=4)$FTIC}))
 res=data.frame(GIC,lambda)
 
-best_est=est[[50]]
+best_est=est[[62]]
 
 table(best_est$best_s)
-best_est$condMM
+best_est$condMM%>%summarise_if(is.numeric,round,digits=2)
+best_est$condMM$rainy
+best_est$condMM$windy
 
-states=factor(best_est$best_s,levels=c(4,1,3,2),labels=c("Good","Moderate","US","Unhealthy"))
-true_states=factor(AQI_fact,levels=1:4,labels=c("Good","Moderate","US","Unhealthy"))
+states=factor(best_est$best_s,levels=1:4
+              #,labels=c("Good","Unhealthy","US","Moderate")
+              )
+true_states=factor(AQI_fact,levels=1:4
+                   #,labels=c("Good","Moderate","US","Unhealthy")
+                   )
 
 caret::confusionMatrix(states,true_states)
