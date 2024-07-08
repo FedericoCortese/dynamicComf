@@ -83,6 +83,11 @@ data=merge(data,rainfall,by="Date",all=TRUE)
 data=merge(data,globrad,by="Date",all=TRUE)
 str(data)
 
+# Lagged rainfall
+data$rainfall_lag1=lag(data$rainfall,1)
+data$rainfallmax_lag1=lag(data$rainfall_max,1)
+data$rainfallmin_lag1=lag(data$rainfall_min,1)
+
 # Plot data
 windows()
 par(mfrow=c(2,2))
@@ -92,7 +97,7 @@ plot(data$Date,data$o3,type="l",xlab="Date",ylab="o3")
 plot(data$Date,data$no2,type="l",xlab="Date",ylab="no2")
 
 windows()
-par(mfrow=c(2,2))
+par(mfrow=c(3,2))
 plot(data$Date,data$temp,type="l",xlab="Date",ylab="temp")
 plot(data$Date,data$rel_hum,type="l",xlab="Date",ylab="rel_hum")
 plot(data$Date,data$wind_speed,type="l",xlab="Date",ylab="wind_speed")
@@ -241,9 +246,15 @@ data$ma_rel_hum=rollapply(data$rel_hum,width=wdn,mean,align="right",fill=NA)
 data$ma_wind_speed=rollapply(data$wind_speed,width=wdn,mean,align="right",fill=NA)
 data$ma_rainfall=rollapply(data$rainfall,width=wdn,mean,align="right",fill=NA)
 data$ma_globrad=rollapply(data$globrad,width=wdn,mean,align="right",fill=NA)
+
+
+
+# Remove rainfall and windspeed -------------------------------------------
+
+data=subset(data,select=-c(rainfall,rainfall_min,rainfall_max,wind_speed,wind_speed_min,wind_speed_max))
+
 save(data,file="ARPAL_2/data.Rdata")
 
-Amelia::missmap(data)
 
 # AQI ---------------------------------------------------------------------
 
@@ -274,7 +285,7 @@ for(i in 1:length(AQI)){
 }
 
 AQI_fact=factor(AQI_fact,levels=1:6)
-save(AQI_fact,file="AQI_fact.RData")
+save(AQI_fact,file="ARPAL_2/AQI_fact.RData")
 
 
 # JM mix ------------------------------------------------------------------
@@ -286,7 +297,7 @@ str(data)
 
 # Percentage of missing values
 round(colMeans(is.na(data)) * 100, 2)
-
+windows()
 Amelia::missmap(data)
 
 # Summary statistics
@@ -294,7 +305,7 @@ summary(data)
 
 # Correlation plot
 windows()
-corrplot::corrplot(cor(data[,c(2:5,8,11,14,17,20)],use="complete.obs"),method="number")
+corrplot::corrplot(cor(data[,c(2:5,8,11,14,53:54)],use="complete.obs"),method="number")
 
 tapply(data$pm25,data$windy,mean)
 tapply(data$pm25,data$rainy,mean)
@@ -334,7 +345,7 @@ est=lapply(lambda,function(l){
 GIC=unlist(lapply(est,function(e){GIC_mixed(e$Y,e$best_s,est[[1]]$best_s,K=4)$FTIC}))
 res=data.frame(GIC,lambda)
 
-best_est=est[[62]]
+best_est=est[[39]]
 
 table(best_est$best_s)
 best_est$condMM%>%summarise_if(is.numeric,round,digits=2)
