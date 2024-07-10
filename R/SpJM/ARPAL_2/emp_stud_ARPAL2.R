@@ -365,7 +365,7 @@ res=data.frame(ARI_res,GIC,lambda,K)
 
 plot(res$lambda,res$ARI_res,type="l",xlab="lambda",ylab="ARI",main="ARI vs lambda")
 
-best_est=est[[16]]
+best_est=est[[36]]
 
 table(best_est$best_s)
 
