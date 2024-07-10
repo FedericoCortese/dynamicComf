@@ -152,7 +152,8 @@ data$holiday=factor(data$holiday)
 str(data)
 
 # Rainy day?
-data$rainy=ifelse(data$rainfall>0,1,0)
+#data$rainy=ifelse(data$rainfall>0,1,0)
+data$rainy=ifelse(data$rainfall>mean(data$rainfall,na.rm = T),1,0)
 data$rainy=as.factor(data$rainy)
 str(data)
 
@@ -160,6 +161,8 @@ str(data)
 data$windy=ifelse(data$wind_speed>median(data$wind_speed,na.rm = T),1,0)
 data$windy=as.factor(data$windy)
 str(data)
+
+data=subset(data,select=-weekday)
 
 # 7-days Correlations
 library(zoo)
@@ -362,7 +365,7 @@ res=data.frame(ARI_res,GIC,lambda,K)
 
 plot(res$lambda,res$ARI_res,type="l",xlab="lambda",ylab="ARI",main="ARI vs lambda")
 
-best_est=est[[56]]
+best_est=est[[16]]
 
 table(best_est$best_s)
 
