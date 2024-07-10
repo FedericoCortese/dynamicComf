@@ -352,15 +352,16 @@ elapsed=end_-start_
 #   )
 # })
 
-GIC_mixed(dat_notime,est[[2]]$best_s,est[[1]]$best_s,K=4)
 
 ARI_res=unlist(lapply(est,function(e){adj.rand.index(e$best_s,AQI_fact)}))
-GIC=unlist(lapply(est,function(e){GIC_mixed(e$Y,e$best_s,est[[1]]$best_s,K=4)$FTIC}))
-res=data.frame(ARI_res,GIC,lambda)
+
+source("Utils.R")
+GIC=unlist(lapply(est,function(e){GIC_mixed(e$Y,e$best_s,est[[1]]$best_s,K=e$K)$FTIC}))
+res=data.frame(ARI_res,GIC,lambda,K)
 
 plot(res$lambda,res$ARI_res,type="l",xlab="lambda",ylab="ARI",main="ARI vs lambda")
 
-best_est=est[[29]]
+best_est=est[[56]]
 
 table(best_est$best_s)
 
