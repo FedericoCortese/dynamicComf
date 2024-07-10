@@ -332,8 +332,8 @@ start_=Sys.time()
 est <- parallel::mclapply(1:nrow(hp),
                           function(x)
                             jump_mixed2(dat_notime, 
-                                        n_states=hp$K[x,], 
-                                        jump_penalty=hp$lambda[x,], 
+                                        n_states=hp[x,]$K, 
+                                        jump_penalty=hp[x,]$lambda, 
                                         initial_states=NULL,
                                         max_iter=10, n_init=10, tol=NULL, 
                                         verbose=FALSE,
