@@ -322,7 +322,7 @@ tapply(data$no2,data$holiday,mean)
 
 source("Utils.R")
 
-dat_notime=dat[,-1]
+dat_notime=data[,-1]
 
 lambda=seq(0,1,by=.05)
 K=2:6
