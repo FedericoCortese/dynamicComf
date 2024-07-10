@@ -321,31 +321,55 @@ tapply(data$no2,data$weekday,mean)
 tapply(data$no2,data$holiday,mean)
 
 source("Utils.R")
-lambda=seq(0,1,.01)
-dat_notime=data[,-1]
-est=lapply(lambda,function(l){
-  jump_mixed2(dat_notime, 4, jump_penalty=l, 
-              initial_states=NULL,
-              max_iter=10, n_init=10, tol=NULL, verbose=FALSE,
-              timeflag=F
-  )
-})
+lambda=seq(0,1,.1)
+K=2:6
+dat_notime=dat[,-1]
 
+lambda=seq(0,1,by=.05)
+K=2:6
+hp=expand.grid(K=K,lambda=lambda)
+
+start_=Sys.time()
+est <- parallel::mclapply(1:nrow(hp),
+                          function(x)
+                            jump_mixed2(dat_notime, 
+                                        n_states=hp$K[x,], 
+                                        jump_penalty=hp$lambda[x,], 
+                                        initial_states=NULL,
+                                        max_iter=10, n_init=10, tol=NULL, 
+                                        verbose=FALSE,
+                                        timeflag=F
+                            ),
+                          mc.cores = parallel::detectCores()-1)
+
+end_=Sys.time()
+elapsed=end_-start_
+
+# est=lapply(lambda,function(l){
+#   jump_mixed2(dat_notime, 4, jump_penalty=l, 
+#               initial_states=NULL,
+#               max_iter=10, n_init=10, tol=NULL, verbose=FALSE,
+#               timeflag=F
+#   )
+# })
+
+GIC_mixed(dat_notime,est[[2]]$best_s,est[[1]]$best_s,K=4)
+
+ARI_res=unlist(lapply(est,function(e){adj.rand.index(e$best_s,AQI_fact)}))
 GIC=unlist(lapply(est,function(e){GIC_mixed(e$Y,e$best_s,est[[1]]$best_s,K=4)$FTIC}))
-res=data.frame(GIC,lambda)
+res=data.frame(ARI_res,GIC,lambda)
 
-best_est=est[[62]]
+plot(res$lambda,res$ARI_res,type="l",xlab="lambda",ylab="ARI",main="ARI vs lambda")
+
+best_est=est[[29]]
 
 table(best_est$best_s)
-best_est$condMM%>%summarise_if(is.numeric,round,digits=2)
-best_est$condMM$rainy
-best_est$condMM$windy
 
-states=factor(best_est$best_s,levels=1:4
-              #,labels=c("Good","Unhealthy","US","Moderate")
-              )
-true_states=factor(AQI_fact,levels=1:4
-                   #,labels=c("Good","Moderate","US","Unhealthy")
-                   )
+best_est$condMM
 
-caret::confusionMatrix(states,true_states)
+states=factor(best_est$best_s,levels=1:4,labels=c("Good","Moderate","US","Unhealthy"))
+true_states=factor(AQI_fact,levels=1:4,labels=c("Good","Moderate","US","Unhealthy"))
+
+
+library(caret)
+confusionMatrix(states,true_states)
