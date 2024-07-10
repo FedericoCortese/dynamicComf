@@ -241,7 +241,8 @@ data$ma_rel_hum=rollapply(data$rel_hum,width=wdn,mean,align="right",fill=NA)
 data$ma_wind_speed=rollapply(data$wind_speed,width=wdn,mean,align="right",fill=NA)
 data$ma_rainfall=rollapply(data$rainfall,width=wdn,mean,align="right",fill=NA)
 data$ma_globrad=rollapply(data$globrad,width=wdn,mean,align="right",fill=NA)
-save(data,file="ARPAL_2/data.Rdata")
+dat=data
+save(dat,file="ARPAL_2/data.Rdata")
 
 Amelia::missmap(data)
 
@@ -285,44 +286,44 @@ load("ARPAL_2/AQI_fact.Rdata")
 str(data)
 
 # Percentage of missing values
-round(colMeans(is.na(data)) * 100, 2)
+round(colMeans(is.na(dat)) * 100, 2)
 
-Amelia::missmap(data)
+Amelia::missmap(dat)
 
 # Summary statistics
-summary(data)
+summary(dat)
 
 # Correlation plot
 windows()
-corrplot::corrplot(cor(data[,c(2:5,8,11,14,17,20)],use="complete.obs"),method="number")
+corrplot::corrplot(cor(dat[,c(2:5,8,11,14,17,20)],use="complete.obs"),method="number")
 
-tapply(data$pm25,data$windy,mean)
-tapply(data$pm25,data$rainy,mean)
-tapply(data$pm25,data$weekend,mean)
-tapply(data$pm25,data$weekday,mean)
-tapply(data$pm25,data$holiday,mean)
+tapply(dat$pm25,dat$windy,mean)
+tapply(dat$pm25,dat$rainy,mean)
+tapply(dat$pm25,dat$weekend,mean)
+tapply(dat$pm25,dat$weekday,mean)
+tapply(dat$pm25,dat$holiday,mean)
 
-tapply(data$pm10,data$windy,mean)
-tapply(data$pm10,data$rainy,mean)
-tapply(data$pm10,data$weekend,mean)
-tapply(data$pm10,data$weekday,mean)
-tapply(data$pm10,data$holiday,mean)
+tapply(dat$pm10,dat$windy,mean)
+tapply(dat$pm10,dat$rainy,mean)
+tapply(dat$pm10,dat$weekend,mean)
+tapply(dat$pm10,dat$weekday,mean)
+tapply(dat$pm10,dat$holiday,mean)
 
-tapply(data$o3,data$windy,mean)
-tapply(data$o3,data$rainy,mean)
-tapply(data$o3,data$weekend,mean)
-tapply(data$o3,data$weekday,mean)
-tapply(data$o3,data$holiday,mean)
+tapply(dat$o3,dat$windy,mean)
+tapply(dat$o3,dat$rainy,mean)
+tapply(dat$o3,dat$weekend,mean)
+tapply(dat$o3,dat$weekday,mean)
+tapply(dat$o3,dat$holiday,mean)
 
-tapply(data$no2,data$windy,mean)
-tapply(data$no2,data$rainy,mean)
-tapply(data$no2,data$weekend,mean)
-tapply(data$no2,data$weekday,mean)
-tapply(data$no2,data$holiday,mean)
+tapply(dat$no2,dat$windy,mean)
+tapply(dat$no2,dat$rainy,mean)
+tapply(dat$no2,dat$weekend,mean)
+tapply(dat$no2,dat$weekday,mean)
+tapply(dat$no2,dat$holiday,mean)
 
 source("Utils.R")
 
-dat_notime=data[,-1]
+dat_notime=dat[,-1]
 
 lambda=seq(0,1,by=.05)
 K=2:6
