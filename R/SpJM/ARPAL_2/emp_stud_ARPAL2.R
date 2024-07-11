@@ -83,6 +83,11 @@ data=merge(data,rainfall,by="Date",all=TRUE)
 data=merge(data,globrad,by="Date",all=TRUE)
 str(data)
 
+# Lagged rainfall
+data$rainfall_lag1=lag(data$rainfall,1)
+data$rainfallmax_lag1=lag(data$rainfall_max,1)
+data$rainfallmin_lag1=lag(data$rainfall_min,1)
+
 # Plot data
 windows()
 par(mfrow=c(2,2))
@@ -92,7 +97,7 @@ plot(data$Date,data$o3,type="l",xlab="Date",ylab="o3")
 plot(data$Date,data$no2,type="l",xlab="Date",ylab="no2")
 
 windows()
-par(mfrow=c(2,2))
+par(mfrow=c(3,2))
 plot(data$Date,data$temp,type="l",xlab="Date",ylab="temp")
 plot(data$Date,data$rel_hum,type="l",xlab="Date",ylab="rel_hum")
 plot(data$Date,data$wind_speed,type="l",xlab="Date",ylab="wind_speed")
@@ -244,10 +249,20 @@ data$ma_rel_hum=rollapply(data$rel_hum,width=wdn,mean,align="right",fill=NA)
 data$ma_wind_speed=rollapply(data$wind_speed,width=wdn,mean,align="right",fill=NA)
 data$ma_rainfall=rollapply(data$rainfall,width=wdn,mean,align="right",fill=NA)
 data$ma_globrad=rollapply(data$globrad,width=wdn,mean,align="right",fill=NA)
+<<<<<<< HEAD
+
+
+
+# Remove rainfall and windspeed -------------------------------------------
+
+data=subset(data,select=-c(rainfall,rainfall_min,rainfall_max,wind_speed,wind_speed_min,wind_speed_max))
+
+save(data,file="ARPAL_2/data.Rdata")
+=======
 dat=data
 save(dat,file="ARPAL_2/data.Rdata")
+>>>>>>> 7dd97dedf293cc96c15c76dfa6d268f991d521af
 
-Amelia::missmap(data)
 
 # AQI ---------------------------------------------------------------------
 
@@ -278,8 +293,16 @@ for(i in 1:length(AQI)){
 }
 
 AQI_fact=factor(AQI_fact,levels=1:6)
-save(AQI_fact,file="AQI_fact.RData")
+save(AQI_fact,file="ARPAL_2/AQI_fact.RData")
 
+plot(x=dat$Date,as.numeric(AQI_fact),type='l',xlab="Date",ylab="AQI",main="AQI")
+
+#with ggplot2
+library(ggplot2)
+ggplot(dat,aes(x=Date,y=as.numeric(AQI_fact)))+geom_line()+xlab("Date")+ylab("AQI")+ggtitle("AQI")
+
+# more granular dates
+ggplot(dat,aes(x=Date,y=as.numeric(AQI_fact)))+geom_line()+xlab("Date")+ylab("AQI")+ggtitle("AQI")+scale_x_date(date_breaks = "3 month",date_labels = "%b %Y")
 
 # JM mix ------------------------------------------------------------------
 
@@ -289,6 +312,11 @@ load("ARPAL_2/AQI_fact.Rdata")
 str(data)
 
 # Percentage of missing values
+
+round(colMeans(is.na(data)) * 100, 2)
+windows()
+Amelia::missmap(data)
+
 round(colMeans(is.na(dat)) * 100, 2)
 
 Amelia::missmap(dat)
@@ -298,6 +326,9 @@ summary(dat)
 
 # Correlation plot
 windows()
+
+#corrplot::corrplot(cor(data[,c(2:5,8,11,14,53:54)],use="complete.obs"),method="number")
+
 corrplot::corrplot(cor(dat[,c(2:5,8,11,14,17,20)],use="complete.obs"),method="number")
 
 tapply(dat$pm25,dat$windy,mean)
@@ -328,8 +359,11 @@ source("Utils.R")
 
 dat_notime=dat[,-1]
 
+best_est=est[[39]]
+
 lambda=seq(0,1,by=.05)
-K=2:6
+#K=2:6
+K=4
 hp=expand.grid(K=K,lambda=lambda)
 
 start_=Sys.time()
@@ -348,6 +382,8 @@ est <- parallel::mclapply(1:nrow(hp),
 end_=Sys.time()
 elapsed=end_-start_
 
+save(est,file="est.Rdata")
+
 # est=lapply(lambda,function(l){
 #   jump_mixed2(dat_notime, 4, jump_penalty=l, 
 #               initial_states=NULL,
@@ -365,7 +401,7 @@ res=data.frame(ARI_res,GIC,lambda,K)
 
 plot(res$lambda,res$ARI_res,type="l",xlab="lambda",ylab="ARI",main="ARI vs lambda")
 
-best_est=est[[16]]
+best_est=est[[36]]
 
 table(best_est$best_s)
 
