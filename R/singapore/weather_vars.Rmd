@@ -92,14 +92,19 @@ first_date_second_wind=cozie_train$time[615204]
 # Summarize weather data
 
 ```{r}
-weather_summ=function(x,window="30 minutes"){
+weather_summ=function(x,window="30 minutes",sd=F){
   
   mean_x=x %>% group_by(time=floor_date(time,window))%>%
     summarise_if(is.numeric, mean, na.rm = TRUE)
-  sd_x=x %>% group_by(time=floor_date(time,window))%>%
-    summarise_if(is.numeric, sd, na.rm = TRUE)
   
-  return(list(mean_x=mean_x,sd_x=sd_x))
+  if(sd){
+    sd_x=x %>% group_by(time=floor_date(time,window))%>%
+      summarise_if(is.numeric, sd, na.rm = TRUE)
+    return(list(mean_x=mean_x,sd_x=sd_x))
+  }
+  else{
+    return(mean_x)
+  }
   
 }
 ```

@@ -295,6 +295,14 @@ for(i in 1:length(AQI)){
 AQI_fact=factor(AQI_fact,levels=1:6)
 save(AQI_fact,file="ARPAL_2/AQI_fact.RData")
 
+plot(x=dat$Date,as.numeric(AQI_fact),type='l',xlab="Date",ylab="AQI",main="AQI")
+
+#with ggplot2
+library(ggplot2)
+ggplot(dat,aes(x=Date,y=as.numeric(AQI_fact)))+geom_line()+xlab("Date")+ylab("AQI")+ggtitle("AQI")
+
+# more granular dates
+ggplot(dat,aes(x=Date,y=as.numeric(AQI_fact)))+geom_line()+xlab("Date")+ylab("AQI")+ggtitle("AQI")+scale_x_date(date_breaks = "3 month",date_labels = "%b %Y")
 
 # JM mix ------------------------------------------------------------------
 
@@ -304,26 +312,24 @@ load("ARPAL_2/AQI_fact.Rdata")
 str(data)
 
 # Percentage of missing values
-<<<<<<< HEAD
+
 round(colMeans(is.na(data)) * 100, 2)
 windows()
 Amelia::missmap(data)
-=======
+
 round(colMeans(is.na(dat)) * 100, 2)
 
 Amelia::missmap(dat)
->>>>>>> 7dd97dedf293cc96c15c76dfa6d268f991d521af
 
 # Summary statistics
 summary(dat)
 
 # Correlation plot
 windows()
-<<<<<<< HEAD
-corrplot::corrplot(cor(data[,c(2:5,8,11,14,53:54)],use="complete.obs"),method="number")
-=======
+
+#corrplot::corrplot(cor(data[,c(2:5,8,11,14,53:54)],use="complete.obs"),method="number")
+
 corrplot::corrplot(cor(dat[,c(2:5,8,11,14,17,20)],use="complete.obs"),method="number")
->>>>>>> 7dd97dedf293cc96c15c76dfa6d268f991d521af
 
 tapply(dat$pm25,dat$windy,mean)
 tapply(dat$pm25,dat$rainy,mean)
@@ -353,11 +359,11 @@ source("Utils.R")
 
 dat_notime=dat[,-1]
 
-<<<<<<< HEAD
 best_est=est[[39]]
-=======
+
 lambda=seq(0,1,by=.05)
-K=2:6
+#K=2:6
+K=4
 hp=expand.grid(K=K,lambda=lambda)
 
 start_=Sys.time()
@@ -375,6 +381,8 @@ est <- parallel::mclapply(1:nrow(hp),
 
 end_=Sys.time()
 elapsed=end_-start_
+
+save(est,file="est.Rdata")
 
 # est=lapply(lambda,function(l){
 #   jump_mixed2(dat_notime, 4, jump_penalty=l, 
@@ -394,7 +402,6 @@ res=data.frame(ARI_res,GIC,lambda,K)
 plot(res$lambda,res$ARI_res,type="l",xlab="lambda",ylab="ARI",main="ARI vs lambda")
 
 best_est=est[[36]]
->>>>>>> 7dd97dedf293cc96c15c76dfa6d268f991d521af
 
 table(best_est$best_s)
 
