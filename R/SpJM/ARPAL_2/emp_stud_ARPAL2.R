@@ -83,10 +83,10 @@ data=merge(data,rainfall,by="Date",all=TRUE)
 data=merge(data,globrad,by="Date",all=TRUE)
 str(data)
 
-# Lagged rainfall
-data$rainfall_lag1=lag(data$rainfall,1)
-data$rainfallmax_lag1=lag(data$rainfall_max,1)
-data$rainfallmin_lag1=lag(data$rainfall_min,1)
+# # Lagged rainfall
+# data$rainfall_lag1=lag(data$rainfall,1)
+# data$rainfallmax_lag1=lag(data$rainfall_max,1)
+# data$rainfallmin_lag1=lag(data$rainfall_min,1)
 
 # Plot data
 windows()
@@ -157,8 +157,8 @@ data$holiday=factor(data$holiday)
 str(data)
 
 # Rainy day?
-#data$rainy=ifelse(data$rainfall>0,1,0)
-data$rainy=ifelse(data$rainfall>mean(data$rainfall,na.rm = T),1,0)
+data$rainy=ifelse(data$rainfall>0,1,0)
+#data$rainy=ifelse(data$rainfall>mean(data$rainfall,na.rm = T),1,0)
 data$rainy=as.factor(data$rainy)
 str(data)
 
@@ -249,19 +249,17 @@ data$ma_rel_hum=rollapply(data$rel_hum,width=wdn,mean,align="right",fill=NA)
 data$ma_wind_speed=rollapply(data$wind_speed,width=wdn,mean,align="right",fill=NA)
 data$ma_rainfall=rollapply(data$rainfall,width=wdn,mean,align="right",fill=NA)
 data$ma_globrad=rollapply(data$globrad,width=wdn,mean,align="right",fill=NA)
-<<<<<<< HEAD
 
 
 
 # Remove rainfall and windspeed -------------------------------------------
 
-data=subset(data,select=-c(rainfall,rainfall_min,rainfall_max,wind_speed,wind_speed_min,wind_speed_max))
+#data=subset(data,select=-c(rainfall,rainfall_min,rainfall_max,wind_speed,wind_speed_min,wind_speed_max))
 
 save(data,file="ARPAL_2/data.Rdata")
-=======
+
 dat=data
 save(dat,file="ARPAL_2/data.Rdata")
->>>>>>> 7dd97dedf293cc96c15c76dfa6d268f991d521af
 
 
 # AQI ---------------------------------------------------------------------
@@ -299,9 +297,6 @@ plot(x=dat$Date,as.numeric(AQI_fact),type='l',xlab="Date",ylab="AQI",main="AQI")
 
 #with ggplot2
 library(ggplot2)
-ggplot(dat,aes(x=Date,y=as.numeric(AQI_fact)))+geom_line()+xlab("Date")+ylab("AQI")+ggtitle("AQI")
-
-# more granular dates
 ggplot(dat,aes(x=Date,y=as.numeric(AQI_fact)))+geom_line()+xlab("Date")+ylab("AQI")+ggtitle("AQI")+scale_x_date(date_breaks = "3 month",date_labels = "%b %Y")
 
 # JM mix ------------------------------------------------------------------
@@ -359,8 +354,6 @@ source("Utils.R")
 
 dat_notime=dat[,-1]
 
-best_est=est[[39]]
-
 lambda=seq(0,1,by=.05)
 #K=2:6
 K=4
@@ -392,23 +385,40 @@ save(est,file="est.Rdata")
 #   )
 # })
 
-
+library(pdfCluster)
 ARI_res=unlist(lapply(est,function(e){adj.rand.index(e$best_s,AQI_fact)}))
 
 source("Utils.R")
 GIC=unlist(lapply(est,function(e){GIC_mixed(e$Y,e$best_s,est[[1]]$best_s,K=e$K)$FTIC}))
+
 res=data.frame(ARI_res,GIC,lambda,K)
 
 plot(res$lambda,res$ARI_res,type="l",xlab="lambda",ylab="ARI",main="ARI vs lambda")
 
-best_est=est[[36]]
+best_est=est[[8]]
 
 table(best_est$best_s)
 
 best_est$condMM
 
-states=factor(best_est$best_s,levels=1:4,labels=c("Good","Moderate","US","Unhealthy"))
+states=recode(best_est$best_s, "1" = "Good", "2" = "US","3"="Unhealthy","4"="Moderate")
+states=factor(states,levels=c("Good","Moderate","US","Unhealthy"))
+#states=factor(best_est$best_s,levels=1:4,labels=c("Good","US","Unhealthy","Moderate"))
 true_states=factor(AQI_fact,levels=1:4,labels=c("Good","Moderate","US","Unhealthy"))
+
+# AQI
+windows()
+ggplot(dat,aes(x=Date,y=as.numeric(true_states)))+
+  geom_line()+xlab("Date")+ylab(" ")+ggtitle("AQI")+
+  scale_x_date(date_breaks = "3 month",date_labels = "%b %Y")+
+  theme_bw()
+
+# JM
+windows()
+ggplot(dat,aes(x=Date,y=as.numeric(states)))+
+  geom_line()+xlab("Date")+ylab(" ")+ggtitle("JM")+
+  scale_x_date(date_breaks = "3 month",date_labels = "%b %Y")+
+  theme_bw()
 
 
 library(caret)
