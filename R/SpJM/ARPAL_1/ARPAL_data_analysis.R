@@ -37,15 +37,37 @@ tapply(dat$Ozone_max_day, dat$weekday,mean)
 
 # K=4 as per observed AQI levels
 source("Utils.R")
-lambda=seq(0,1,.01)
+lambda=seq(0,1,.1)
+K=2:6
 dat_notime=dat[,-1]
-est=lapply(lambda,function(l){
-  jump_mixed2(dat_notime, 4, jump_penalty=l, 
-              initial_states=NULL,
-              max_iter=10, n_init=10, tol=NULL, verbose=FALSE,
-              timeflag=F
-  )
-})
+
+lambda=seq(0,1,by=.05)
+K=2:6
+hp=expand.grid(K=K,lambda=lambda)
+
+start_=Sys.time()
+est <- parallel::mclapply(1:nrow(hp),
+                                          function(x)
+                                            jump_mixed2(dat_notime, 
+                                                        n_states=hp$K[x,], 
+                                                        jump_penalty=hp$lambda[x,], 
+                                                        initial_states=NULL,
+                                                        max_iter=10, n_init=10, tol=NULL, 
+                                                        verbose=FALSE,
+                                                        timeflag=F
+                                            ),
+                                          mc.cores = parallel::detectCores()-1)
+
+end_=Sys.time()
+elapsed=end_-start_
+
+# est=lapply(lambda,function(l){
+#   jump_mixed2(dat_notime, 4, jump_penalty=l, 
+#               initial_states=NULL,
+#               max_iter=10, n_init=10, tol=NULL, verbose=FALSE,
+#               timeflag=F
+#   )
+# })
 
 GIC_mixed(dat_notime,est[[2]]$best_s,est[[1]]$best_s,K=4)
 

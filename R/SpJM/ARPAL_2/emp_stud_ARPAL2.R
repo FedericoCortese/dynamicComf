@@ -157,7 +157,8 @@ data$holiday=factor(data$holiday)
 str(data)
 
 # Rainy day?
-data$rainy=ifelse(data$rainfall>0,1,0)
+#data$rainy=ifelse(data$rainfall>0,1,0)
+data$rainy=ifelse(data$rainfall>mean(data$rainfall,na.rm = T),1,0)
 data$rainy=as.factor(data$rainy)
 str(data)
 
@@ -165,6 +166,8 @@ str(data)
 data$windy=ifelse(data$wind_speed>median(data$wind_speed,na.rm = T),1,0)
 data$windy=as.factor(data$windy)
 str(data)
+
+data=subset(data,select=-weekday)
 
 # 7-days Correlations
 library(zoo)
@@ -246,6 +249,7 @@ data$ma_rel_hum=rollapply(data$rel_hum,width=wdn,mean,align="right",fill=NA)
 data$ma_wind_speed=rollapply(data$wind_speed,width=wdn,mean,align="right",fill=NA)
 data$ma_rainfall=rollapply(data$rainfall,width=wdn,mean,align="right",fill=NA)
 data$ma_globrad=rollapply(data$globrad,width=wdn,mean,align="right",fill=NA)
+<<<<<<< HEAD
 
 
 
@@ -254,6 +258,10 @@ data$ma_globrad=rollapply(data$globrad,width=wdn,mean,align="right",fill=NA)
 data=subset(data,select=-c(rainfall,rainfall_min,rainfall_max,wind_speed,wind_speed_min,wind_speed_max))
 
 save(data,file="ARPAL_2/data.Rdata")
+=======
+dat=data
+save(dat,file="ARPAL_2/data.Rdata")
+>>>>>>> 7dd97dedf293cc96c15c76dfa6d268f991d521af
 
 
 # AQI ---------------------------------------------------------------------
@@ -296,67 +304,105 @@ load("ARPAL_2/AQI_fact.Rdata")
 str(data)
 
 # Percentage of missing values
+<<<<<<< HEAD
 round(colMeans(is.na(data)) * 100, 2)
 windows()
 Amelia::missmap(data)
+=======
+round(colMeans(is.na(dat)) * 100, 2)
+
+Amelia::missmap(dat)
+>>>>>>> 7dd97dedf293cc96c15c76dfa6d268f991d521af
 
 # Summary statistics
-summary(data)
+summary(dat)
 
 # Correlation plot
 windows()
+<<<<<<< HEAD
 corrplot::corrplot(cor(data[,c(2:5,8,11,14,53:54)],use="complete.obs"),method="number")
+=======
+corrplot::corrplot(cor(dat[,c(2:5,8,11,14,17,20)],use="complete.obs"),method="number")
+>>>>>>> 7dd97dedf293cc96c15c76dfa6d268f991d521af
 
-tapply(data$pm25,data$windy,mean)
-tapply(data$pm25,data$rainy,mean)
-tapply(data$pm25,data$weekend,mean)
-tapply(data$pm25,data$weekday,mean)
-tapply(data$pm25,data$holiday,mean)
+tapply(dat$pm25,dat$windy,mean)
+tapply(dat$pm25,dat$rainy,mean)
+tapply(dat$pm25,dat$weekend,mean)
+tapply(dat$pm25,dat$weekday,mean)
+tapply(dat$pm25,dat$holiday,mean)
 
-tapply(data$pm10,data$windy,mean)
-tapply(data$pm10,data$rainy,mean)
-tapply(data$pm10,data$weekend,mean)
-tapply(data$pm10,data$weekday,mean)
-tapply(data$pm10,data$holiday,mean)
+tapply(dat$pm10,dat$windy,mean)
+tapply(dat$pm10,dat$rainy,mean)
+tapply(dat$pm10,dat$weekend,mean)
+tapply(dat$pm10,dat$weekday,mean)
+tapply(dat$pm10,dat$holiday,mean)
 
-tapply(data$o3,data$windy,mean)
-tapply(data$o3,data$rainy,mean)
-tapply(data$o3,data$weekend,mean)
-tapply(data$o3,data$weekday,mean)
-tapply(data$o3,data$holiday,mean)
+tapply(dat$o3,dat$windy,mean)
+tapply(dat$o3,dat$rainy,mean)
+tapply(dat$o3,dat$weekend,mean)
+tapply(dat$o3,dat$weekday,mean)
+tapply(dat$o3,dat$holiday,mean)
 
-tapply(data$no2,data$windy,mean)
-tapply(data$no2,data$rainy,mean)
-tapply(data$no2,data$weekend,mean)
-tapply(data$no2,data$weekday,mean)
-tapply(data$no2,data$holiday,mean)
+tapply(dat$no2,dat$windy,mean)
+tapply(dat$no2,dat$rainy,mean)
+tapply(dat$no2,dat$weekend,mean)
+tapply(dat$no2,dat$weekday,mean)
+tapply(dat$no2,dat$holiday,mean)
 
 source("Utils.R")
-lambda=seq(0,1,.01)
-dat_notime=data[,-1]
-est=lapply(lambda,function(l){
-  jump_mixed2(dat_notime, 4, jump_penalty=l, 
-              initial_states=NULL,
-              max_iter=10, n_init=10, tol=NULL, verbose=FALSE,
-              timeflag=F
-  )
-})
 
-GIC=unlist(lapply(est,function(e){GIC_mixed(e$Y,e$best_s,est[[1]]$best_s,K=4)$FTIC}))
-res=data.frame(GIC,lambda)
+dat_notime=dat[,-1]
 
+<<<<<<< HEAD
 best_est=est[[39]]
+=======
+lambda=seq(0,1,by=.05)
+K=2:6
+hp=expand.grid(K=K,lambda=lambda)
+
+start_=Sys.time()
+est <- parallel::mclapply(1:nrow(hp),
+                          function(x)
+                            jump_mixed2(dat_notime, 
+                                        n_states=hp[x,]$K, 
+                                        jump_penalty=hp[x,]$lambda, 
+                                        initial_states=NULL,
+                                        max_iter=10, n_init=10, tol=NULL, 
+                                        verbose=FALSE,
+                                        timeflag=F
+                            ),
+                          mc.cores = parallel::detectCores()-1)
+
+end_=Sys.time()
+elapsed=end_-start_
+
+# est=lapply(lambda,function(l){
+#   jump_mixed2(dat_notime, 4, jump_penalty=l, 
+#               initial_states=NULL,
+#               max_iter=10, n_init=10, tol=NULL, verbose=FALSE,
+#               timeflag=F
+#   )
+# })
+
+
+ARI_res=unlist(lapply(est,function(e){adj.rand.index(e$best_s,AQI_fact)}))
+
+source("Utils.R")
+GIC=unlist(lapply(est,function(e){GIC_mixed(e$Y,e$best_s,est[[1]]$best_s,K=e$K)$FTIC}))
+res=data.frame(ARI_res,GIC,lambda,K)
+
+plot(res$lambda,res$ARI_res,type="l",xlab="lambda",ylab="ARI",main="ARI vs lambda")
+
+best_est=est[[36]]
+>>>>>>> 7dd97dedf293cc96c15c76dfa6d268f991d521af
 
 table(best_est$best_s)
-best_est$condMM%>%summarise_if(is.numeric,round,digits=2)
-best_est$condMM$rainy
-best_est$condMM$windy
 
-states=factor(best_est$best_s,levels=1:4
-              #,labels=c("Good","Unhealthy","US","Moderate")
-              )
-true_states=factor(AQI_fact,levels=1:4
-                   #,labels=c("Good","Moderate","US","Unhealthy")
-                   )
+best_est$condMM
 
-caret::confusionMatrix(states,true_states)
+states=factor(best_est$best_s,levels=1:4,labels=c("Good","Moderate","US","Unhealthy"))
+true_states=factor(AQI_fact,levels=1:4,labels=c("Good","Moderate","US","Unhealthy"))
+
+
+library(caret)
+confusionMatrix(states,true_states)

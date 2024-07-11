@@ -1145,10 +1145,12 @@ jump_mixed2 <- function(Y, n_states, jump_penalty=1e-5,
   return(list(best_s=best_s,
               Y=Y,
               Y.orig=Ynoscaled,
-              condMM=mumo))
+              condMM=mumo,
+              K=n_states,
+              lambda=jump_penalty))
 }
 
-GIC_mixed=function(Y,states,states_sat,K,K0=NULL,pers0=.95,timeflag=F,Ksat=6,lambda=NULL){
+GIC_mixed=function(Y,states,states_sat,K,K0=3,pers0=.90,timeflag=F,Ksat=6,lambda=NULL){
   
   # Returns error when unique(states) are less than K (TBD)
   
