@@ -733,14 +733,17 @@ res_eval=function(res_obj,hp,lambda0=F,ARI=T){
     if(lambda0){
       res=res[which(res$lambda==0),]
       res%>%group_by(TT,P)%>%summarise(avARI=median(ARI,na.rm=T),
+                                       sdARI=sd(ARI,na.rm=T),
                                        avErr=mean(imput.err))
     }
     
     else{
       avres=res%>%group_by(TT,P,lambda)%>%summarise(avARI=median(ARI,na.rm=T),
+                                                    sdARI=sd(ARI,na.rm=T),
                                                     avErr=mean(imput.err))
       
       avres%>%group_by(TT,P)%>%summarise(maxARI=max(avARI),
+                                         sdARI=min(sdARI),
                                          lambda=lambda[which.max(avARI)],
                                          avErr=avErr[which.max(avARI)])
     }

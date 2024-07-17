@@ -183,7 +183,6 @@ rm(mixedJM_rho_no.miss_specluster,elapsed_no.miss_specluster)
 
 
 res_eval=function(res_obj,hp,lambda0=F,ARI=T){
-  library(dplyr)
   
   if(ARI){
     res=data.frame(hp,ARI=unlist(lapply(res_obj,function(x)x$ARI)),
@@ -195,27 +194,30 @@ res_eval=function(res_obj,hp,lambda0=F,ARI=T){
     if(lambda0){
       res=res[which(res$lambda==0),]
       res%>%group_by(TT,P)%>%summarise(avARI=median(ARI,na.rm=T),
+                                       sdARI=sd(ARI,na.rm=T),
                                        avErr=mean(imput.err))
     }
     
     else{
       avres=res%>%group_by(TT,P,lambda)%>%summarise(avARI=median(ARI,na.rm=T),
+                                                    sdARI=sd(ARI,na.rm=T),
                                                     avErr=mean(imput.err))
       
       avres%>%group_by(TT,P)%>%summarise(maxARI=max(avARI),
+                                         sdARI=min(sdARI),
                                          lambda=lambda[which.max(avARI)],
                                          avErr=avErr[which.max(avARI)])
     }
   }
-    else{
-      res=data.frame(hp,
-                     #ARI=unlist(lapply(res_obj,function(x)x$ARI)),
-                     imput.err=unlist(lapply(res_obj,function(x)mean(x$imput.err)))
-      )
-      res%>%group_by(TT,P)%>%summarise(
-        #avARI=median(ARI,na.rm=T),
-                                       avErr=mean(imput.err))
-    }
+  else{
+    res=data.frame(hp,
+                   #ARI=unlist(lapply(res_obj,function(x)x$ARI)),
+                   imput.err=unlist(lapply(res_obj,function(x)mean(x$imput.err)))
+    )
+    res%>%group_by(TT,P)%>%summarise(
+      #avARI=median(ARI,na.rm=T),
+      avErr=mean(imput.err))
+  }
   
 }
 

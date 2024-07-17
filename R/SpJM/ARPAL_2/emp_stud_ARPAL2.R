@@ -96,6 +96,37 @@ plot(data$Date,data$pm10,type="l",xlab="Date",ylab="pm10")
 plot(data$Date,data$o3,type="l",xlab="Date",ylab="o3")
 plot(data$Date,data$no2,type="l",xlab="Date",ylab="no2")
 
+# GGplot
+library(ggplot2)
+ppm25=ggplot(data,aes(x=Date,y=pm25))+geom_line()+xlab("Date")+ylab("PM2.5")+
+  scale_x_date(date_breaks = "6 month",date_labels = "%b %Y")+
+  theme_bw()+
+  theme(axis.text=element_text(size=14),
+        axis.title=element_text(size=14,face="bold"),
+        plot.title = element_text(size=22))
+ppm10=ggplot(data,aes(x=Date,y=pm10))+geom_line()+xlab("Date")+ylab("PM10")+
+  scale_x_date(date_breaks = "6 month",date_labels = "%b %Y")+
+  theme_bw()+
+  theme(axis.text=element_text(size=14),
+        axis.title=element_text(size=14,face="bold"),
+        plot.title = element_text(size=22))
+po3=ggplot(data,aes(x=Date,y=o3))+geom_line()+xlab("Date")+ylab("O3")+
+  scale_x_date(date_breaks = "6 month",date_labels = "%b %Y")+
+  theme_bw()+
+  theme(axis.text=element_text(size=14),
+        axis.title=element_text(size=14,face="bold"),
+        plot.title = element_text(size=22))
+pno2=ggplot(data,aes(x=Date,y=no2))+geom_line()+xlab("Date")+ylab("NO2")+
+  scale_x_date(date_breaks = "6 month",date_labels = "%b %Y")+
+  theme_bw()+
+  theme(axis.text=element_text(size=14),
+        axis.title=element_text(size=14,face="bold"),
+        plot.title = element_text(size=22))
+
+library(gridExtra)
+windows()
+grid.arrange(ppm25,ppm10,po3,pno2,ncol=2)
+
 windows()
 par(mfrow=c(3,2))
 plot(data$Date,data$temp,type="l",xlab="Date",ylab="temp")
@@ -103,6 +134,44 @@ plot(data$Date,data$rel_hum,type="l",xlab="Date",ylab="rel_hum")
 plot(data$Date,data$wind_speed,type="l",xlab="Date",ylab="wind_speed")
 plot(data$Date,data$rainfall,type="l",xlab="Date",ylab="rainfall")
 plot(data$Date,data$globrad,type="l",xlab="Date",ylab="glob rad")
+
+#ggplot
+ptemp=ggplot(data,aes(x=Date,y=temp))+geom_line()+xlab("Date")+ylab("Temp")+
+  scale_x_date(date_breaks = "6 month",date_labels = "%b %Y")+
+  theme_bw()+
+  theme(axis.text=element_text(size=14),
+        axis.title=element_text(size=14,face="bold"),
+        plot.title = element_text(size=22))
+prel_hum=ggplot(data,aes(x=Date,y=rel_hum))+geom_line()+xlab("Date")+ylab("RH")+
+  scale_x_date(date_breaks = "6 month",date_labels = "%b %Y")+
+  theme_bw()+
+  theme(axis.text=element_text(size=14),
+        axis.title=element_text(size=14,face="bold"),
+        plot.title = element_text(size=22))
+pwind_speed=ggplot(data,aes(x=Date,y=wind_speed))+geom_line()+xlab("Date")+ylab("WS")+
+  scale_x_date(date_breaks = "6 month",date_labels = "%b %Y")+
+  theme_bw()+
+  theme(axis.text=element_text(size=14),
+        axis.title=element_text(size=14,face="bold"),
+        plot.title = element_text(size=22))
+prainfall=ggplot(data,aes(x=Date,y=rainfall))+geom_line()+xlab("Date")+ylab("RF")+
+  scale_x_date(date_breaks = "6 month",date_labels = "%b %Y")+
+  theme_bw()+
+  theme(axis.text=element_text(size=14),
+        axis.title=element_text(size=14,face="bold"),
+        plot.title = element_text(size=22))
+
+pglobrad=ggplot(data,aes(x=Date,y=globrad))+geom_line()+xlab("Date")+ylab("GR")+
+  scale_x_date(date_breaks = "6 month",date_labels = "%b %Y")+
+  theme_bw()+
+  theme(axis.text=element_text(size=14),
+        axis.title=element_text(size=14,face="bold"),
+        plot.title = element_text(size=22))
+
+
+library(gridExtra)
+windows()
+grid.arrange(ptemp,prel_hum,pwind_speed,prainfall,pglobrad,ncol=2)
 
 
 # Save data
@@ -317,9 +386,19 @@ round(colMeans(is.na(dat)) * 100, 2)
 Amelia::missmap(dat)
 
 # Summary statistics
-summary(dat)
+dat%>%summarise_if(is.numeric,mean,na.rm=T)
+dat%>%summarise_if(is.numeric,sd,na.rm=T)
+dat%>%summarise_if(is.numeric,min,na.rm=T)
+dat%>%summarise_if(is.numeric,max,na.rm=T)
 
-# Correlation plot
+apply(dat[,c("windy","rainy","weekend","holiday","month")],2,table)
+#NAs % of categorical variables
+sum(which(is.na(dat$windy)))/nrow(dat)
+sum(which(is.na(dat$rainy)))/nrow(dat)
+sum(which(is.na(dat$weekend)))/nrow(dat)
+
+
+  # Correlation plot
 windows()
 
 #corrplot::corrplot(cor(data[,c(2:5,8,11,14,53:54)],use="complete.obs"),method="number")
@@ -395,31 +474,40 @@ res=data.frame(ARI_res,GIC,lambda,K)
 
 plot(res$lambda,res$ARI_res,type="l",xlab="lambda",ylab="ARI",main="ARI vs lambda")
 
-best_est=est[[8]]
+best_est=est[[4]]
 
 table(best_est$best_s)
 
 best_est$condMM
 
-states=recode(best_est$best_s, "1" = "Good", "2" = "US","3"="Unhealthy","4"="Moderate")
+states=recode(best_est$best_s, "1" = "Good", "2" = "Moderate","3"="US","4"="Unhealthy")
 states=factor(states,levels=c("Good","Moderate","US","Unhealthy"))
 #states=factor(best_est$best_s,levels=1:4,labels=c("Good","US","Unhealthy","Moderate"))
 true_states=factor(AQI_fact,levels=1:4,labels=c("Good","Moderate","US","Unhealthy"))
 
+adj.rand.index(states,true_states)
+sum(states==true_states)/length(states)
+
 # AQI
-windows()
-ggplot(dat,aes(x=Date,y=as.numeric(true_states)))+
-  geom_line()+xlab("Date")+ylab(" ")+ggtitle("AQI")+
+P1=ggplot(dat,aes(x=Date,y=as.numeric(true_states)))+
+  geom_line(size=1)+xlab("Date")+ylab(" ")+ggtitle("AQI")+
   scale_x_date(date_breaks = "3 month",date_labels = "%b %Y")+
-  theme_bw()
+  theme_bw()+
+  theme(axis.text=element_text(size=14),
+                  axis.title=element_text(size=14,face="bold"),
+        plot.title = element_text(size=22))
 
-# JM
-windows()
-ggplot(dat,aes(x=Date,y=as.numeric(states)))+
-  geom_line()+xlab("Date")+ylab(" ")+ggtitle("JM")+
+P2=ggplot(dat,aes(x=Date,y=as.numeric(states)))+
+  geom_line(size=1)+xlab("Date")+ylab(" ")+ggtitle("JM-mix")+
   scale_x_date(date_breaks = "3 month",date_labels = "%b %Y")+
-  theme_bw()
+  theme_bw()+
+  theme(axis.text=element_text(size=14),
+        axis.title=element_text(size=14,face="bold"),
+        plot.title = element_text(size=22))
 
+library(gridExtra)
+windows()
+grid.arrange(P1,P2,ncol=1)
 
 library(caret)
 confusionMatrix(states,true_states)
