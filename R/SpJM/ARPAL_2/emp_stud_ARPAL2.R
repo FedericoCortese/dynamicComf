@@ -232,7 +232,10 @@ data$rainy=as.factor(data$rainy)
 str(data)
 
 # Windy day?
-data$windy=ifelse(data$wind_speed>0.5,1,0)
+#data$windy=ifelse(data$wind_speed>0.5,1,0)
+data$windy=ifelse(data$wind_speed>median(data$wind_speed,na.rm = T),1,0)
+#data$windy=ifelse(data$wind_speed>1.7,1,0)
+
 data$windy=as.factor(data$windy)
 str(data)
 
@@ -373,13 +376,11 @@ ggplot(dat,aes(x=Date,y=as.numeric(AQI_fact)))+geom_line()+xlab("Date")+ylab("AQ
 load("ARPAL_2/data.Rdata")
 load("ARPAL_2/AQI_fact.Rdata")
 
-str(data)
-
 # Percentage of missing values
 
-round(colMeans(is.na(data)) * 100, 2)
+round(colMeans(is.na(dat)) * 100, 2)
 windows()
-Amelia::missmap(data)
+Amelia::missmap(dat)
 
 round(colMeans(is.na(dat)) * 100, 2)
 
@@ -468,13 +469,13 @@ library(pdfCluster)
 ARI_res=unlist(lapply(est,function(e){adj.rand.index(e$best_s,AQI_fact)}))
 
 source("Utils.R")
-GIC=unlist(lapply(est,function(e){GIC_mixed(e$Y,e$best_s,est[[1]]$best_s,K=e$K)$FTIC}))
+GIC=unlist(lapply(est,function(e){GIC_mixed(e$Y,e$best_s,est[[1]]$best_s,K=e$K,K0=4,pers0 = .9)$FTIC}))
 
 res=data.frame(ARI_res,GIC,lambda,K)
 
 plot(res$lambda,res$ARI_res,type="l",xlab="lambda",ylab="ARI",main="ARI vs lambda")
 
-best_est=est[[4]]
+best_est=est[[13]]
 
 table(best_est$best_s)
 
