@@ -232,7 +232,7 @@ data$rainy=as.factor(data$rainy)
 str(data)
 
 # Windy day?
-data$windy=ifelse(data$wind_speed>median(data$wind_speed,na.rm = T),1,0)
+data$windy=ifelse(data$wind_speed>0.5,1,0)
 data$windy=as.factor(data$windy)
 str(data)
 
@@ -511,3 +511,30 @@ grid.arrange(P1,P2,ncol=1)
 
 library(caret)
 confusionMatrix(states,true_states)
+
+#AQI plot##
+
+data_state=data.frame(dat,State=states,AQI=true_states)
+
+ggplot(data_state,aes(x=Date,y=as.numeric(AQI)))+
+  geom_line(size=1)+xlab("Date")+ylab(" ")+ggtitle("AQI")+
+  scale_x_date(date_breaks = "3 month",date_labels = "%b %Y")+
+  theme_bw()+
+  theme(axis.text=element_text(size=14),
+        axis.title=element_text(size=14,face="bold"),
+        plot.title = element_text(size=22))+
+  geom_rect(aes(xmin = Date, xmax = dplyr::lead(Date), 
+                ymin = -Inf, ymax = Inf, fill = State), alpha = .2) +
+  scale_fill_manual(values = alpha(c("green","yellow", "#FF6600", "#FF0033")))
+
+##Pollutant plot
+ggplot(data_state,aes(x=Date,y=pm25))+
+  geom_line(size=1)+xlab("Date")+ylab("PM2.5")+
+  scale_x_date(date_breaks = "3 month",date_labels = "%b %Y")+
+  theme_bw()+
+  theme(axis.text=element_text(size=14),
+        axis.title=element_text(size=14,face="bold"),
+        plot.title = element_text(size=22))+
+  geom_rect(aes(xmin = Date, xmax = dplyr::lead(Date), 
+                ymin = -Inf, ymax = Inf, fill = State), alpha = .2) +
+  scale_fill_manual(values = alpha(c("green","yellow", "#FF6600", "#FF0033")))
