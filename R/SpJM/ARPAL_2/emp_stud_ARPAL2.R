@@ -469,25 +469,26 @@ library(pdfCluster)
 ARI_res=unlist(lapply(est,function(e){adj.rand.index(e$best_s,AQI_fact)}))
 
 source("Utils.R")
-GIC=unlist(lapply(est,function(e){GIC_mixed(e$Y,e$best_s,est[[1]]$best_s,K=e$K,K0=4,pers0 = .9)$FTIC}))
+GIC=unlist(lapply(est,function(e){GIC_mixed(e$Y,e$best_s,est[[1]]$best_s,K=e$K,K0=3,pers0 = .9)$FTIC}))
 
 res=data.frame(ARI_res,GIC,lambda,K)
 
 plot(res$lambda,res$ARI_res,type="l",xlab="lambda",ylab="ARI",main="ARI vs lambda")
 
-best_est=est[[13]]
+best_est=est[[7]]
 
 table(best_est$best_s)
 
 best_est$condMM
 
-states=recode(best_est$best_s, "1" = "Good", "2" = "Moderate","3"="US","4"="Unhealthy")
+states=recode(best_est$best_s, "3" = "Good", "2" = "Moderate","1"="US","4"="Unhealthy")
 states=factor(states,levels=c("Good","Moderate","US","Unhealthy"))
 #states=factor(best_est$best_s,levels=1:4,labels=c("Good","US","Unhealthy","Moderate"))
 true_states=factor(AQI_fact,levels=1:4,labels=c("Good","Moderate","US","Unhealthy"))
 
 adj.rand.index(states,true_states)
 sum(states==true_states)/length(states)
+
 
 # AQI
 P1=ggplot(dat,aes(x=Date,y=as.numeric(true_states)))+
@@ -619,3 +620,29 @@ library(gridExtra)
 windows()
 #grid.arrange(ptemp,prel_hum,pwind_speed,prainfall,pglobrad,ncol=2)
 ggarrange(ptemp,prel_hum,pwind_speed,prainfall,pglobrad, ncol=2, nrow=3, common.legend = TRUE, legend="bottom")
+
+
+# State conditional correlations
+# State conditional correlation
+dat_good=data_state[data_state$State=="Good",]
+dat_moderate=data_state[data_state$State=="Moderate",]
+dat_us=data_state[data_state$State=="US",]
+dat_unhealthy=data_state[data_state$State=="Unhealthy",]
+
+# Extract numeric variables
+cont_feat=c(2:5,8,11,14,17,20)
+
+dat_good=dat_good[cont_feat]
+dat_moderate=dat_moderate[cont_feat]
+dat_us=dat_us[cont_feat]
+dat_unhealthy=dat_unhealthy[cont_feat]
+
+cor_good=cor(dat_good,use="complete.obs")
+cor_moderate=cor(dat_moderate,use="complete.obs")
+cor_us=cor(dat_us,use="complete.obs")
+cor_unhealthy=cor(dat_unhealthy,use="complete.obs")
+
+round(cor_good,2)
+round(cor_moderate,2)
+round(cor_us,2)
+round(cor_unhealthy,2)
