@@ -406,6 +406,11 @@ windows()
 
 corrplot::corrplot(cor(dat[,c(2:5,8,11,14,17,20)],use="complete.obs"),method="number")
 
+# partial correlations:
+library(ppcor)
+pcor=pcor(dat[complete.cases(dat[,c(2:5,8,11,14,17,20)]),c(2:5,8,11,14,17,20)])
+pcor$estimate
+
 tapply(dat$pm25,dat$windy,mean)
 tapply(dat$pm25,dat$rainy,mean)
 tapply(dat$pm25,dat$weekend,mean)
@@ -646,3 +651,14 @@ round(cor_good,2)
 round(cor_moderate,2)
 round(cor_us,2)
 round(cor_unhealthy,2)
+
+# State cond partial correlation coefficients
+pcor_good=pcor(dat_good[complete.cases(dat_good),])
+pcor_moderate=pcor(dat_moderate[complete.cases(dat_moderate),])
+pcor_us=pcor(dat_us[complete.cases(dat_us),])
+pcor_unhealthy=pcor(dat_unhealthy[complete.cases(dat_unhealthy),])
+
+round(pcor_good$estimate,2)
+round(pcor_moderate$estimate,2)
+round(pcor_us$estimate,2)
+round(pcor_unhealthy$estimate,2)
