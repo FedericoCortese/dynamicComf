@@ -517,9 +517,8 @@ confusionMatrix(states,true_states)
 
 data_state=data.frame(dat,State=states,AQI=true_states)
 
-ggplot(data_state,aes(x=Date,y=as.numeric(AQI)))+
-  geom_line(size=1)+xlab("Date")+ylab(" ")+ggtitle("AQI")+
-  scale_x_date(date_breaks = "3 month",date_labels = "%b %Y")+
+ppm25=ggplot(data_state,aes(x=Date,y=pm25))+geom_line()+xlab("Date")+ylab("PM2.5")+
+  scale_x_date(date_breaks = "6 month",date_labels = "%b %Y")+
   theme_bw()+
   theme(axis.text=element_text(size=14),
         axis.title=element_text(size=14,face="bold"),
@@ -528,10 +527,8 @@ ggplot(data_state,aes(x=Date,y=as.numeric(AQI)))+
                 ymin = -Inf, ymax = Inf, fill = State), alpha = .2) +
   scale_fill_manual(values = alpha(c("green","yellow", "#FF6600", "#FF0033")))
 
-##Pollutant plot
-ggplot(data_state,aes(x=Date,y=pm25))+
-  geom_line(size=1)+xlab("Date")+ylab("PM2.5")+
-  scale_x_date(date_breaks = "3 month",date_labels = "%b %Y")+
+ppm10=ggplot(data_state,aes(x=Date,y=pm10))+geom_line()+xlab("Date")+ylab("PM10")+
+  scale_x_date(date_breaks = "6 month",date_labels = "%b %Y")+
   theme_bw()+
   theme(axis.text=element_text(size=14),
         axis.title=element_text(size=14,face="bold"),
@@ -539,3 +536,86 @@ ggplot(data_state,aes(x=Date,y=pm25))+
   geom_rect(aes(xmin = Date, xmax = dplyr::lead(Date), 
                 ymin = -Inf, ymax = Inf, fill = State), alpha = .2) +
   scale_fill_manual(values = alpha(c("green","yellow", "#FF6600", "#FF0033")))
+
+po3=ggplot(data_state,aes(x=Date,y=o3))+geom_line()+xlab("Date")+ylab("O3")+
+  scale_x_date(date_breaks = "6 month",date_labels = "%b %Y")+
+  theme_bw()+
+  theme(axis.text=element_text(size=14),
+        axis.title=element_text(size=14,face="bold"),
+        plot.title = element_text(size=22))+
+  geom_rect(aes(xmin = Date, xmax = dplyr::lead(Date), 
+                ymin = -Inf, ymax = Inf, fill = State), alpha = .2) +
+  scale_fill_manual(values = alpha(c("green","yellow", "#FF6600", "#FF0033")))
+
+pno2=ggplot(data_state,aes(x=Date,y=no2))+geom_line()+xlab("Date")+ylab("NO2")+
+  scale_x_date(date_breaks = "6 month",date_labels = "%b %Y")+
+  theme_bw()+
+  theme(axis.text=element_text(size=14),
+        axis.title=element_text(size=14,face="bold"),
+        plot.title = element_text(size=22))+
+  geom_rect(aes(xmin = Date, xmax = dplyr::lead(Date), 
+                ymin = -Inf, ymax = Inf, fill = State), alpha = .2) +
+  scale_fill_manual(values = alpha(c("green","yellow", "#FF6600", "#FF0033")))
+
+
+library(ggpubr)
+windows()
+#grid.arrange(ppm25,ppm10,po3,pno2,ncol=2)
+ggarrange(ppm25,ppm10,po3,pno2, ncol=2, nrow=2, common.legend = TRUE, legend="bottom")
+
+#ggplot
+ptemp=ggplot(data_state,aes(x=Date,y=temp))+geom_line()+xlab("Date")+ylab("Temp")+
+  scale_x_date(date_breaks = "6 month",date_labels = "%b %Y")+
+  theme_bw()+
+  theme(axis.text=element_text(size=14),
+        axis.title=element_text(size=14,face="bold"),
+        plot.title = element_text(size=22))+
+  geom_rect(aes(xmin = Date, xmax = dplyr::lead(Date), 
+                ymin = -Inf, ymax = Inf, fill = State), alpha = .2) +
+  scale_fill_manual(values = alpha(c("green","yellow", "#FF6600", "#FF0033")))
+
+prel_hum=ggplot(data_state,aes(x=Date,y=rel_hum))+geom_line()+xlab("Date")+ylab("RH")+
+  scale_x_date(date_breaks = "6 month",date_labels = "%b %Y")+
+  theme_bw()+
+  theme(axis.text=element_text(size=14),
+        axis.title=element_text(size=14,face="bold"),
+        plot.title = element_text(size=22))+
+  geom_rect(aes(xmin = Date, xmax = dplyr::lead(Date), 
+                ymin = -Inf, ymax = Inf, fill = State), alpha = .2) +
+  scale_fill_manual(values = alpha(c("green","yellow", "#FF6600", "#FF0033")))
+
+pwind_speed=ggplot(data_state,aes(x=Date,y=wind_speed))+geom_line()+xlab("Date")+ylab("WS")+
+  scale_x_date(date_breaks = "6 month",date_labels = "%b %Y")+
+  theme_bw()+
+  theme(axis.text=element_text(size=14),
+        axis.title=element_text(size=14,face="bold"),
+        plot.title = element_text(size=22))+
+  geom_rect(aes(xmin = Date, xmax = dplyr::lead(Date), 
+                ymin = -Inf, ymax = Inf, fill = State), alpha = .2) +
+  scale_fill_manual(values = alpha(c("green","yellow", "#FF6600", "#FF0033")))
+
+prainfall=ggplot(data_state,aes(x=Date,y=rainfall))+geom_line()+xlab("Date")+ylab("RF")+
+  scale_x_date(date_breaks = "6 month",date_labels = "%b %Y")+
+  theme_bw()+
+  theme(axis.text=element_text(size=14),
+        axis.title=element_text(size=14,face="bold"),
+        plot.title = element_text(size=22))+
+  geom_rect(aes(xmin = Date, xmax = dplyr::lead(Date), 
+                ymin = -Inf, ymax = Inf, fill = State), alpha = .2) +
+  scale_fill_manual(values = alpha(c("green","yellow", "#FF6600", "#FF0033")))
+
+pglobrad=ggplot(data_state,aes(x=Date,y=globrad))+geom_line()+xlab("Date")+ylab("GR")+
+  scale_x_date(date_breaks = "6 month",date_labels = "%b %Y")+
+  theme_bw()+
+  theme(axis.text=element_text(size=14),
+        axis.title=element_text(size=14,face="bold"),
+        plot.title = element_text(size=22))+
+  geom_rect(aes(xmin = Date, xmax = dplyr::lead(Date), 
+                ymin = -Inf, ymax = Inf, fill = State), alpha = .2) +
+  scale_fill_manual(values = alpha(c("green","yellow", "#FF6600", "#FF0033")))
+
+
+library(gridExtra)
+windows()
+#grid.arrange(ptemp,prel_hum,pwind_speed,prainfall,pglobrad,ncol=2)
+ggarrange(ptemp,prel_hum,pwind_speed,prainfall,pglobrad, ncol=2, nrow=3, common.legend = TRUE, legend="bottom")
