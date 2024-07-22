@@ -2657,4 +2657,24 @@ STjumpR <- function(Z, n_states, jump_penalty=1e-5,
   return(best_s)
 }
 
+STJM=function(){
+  # Y is TxMxP array of observations
   
+  loss_by_state=array(0,dim=c(n_obs,M,n_states))
+  for(m in 1:M){
+    loss_by_state[,m,]=gower.dist(Y[,m,],mumo)
+  }
+  
+  V <- loss_by_state
+  for (t in (n_obs-1):1) {
+    for(m in 1:M){
+      V[t-1,m,] <- loss_by_state[t-1,m,] + apply(V[t,m,] + Gamma, 2, min) + table(factor(s[which(C[m,]==1)],
+                                                                                         levels=1:n_states)) 
+    }
+  }
+  
+  s[1] <- which.min(V[1,])
+  for (t in 2:n_obs) {
+    s[t] <- which.min(V[t,] + Gamma[s[t-1],])
+  }
+}  

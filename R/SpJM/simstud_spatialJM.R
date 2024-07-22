@@ -90,11 +90,12 @@ acc=unlist(lapply(spatialJMrho05_no.miss,accur))
 
 res=data.frame(hp,acc=acc)
 avres=res%>%group_by(M,P,gamma)%>%summarise(avAcc=median(acc,na.rm=T))
-
 avres%>%group_by(M,P)%>%summarise(maxAcc=max(avAcc),gamma=gamma[which.max(avAcc)])
 
 res0=res[which(res$gamma==0),]
-res%>%group_by(M,P)%>%summarise(avAcc=max(acc,na.rm=T))
+res0%>%group_by(M,P)%>%summarise(avAcc=median(acc,na.rm=T))
+
+
 
 # No missing rho=0 --------------------------------------------------------------
 
