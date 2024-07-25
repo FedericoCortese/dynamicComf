@@ -543,13 +543,12 @@ ppm10=ggplot(data_state,aes(x=Date,y=pm10))+geom_line()+xlab("Date")+ylab("PM10"
                 ymin = -Inf, ymax = Inf, fill = State), alpha = .2) +
   scale_fill_manual(values = alpha(c("green","yellow", "#FF6600", "#FF0033")))
 
-<<<<<<< HEAD
 
 prop.table(table((data_state$rainy[data_state$State=="Good"])))
 prop.table(table((data_state$rainy[data_state$State=="Moderate"])))
 prop.table(table((data_state$rainy[data_state$State=="US"])))           
 prop.table(table((data_state$rainy[data_state$State=="Unhealthy"])))
-=======
+
 po3=ggplot(data_state,aes(x=Date,y=o3))+geom_line()+xlab("Date")+ylab("O3")+
   scale_x_date(date_breaks = "6 month",date_labels = "%b %Y")+
   theme_bw()+
