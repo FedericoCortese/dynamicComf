@@ -469,19 +469,19 @@ library(pdfCluster)
 ARI_res=unlist(lapply(est,function(e){adj.rand.index(e$best_s,AQI_fact)}))
 
 source("Utils.R")
-GIC=unlist(lapply(est,function(e){GIC_mixed(e$Y,e$best_s,est[[1]]$best_s,K=e$K,K0=4,pers0 = .9)$FTIC}))
+GIC=unlist(lapply(est,function(e){GIC_mixed(e$Y,e$best_s,est[[1]]$best_s,K=e$K,K0=3,pers0 = .9)$FTIC}))
 
 res=data.frame(ARI_res,GIC,lambda,K)
 
-plot(res$lambda,res$ARI_res,type="l",xlab="lambda",ylab="ARI",main="ARI vs lambda")
+#plot(res$lambda,res$ARI_res,type="l",xlab="lambda",ylab="ARI",main="ARI vs lambda")
 
-best_est=est[[13]]
+best_est=est[[7]]
 
 table(best_est$best_s)
 
 best_est$condMM
 
-states=recode(best_est$best_s, "1" = "Good", "2" = "Moderate","3"="US","4"="Unhealthy")
+states=recode(best_est$best_s, "3" = "Good", "2" = "Moderate","1"="US","4"="Unhealthy")
 states=factor(states,levels=c("Good","Moderate","US","Unhealthy"))
 #states=factor(best_est$best_s,levels=1:4,labels=c("Good","US","Unhealthy","Moderate"))
 true_states=factor(AQI_fact,levels=1:4,labels=c("Good","Moderate","US","Unhealthy"))
@@ -539,3 +539,9 @@ ggplot(data_state,aes(x=Date,y=pm25))+
   geom_rect(aes(xmin = Date, xmax = dplyr::lead(Date), 
                 ymin = -Inf, ymax = Inf, fill = State), alpha = .2) +
   scale_fill_manual(values = alpha(c("green","yellow", "#FF6600", "#FF0033")))
+
+
+prop.table(table((data_state$rainy[data_state$State=="Good"])))
+prop.table(table((data_state$rainy[data_state$State=="Moderate"])))
+prop.table(table((data_state$rainy[data_state$State=="US"])))           
+prop.table(table((data_state$rainy[data_state$State=="Unhealthy"])))
