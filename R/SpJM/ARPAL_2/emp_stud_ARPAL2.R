@@ -406,6 +406,11 @@ windows()
 
 corrplot::corrplot(cor(dat[,c(2:5,8,11,14,17,20)],use="complete.obs"),method="number")
 
+# partial correlations:
+library(ppcor)
+pcor=pcor(dat[complete.cases(dat[,c(2:5,8,11,14,17,20)]),c(2:5,8,11,14,17,20)])
+pcor$estimate
+
 tapply(dat$pm25,dat$windy,mean)
 tapply(dat$pm25,dat$rainy,mean)
 tapply(dat$pm25,dat$weekend,mean)
@@ -489,6 +494,7 @@ true_states=factor(AQI_fact,levels=1:4,labels=c("Good","Moderate","US","Unhealth
 adj.rand.index(states,true_states)
 sum(states==true_states)/length(states)
 
+
 # AQI
 P1=ggplot(dat,aes(x=Date,y=as.numeric(true_states)))+
   geom_line(size=1)+xlab("Date")+ylab(" ")+ggtitle("AQI")+
@@ -517,9 +523,8 @@ confusionMatrix(states,true_states)
 
 data_state=data.frame(dat,State=states,AQI=true_states)
 
-ggplot(data_state,aes(x=Date,y=as.numeric(AQI)))+
-  geom_line(size=1)+xlab("Date")+ylab(" ")+ggtitle("AQI")+
-  scale_x_date(date_breaks = "3 month",date_labels = "%b %Y")+
+ppm25=ggplot(data_state,aes(x=Date,y=pm25))+geom_line()+xlab("Date")+ylab("PM2.5")+
+  scale_x_date(date_breaks = "6 month",date_labels = "%b %Y")+
   theme_bw()+
   theme(axis.text=element_text(size=14),
         axis.title=element_text(size=14,face="bold"),
@@ -528,10 +533,8 @@ ggplot(data_state,aes(x=Date,y=as.numeric(AQI)))+
                 ymin = -Inf, ymax = Inf, fill = State), alpha = .2) +
   scale_fill_manual(values = alpha(c("green","yellow", "#FF6600", "#FF0033")))
 
-##Pollutant plot
-ggplot(data_state,aes(x=Date,y=pm25))+
-  geom_line(size=1)+xlab("Date")+ylab("PM2.5")+
-  scale_x_date(date_breaks = "3 month",date_labels = "%b %Y")+
+ppm10=ggplot(data_state,aes(x=Date,y=pm10))+geom_line()+xlab("Date")+ylab("PM10")+
+  scale_x_date(date_breaks = "6 month",date_labels = "%b %Y")+
   theme_bw()+
   theme(axis.text=element_text(size=14),
         axis.title=element_text(size=14,face="bold"),
@@ -540,8 +543,130 @@ ggplot(data_state,aes(x=Date,y=pm25))+
                 ymin = -Inf, ymax = Inf, fill = State), alpha = .2) +
   scale_fill_manual(values = alpha(c("green","yellow", "#FF6600", "#FF0033")))
 
+<<<<<<< HEAD
 
 prop.table(table((data_state$rainy[data_state$State=="Good"])))
 prop.table(table((data_state$rainy[data_state$State=="Moderate"])))
 prop.table(table((data_state$rainy[data_state$State=="US"])))           
 prop.table(table((data_state$rainy[data_state$State=="Unhealthy"])))
+=======
+po3=ggplot(data_state,aes(x=Date,y=o3))+geom_line()+xlab("Date")+ylab("O3")+
+  scale_x_date(date_breaks = "6 month",date_labels = "%b %Y")+
+  theme_bw()+
+  theme(axis.text=element_text(size=14),
+        axis.title=element_text(size=14,face="bold"),
+        plot.title = element_text(size=22))+
+  geom_rect(aes(xmin = Date, xmax = dplyr::lead(Date), 
+                ymin = -Inf, ymax = Inf, fill = State), alpha = .2) +
+  scale_fill_manual(values = alpha(c("green","yellow", "#FF6600", "#FF0033")))
+
+pno2=ggplot(data_state,aes(x=Date,y=no2))+geom_line()+xlab("Date")+ylab("NO2")+
+  scale_x_date(date_breaks = "6 month",date_labels = "%b %Y")+
+  theme_bw()+
+  theme(axis.text=element_text(size=14),
+        axis.title=element_text(size=14,face="bold"),
+        plot.title = element_text(size=22))+
+  geom_rect(aes(xmin = Date, xmax = dplyr::lead(Date), 
+                ymin = -Inf, ymax = Inf, fill = State), alpha = .2) +
+  scale_fill_manual(values = alpha(c("green","yellow", "#FF6600", "#FF0033")))
+
+
+library(ggpubr)
+windows()
+#grid.arrange(ppm25,ppm10,po3,pno2,ncol=2)
+ggarrange(ppm25,ppm10,po3,pno2, ncol=2, nrow=2, common.legend = TRUE, legend="bottom")
+
+#ggplot
+ptemp=ggplot(data_state,aes(x=Date,y=temp))+geom_line()+xlab("Date")+ylab("Temp")+
+  scale_x_date(date_breaks = "6 month",date_labels = "%b %Y")+
+  theme_bw()+
+  theme(axis.text=element_text(size=14),
+        axis.title=element_text(size=14,face="bold"),
+        plot.title = element_text(size=22))+
+  geom_rect(aes(xmin = Date, xmax = dplyr::lead(Date), 
+                ymin = -Inf, ymax = Inf, fill = State), alpha = .2) +
+  scale_fill_manual(values = alpha(c("green","yellow", "#FF6600", "#FF0033")))
+
+prel_hum=ggplot(data_state,aes(x=Date,y=rel_hum))+geom_line()+xlab("Date")+ylab("RH")+
+  scale_x_date(date_breaks = "6 month",date_labels = "%b %Y")+
+  theme_bw()+
+  theme(axis.text=element_text(size=14),
+        axis.title=element_text(size=14,face="bold"),
+        plot.title = element_text(size=22))+
+  geom_rect(aes(xmin = Date, xmax = dplyr::lead(Date), 
+                ymin = -Inf, ymax = Inf, fill = State), alpha = .2) +
+  scale_fill_manual(values = alpha(c("green","yellow", "#FF6600", "#FF0033")))
+
+pwind_speed=ggplot(data_state,aes(x=Date,y=wind_speed))+geom_line()+xlab("Date")+ylab("WS")+
+  scale_x_date(date_breaks = "6 month",date_labels = "%b %Y")+
+  theme_bw()+
+  theme(axis.text=element_text(size=14),
+        axis.title=element_text(size=14,face="bold"),
+        plot.title = element_text(size=22))+
+  geom_rect(aes(xmin = Date, xmax = dplyr::lead(Date), 
+                ymin = -Inf, ymax = Inf, fill = State), alpha = .2) +
+  scale_fill_manual(values = alpha(c("green","yellow", "#FF6600", "#FF0033")))
+
+prainfall=ggplot(data_state,aes(x=Date,y=rainfall))+geom_line()+xlab("Date")+ylab("RF")+
+  scale_x_date(date_breaks = "6 month",date_labels = "%b %Y")+
+  theme_bw()+
+  theme(axis.text=element_text(size=14),
+        axis.title=element_text(size=14,face="bold"),
+        plot.title = element_text(size=22))+
+  geom_rect(aes(xmin = Date, xmax = dplyr::lead(Date), 
+                ymin = -Inf, ymax = Inf, fill = State), alpha = .2) +
+  scale_fill_manual(values = alpha(c("green","yellow", "#FF6600", "#FF0033")))
+
+pglobrad=ggplot(data_state,aes(x=Date,y=globrad))+geom_line()+xlab("Date")+ylab("GR")+
+  scale_x_date(date_breaks = "6 month",date_labels = "%b %Y")+
+  theme_bw()+
+  theme(axis.text=element_text(size=14),
+        axis.title=element_text(size=14,face="bold"),
+        plot.title = element_text(size=22))+
+  geom_rect(aes(xmin = Date, xmax = dplyr::lead(Date), 
+                ymin = -Inf, ymax = Inf, fill = State), alpha = .2) +
+  scale_fill_manual(values = alpha(c("green","yellow", "#FF6600", "#FF0033")))
+
+
+library(gridExtra)
+windows()
+#grid.arrange(ptemp,prel_hum,pwind_speed,prainfall,pglobrad,ncol=2)
+ggarrange(ptemp,prel_hum,pwind_speed,prainfall,pglobrad, ncol=2, nrow=3, common.legend = TRUE, legend="bottom")
+
+
+# State conditional correlations
+# State conditional correlation
+dat_good=data_state[data_state$State=="Good",]
+dat_moderate=data_state[data_state$State=="Moderate",]
+dat_us=data_state[data_state$State=="US",]
+dat_unhealthy=data_state[data_state$State=="Unhealthy",]
+
+# Extract numeric variables
+cont_feat=c(2:5,8,11,14,17,20)
+
+dat_good=dat_good[cont_feat]
+dat_moderate=dat_moderate[cont_feat]
+dat_us=dat_us[cont_feat]
+dat_unhealthy=dat_unhealthy[cont_feat]
+
+cor_good=cor(dat_good,use="complete.obs")
+cor_moderate=cor(dat_moderate,use="complete.obs")
+cor_us=cor(dat_us,use="complete.obs")
+cor_unhealthy=cor(dat_unhealthy,use="complete.obs")
+
+round(cor_good,2)
+round(cor_moderate,2)
+round(cor_us,2)
+round(cor_unhealthy,2)
+
+# State cond partial correlation coefficients
+pcor_good=pcor(dat_good[complete.cases(dat_good),])
+pcor_moderate=pcor(dat_moderate[complete.cases(dat_moderate),])
+pcor_us=pcor(dat_us[complete.cases(dat_us),])
+pcor_unhealthy=pcor(dat_unhealthy[complete.cases(dat_unhealthy),])
+
+round(pcor_good$estimate,2)
+round(pcor_moderate$estimate,2)
+round(pcor_us$estimate,2)
+round(pcor_unhealthy$estimate,2)
+>>>>>>> 5faf6041eb9921c0090524ce364232691b8aa476

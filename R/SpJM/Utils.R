@@ -725,7 +725,7 @@ initialize_states <- function(Y, K) {
   # init_stats2 <- sapply(1:n, function(i) which.min(gower.dist(Y[i,], centroids)))
   # init_stats3 <- vapply(1:n, function(i) which.min(gower.dist(Y[i,], centroids)), integer(1))
   
-  # Faster solution (not sure if it's correct)
+  # Faster solution 
   dist_matrix <- gower.dist(Y, centroids)
   init_stats <- apply(dist_matrix, 1, which.min)
   
@@ -2657,4 +2657,3 @@ STjumpR <- function(Z, n_states, jump_penalty=1e-5,
   return(best_s)
 }
 
-  
