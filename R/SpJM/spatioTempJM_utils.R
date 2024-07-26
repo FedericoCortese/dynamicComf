@@ -1,19 +1,18 @@
 source("Utils.R")
 
-TT=4
+TT=6
 Ktrue=3
 seed=1
-M=100
+M=225
 P=25
 mu=3
-phi=.8
-rho=0
+phi=.7
+rho=0.2
 Pcat=NULL
 pNAs=0
 sp_indx=1:M
 sp_indx=matrix(sp_indx,ncol=sqrt(M),byrow=T)
 
-Y=list()
 S_true=matrix(0,nrow=TT,ncol=M)
 
 C=Cmatrix(sp_indx)
@@ -30,93 +29,75 @@ for(t in 1:TT){
   temp$m=1:M
   temp$t=rep(t,M)
   Y=rbind(Y,temp)
-  S_true[t,]=simDat$s
+  S_true[t,]=order_states_freq(simDat$s)
 }
 
-### Function ###
-n_states=3
-cat.indx=which(sapply(Y, is.factor))
-cont.indx=which(sapply(Y, is.numeric))
+# Put t and m in front of all the others with dplyr
+Y <- Y %>% select(t, m, everything())
 
-Ycont=Y[,cont.indx]
-Ycat=Y[,cat.indx]
+data_matrix <- matrix(S_true[4,], nrow = sqrt(M), ncol = sqrt(M),byrow = T)
+data_df <- as.data.frame(as.table(data_matrix))
+colnames(data_df) <- c("X", "Y", "Value")
+ggplot(data_df, aes(x = X, y = Y, fill = factor(Value))) +
+  geom_tile(color = "white") +
+  scale_fill_manual(values = c("1" = "pink", "2" = "orange", "3" = "violet")) +
+  theme_minimal() +
+  theme(axis.title = element_blank(),
+        axis.ticks = element_blank(),
+        axis.text = element_blank(),
+        panel.grid = element_blank()
+        # ,
+        # legend.position = "none"
+        ) +
+  coord_fixed() 
 
-n_cat=length(cat.indx)
-n_cont=P-n_cat
+lambda=.05
+gamma=.075
+initial_states=NULL
+max_iter=10
+n_init=10
+tol=NULL
+verbose=T
 
-# Missing data imputation TBD
+fit <- STjumpR(Y, n_states = 3, C, jump_penalty=lambda,spatial_penalty = gamma, verbose=T)
 
-# State initialization through kmeans++
+best_s=fit$best_s
 
-S=matrix(0,nrow=TT,ncol=M)
+tt=4
 
-for(m in 1:M){
-  S[,m]=initialize_states(Y[which(Y$m==m),],n_states)
-}
+data_matrix <- matrix(S_true[tt,], nrow = sqrt(M), ncol = sqrt(M),byrow = T)
+data_df <- as.data.frame(as.table(data_matrix))
+colnames(data_df) <- c("X", "Y", "Value")
 
-for (init in 1:n_init) {
-  mu <- matrix(0, nrow=n_states, ncol=length(cont.indx))
-  mo <- matrix(0, nrow=n_states, ncol=length(cat.indx))
-  loss_old <- 1e10
-  for (it in 1:max_iter) {
-    
-    for (i in unique(as.vector(S))) {
-      mu[i,] <- colMeans(Ycont[as.vector(t(S))==i,])
-      mo[i,]=apply(Ycat[as.vector(t(S))==i,],2,Mode)
-    }
-    
-    mu=data.frame(mu)
-    mo=data.frame(mo,stringsAsFactors=TRUE)
-    for(i in 1:n_cat){
-      #mo[,i]=factor(mo[,i],levels=1:n_levs[i])
-      mo[,i]=factor(mo[,i],levels=levels(Ycat[,i]))
-      
-    }
-    mumo=data.frame(matrix(0,nrow=n_states,ncol=P))
-    mumo[,cat.indx]=mo
-    mumo[,cont.indx]=mu
-    colnames(mumo)=colnames(Y)
-    
-    # Fit state sequence
-    S_old <- S
-    
-    # Re-fill-in missings TBD 
-    
-    loss_by_state=gower.dist(Y,mumo)
-    
-    V <- loss_by_state
-    for (t in (n_obs-1):1) {
-      
-        V[t-1,] <- loss_by_state[t-1,] + apply(V[t,] + Gamma, 2, min)
-      
-    }
-    
-    s[1] <- which.min(V[1,])
-    for (t in 2:n_obs) {
-      s[t] <- which.min(V[t,] + Gamma[s[t-1],])
-    }
-    
-    if (length(unique(s)) == 1) {
-      break
-    }
-    loss <- min(V[1,])
-    if (verbose) {
-      cat(sprintf('Iteration %d: %.6e\n', it, loss))
-    }
-    if (!is.null(tol)) {
-      epsilon <- loss_old - loss
-      if (epsilon < tol) {
-        break
-      }
-    } else if (all(s == s_old)) {
-      break
-    }
-    loss_old <- loss
-  }
-  if (is.null(best_s) || (loss_old < best_loss)) {
-    best_loss <- loss_old
-    best_s <- s
-  }
-  #s <- init_states(Y, n_states)+1
-  s=initialize_states(Y,n_states)
-}
+Ptrue=ggplot(data_df, aes(x = X, y = Y, fill = factor(Value))) +
+  geom_tile(color = "white") +
+  scale_fill_manual(values = c("1" = "pink", "2" = "orange", "3" = "violet")) +
+  theme_minimal() +
+  theme(axis.title = element_blank(),
+        axis.ticks = element_blank(),
+        axis.text = element_blank(),
+        panel.grid = element_blank()
+         ,
+         legend.position = "none"
+  ) +
+  coord_fixed() 
+
+data_matrix <- matrix(best_s[tt,], nrow = sqrt(M), ncol = sqrt(M),byrow = T)
+data_df <- as.data.frame(as.table(data_matrix))
+colnames(data_df) <- c("X", "Y", "Value")
+
+Pest=ggplot(data_df, aes(x = X, y = Y, fill = factor(Value))) +
+  geom_tile(color = "white") +
+  scale_fill_manual(values = c("1" = "pink", "2" = "orange", "3" = "violet")) +
+  theme_minimal() +
+  theme(axis.title = element_blank(),
+        axis.ticks = element_blank(),
+        axis.text = element_blank(),
+        panel.grid = element_blank()
+        ,
+         legend.position = "none"
+  ) +
+  coord_fixed() 
+
+library(ggpubr)
+ggarrange(Ptrue, Pest)

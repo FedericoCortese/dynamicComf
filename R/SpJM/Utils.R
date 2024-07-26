@@ -2281,6 +2281,7 @@ sim_spatial_JM=function(P,C,seed,
   else{
     SimData.NA=SimData
   }
+  s=order_states_freq(s)
   
   return(list(SimData=SimData,SimData.NA=SimData.NA,s=s))
 }
@@ -2521,139 +2522,130 @@ simstud_spatialJM=function(Ktrue=3,
 
 # Spatio-temporal JM --------------------------------------------------------
 
-STjumpR <- function(Z, n_states, jump_penalty=1e-5, 
-                  initial_states=NULL,
-                  max_iter=10, n_init=10, tol=NULL, verbose=FALSE, method="euclidean",
-                  python=F) {
-  # Fit jump model using framework of Bemporad et al. (2018)
+STjumpR=function(Y,n_states,C,jump_penalty=1e-5,
+                 spatial_penalty=1e-5,
+                 initial_states=NULL,
+                  max_iter=10, n_init=10, tol=NULL, verbose=FALSE){
+  # Y is a dataframe in long format with mandatory columns t and m which are time and spatial indexes
+  # n_states is the number of states
   
-  Z=as.array(Z)
-  n_states=as.integer(n_states)
-  
-  D=dim(Z)
-  n_obs <- D[1]
-  n_features <- D[3]
-  n_points=D[2]
   Gamma <- jump_penalty * (1 - diag(n_states))
   best_loss <- NULL
   best_s <- NULL
   
-  # Initialize mu
-  mu <- apply(Z,3,mean)
+  library(dplyr)
+  Y <- Y %>% select(t, m, everything())
+  YY=subset(Y,select=-c(t,m))
   
-  # Track missings with 0 1 matrix
-  M=ifelse(is.na(Z),T,F)
+  TT=length(unique(Y$t))
+  M=length(unique(Y$m))
   
+  cat.indx=which(sapply(YY, is.factor))
+  cont.indx=which(sapply(YY, is.numeric))
   
-  Ztil=Z
-  # Impute missing values with mean of observed states
-  for(i in 1:n_features){
-    Z[,,i]=ifelse(M[,,i],mu[i],Z[,,i])
+  Ycont=YY[,cont.indx]
+  Ycat=YY[,cat.indx]
+  
+  n_cat=length(cat.indx)
+  n_cont=P-n_cat
+  
+  # Missing data imputation TBD
+  
+  # State initialization through kmeans++
+  S=matrix(0,nrow=TT,ncol=M)
+  for(m in 1:M){
+    S[,m]=initialize_states(Y[which(Y$m==m),],n_states)
   }
   
-  # State initialization through kmeans++ TBD
-  # if (!is.null(initial_states)) {
-    s <- initial_states
-  # } else {
-  #   if(python){
-  #     s <- init_states(Y, n_states)+1
-  #   }
-  #   else{
-  #     s <- initialize_states_jumpR(Y, n_states,method)
-  #   }
-  # }
-  
-  
-  # Fill-in unobserved entries
-  
   for (init in 1:n_init) {
-    mu <- matrix(0, nrow=n_states, ncol=n_features)
+    mu <- matrix(0, nrow=n_states, ncol=length(cont.indx))
+    mo <- matrix(0, nrow=n_states, ncol=length(cat.indx))
     loss_old <- 1e10
     for (it in 1:max_iter) {
       
-      #for (i in unique(s)) {
-      for (i in unique(as.vector(s))) {
-        # Fit model by updating mean of observed states
-       # if(sum(s==i)>1){
-        for(j in 1:n_features){
-          #mu[i,] <- colMeans(Y[s==i,])
-          Y=Z[,,j]
-          mu[i,j]= mean(Y[s==i])
-        }
-       # }
-        # else{
-        #   mu[i,]=mean(Y[s==i,])
-        # }
+      for (i in unique(as.vector(S))) {
+        mu[i,] <- colMeans(Ycont[as.vector(t(S))==i,])
+        mo[i,]=apply(Ycat[as.vector(t(S))==i,],2,Mode)
       }
+      
+      mu=data.frame(mu)
+      mo=data.frame(mo,stringsAsFactors=TRUE)
+      for(i in 1:n_cat){
+        #mo[,i]=factor(mo[,i],levels=1:n_levs[i])
+        mo[,i]=factor(mo[,i],levels=levels(Ycat[,i]))
+        
+      }
+      mumo=data.frame(matrix(0,nrow=n_states,ncol=P))
+      mumo[,cat.indx]=mo
+      mumo[,cont.indx]=mu
+      colnames(mumo)=colnames(YY)
       
       # Fit state sequence
-      s_old <- s
+      S_old <- S
       
-      # Re-fill-in missings
-      for(i in 1:n_features){
-        for(j in 1:n_points){
-          #for(t in 1:n_obs){
-            Z[,j,i]=ifelse(M[,j,i],mu[s[,j],i],Z[,j,i])
-          #}
+      loss_v=NULL
+      
+      # Re-fill-in missings TBD 
+      
+      for(m in 1:M){
+        loss_by_state=gower.dist(Y[which(Y$m==m),-(1:2)],mumo)
+        #loss_by_state_old=t(apply(loss_by_state,1,function(x){x/sum(x)}))
+
+        for(k in 1:n_states){
+          loss_by_state=loss_by_state-spatial_penalty*rowSums(S[,which(C[m,]==1)]==k)/length(which(C[m,]==1))
         }
-      }
-      for(j in 1:n_points){
-        loss_by_state=matrix(0,nrow=n_obs,ncol=n_states)
-        switch(method,
-               euclidean={
-                 loss_by_state <- proxy::dist(Z[,j,],mu,method="euclidean")^2
-                 # for(k in 1:n_states){
-                 #   loss_by_state[,k]=apply(Y,1,function(x) 
-                 #     dist(rbind(x,mu[k,]),method="euclidean"))^2
-                 # }
-               },
-               manhattan={
-                 loss_by_state <- proxy::dist(Z[,j,],mu,method="manhattan")^2
-                 # for(k in 1:n_states){
-                 #   loss_by_state[,k]=apply(Y,1,function(x) 
-                 #     dist(rbind(x,mu[k,]),method="manhattan"))
-                 # }
-               })
-        
+        loss_by_state=t(apply(loss_by_state,1,function(x){x/sum(x)}))
         
         V <- loss_by_state
-        for (t in (n_obs-1):1) {
+        for (t in (TT-1):1) {
           V[t-1,] <- loss_by_state[t-1,] + apply(V[t,] + Gamma, 2, min)
+          
+          # Normalize
+          V[t-1,] <- V[t-1,]/sum(V[t-1,])
+          
         }
         
-        s[1,j] <- which.min(V[1,])
-        for (t in 2:n_obs) {
-          s[t,j] <- which.min(V[t,] + Gamma[s[t-1],])
+        S[1,m] <- which.min(V[1,])
+        for (t in 2:TT) {
+          S[t,m] <- which.min(V[t,] + Gamma[S[t-1,m],])
         }
-        
-        # if (length(unique(s)) == 1) {
-        #   break
-        # }
-        
-        # loss <- min(V[1,])
-        # if (verbose) {
-        #   cat(sprintf('Iteration %d: %.6e\n', it, loss))
-        # }
-        # if (!is.null(tol)) {
-        #   epsilon <- loss_old - loss
-        #   if (epsilon < tol) {
-        #     break
-        #   }
-        # } else if (all(s == s_old)) {
-        #   break
-        # }
-        # loss_old <- loss
+        loss_v=c(loss_v,min(V[1,]))
       }
-      if (is.null(best_s)) {
-          #|#| (loss_old < best_loss 
-       # )) {
-        best_loss <- loss_old
-        best_s <- s
+
+      
+      
+      if (length(unique(S)) == 1) {
+        break
       }
-      s=initial_states
+      loss <- mean(loss_v)
+      if (verbose) {
+        cat(sprintf('Iteration %d: %.6e\n', it, loss))
+      }
+      if (!is.null(tol)) {
+        epsilon <- loss_old - loss
+        if (epsilon < tol) {
+          break
+        }
+      } else if (all(S == S_old)) {
+        break
+      }
+      loss_old <- loss
+    }
+    if (is.null(best_s) || (loss_old < best_loss)) {
+      best_loss <- loss_old
+      best_s <- S
+    }
+    
+    for(m in 1:M){
+      S[,m]=initialize_states(Y[which(Y$m==m),],n_states)
     }
   }
   
-  return(best_s)
+  #best_s=matrix(order_states_freq(best_s),ncol=M,byrow=T)
+  
+  return(list(best_s=best_s,
+              Y=Y,
+              K=n_states,
+              lambda=jump_penalty))
+  
 }
-

@@ -6,8 +6,8 @@ require("potts")
 # stati (4 colori) in ciascuna posizione (pixel, immagine 10*10)
 
 ncolor = as.integer(3) # transizione di fase continua per 1 <= ncolor <= 4
-nr = 5
-nc = 5
+nr = 25
+nc = 25
 init <- matrix(sample(ncolor, nr * nc, replace = TRUE), nrow = nr, ncol=nc)
 init <- packPotts(init, ncol = ncolor)
 
