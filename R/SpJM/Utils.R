@@ -53,6 +53,22 @@ order_states_freq=function(states){
   return(states_temp)
 }
 
+order_states_condMean=function(y,s){
+  
+  # This function organizes states by assigning 1 to the state with the smallest conditional mean for vector y
+  # and sequentially numbering each new state as 2, 3, etc., incrementing by 1 for each newly observed state.
+  
+  #Slong=c(t(S))
+  # condMeans=sort(tapply(y,Slong,mean,na.rm=T))
+  condMeans=sort(tapply(y,s,mean,na.rm=T))
+  
+  states_temp=match(s,names(condMeans))
+  
+  #states_temp=matrix(states_temp,nrow=nrow(S),byrow = T)
+  
+  return(states_temp)
+}
+
 get_BCD <- function(Y, states) {
   
   n_states=length(unique(states))
@@ -2648,4 +2664,108 @@ STjumpR=function(Y,n_states,C,jump_penalty=1e-5,
               K=n_states,
               lambda=jump_penalty))
   
+}
+
+sim_spatiotemp_JM=function(P,C,seed,
+                           #pers_fact=4,
+                           rho=0,Pcat=NULL, phi=.8,
+                           mu=3,pNAs=0,ST=NULL,PI=.5){
+  
+  # This function simulates data from a 3-states spatial jump model (to be updated)
+  
+  # Arguments:
+  # P: number of features
+  # C: adjacency matrix of dimension MxM, where M is the desired number of spatial points
+  # seed: seed for the random number generator
+  # rho: correlation for the variables
+  # Pcat: number of categorical variables
+  # phi: conditional probability for the categorical outcome k in state k
+  # mu: mean value for the continuous variables
+  # pNAs: percentage of missing values (random missing pattern by default)
+  # ST: state sequence at time t-1
+  # PI: probability of sampling the same state as the previous one
+  
+  # Value:
+  # A list with the following elements:
+  # SimData: a data frame with the simulated data. 
+  # SimData.NA: a data frame with the simulated data with missing values
+  # s: a vector with the simulated states
+  
+  # Continuous variables are simulated from a Gaussian distribution with mean specified in mumo and unitary st. dev.
+  # Categorical variables are obtained censoring the continuous variables in three intervals, the central of which has probability equal to phi
+  
+  # The function simulates only 3-states spatial JM (to be updated).
+  
+  if(is.null(Pcat)){
+    Pcat=floor(P/2)
+  }
+  
+  n_states=3
+  M=dim(C)[1]
+  #s=matrix(0,ncol=ncg,nrow=nrg)
+  #s=rep(0,M)
+  set.seed(seed)
+  
+  #require("potts")
+  ncolor = as.integer(n_states) # transizione di fase continua per 1 <= ncolor <= 4
+  nr = sqrt(M)
+  nc = sqrt(M)
+  init <- matrix(sample(ncolor, nr * nc, replace = TRUE), nrow = nr, ncol=nc)
+  init <- packPotts(init, ncol = ncolor)
+  
+  beta <- log(1 + sqrt(ncolor))
+  theta <- c(rep(0, ncolor), beta)
+  out <- potts(init, param=theta, nbatch = 200 , blen=10, nspac=1)
+  rotate <- function(x) apply(t(x), 2, rev)
+  # Recover decoded matrix
+  mat=unpackPotts(out$final)
+  mat=rotate(mat)
+  mat
+  s=c(t(mat))
+  
+  # Sample between previous state and Potts state
+  if(!is.null(ST)){
+    for(i in 2:M){
+      s[i]=sample(c(s[i],ST[i]),1,prob=c(PI,1-PI))
+    }
+  }
+  
+  
+  # Continuous variables simulation
+  mu=c(-mu,0,mu)
+  Sigma <- matrix(rho,ncol=P,nrow=P)
+  diag(Sigma)=1
+  
+  Sim = matrix(0, M, P * n_states)
+  SimData = matrix(0, M, P)
+  
+  set.seed(seed)
+  for(k in 1:n_states){
+    u = MASS::mvrnorm(M,rep(mu[k],P),Sigma)
+    Sim[, (P * k - P + 1):(k * P)] = u
+  }
+  
+  for (i in 1:M) {
+    k = s[i]
+    SimData[i, ] = Sim[i, (P * k - P + 1):(P * k)]
+  }
+  
+  if(Pcat!=0){
+    SimData[,1:Pcat]=apply(SimData[,1:Pcat],2,get_cat,mc=s,mu=mu,phi=phi)
+    SimData=as.data.frame(SimData)
+    SimData[,1:Pcat]=SimData[,1:Pcat]%>%mutate_all(as.factor)
+  }
+  
+  if(pNAs>0){
+    SimData.NA=apply(SimData,2,punct,pNAs=pNAs,type=0)
+    SimData.NA=as.data.frame(SimData.NA)
+    SimData.NA[,1:Pcat]=SimData.NA[,1:Pcat]%>%mutate_all(as.factor)
+    SimData.NA[,-(1:Pcat)]=SimData.NA[,-(1:Pcat)]%>%mutate_all(as.numeric)
+  }
+  else{
+    SimData.NA=SimData
+  }
+  s=order_states_freq(s)
+  
+  return(list(SimData=SimData,SimData.NA=SimData.NA,s=s))
 }
