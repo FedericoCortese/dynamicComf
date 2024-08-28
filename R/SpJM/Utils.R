@@ -2608,7 +2608,8 @@ STjumpR=function(Y,n_states,C,jump_penalty=1e-5,
         #loss_by_state_old=t(apply(loss_by_state,1,function(x){x/sum(x)}))
 
         for(k in 1:n_states){
-          loss_by_state=loss_by_state-spatial_penalty*rowSums(S[,which(C[m,]==1)]==k)/length(which(C[m,]==1))
+          # loss_by_state=loss_by_state-spatial_penalty*rowSums(S[,which(C[m,]==1)]==k)/length(which(C[m,]==1))
+          loss_by_state=loss_by_state+spatial_penalty*length(which(C[m,]==1))/(rowSums(S[,which(C[m,]==1)]==k)+1)
         }
         loss_by_state=t(apply(loss_by_state,1,function(x){x/sum(x)}))
         
@@ -2715,18 +2716,22 @@ sim_spatiotemp_JM=function(P,C,seed,
   
   beta <- log(1 + sqrt(ncolor))
   theta <- c(rep(0, ncolor), beta)
+  
+  # Per dare un label sensato ai cluster occorre necessariamente simulare un tempo alla volta
+  # e riordinare gli stati con order_states_condMeans.
+  # Chiedere ad Antonio se nbatch e nblen cosi hanno senso
   out <- potts(init, param=theta, nbatch = 200 , blen=10, nspac=1)
   rotate <- function(x) apply(t(x), 2, rev)
   # Recover decoded matrix
   mat=unpackPotts(out$final)
   mat=rotate(mat)
-  mat
+  #mat
   s=c(t(mat))
   
   # Sample between previous state and Potts state
   if(!is.null(ST)){
     for(i in 2:M){
-      s[i]=sample(c(s[i],ST[i]),1,prob=c(PI,1-PI))
+      s[i]=sample(c(s[i],ST[i]),1,prob=c(1-PI,PI))
     }
   }
   
@@ -2765,7 +2770,55 @@ sim_spatiotemp_JM=function(P,C,seed,
   else{
     SimData.NA=SimData
   }
-  s=order_states_freq(s)
+  #s=order_states_freq(s)
   
   return(list(SimData=SimData,SimData.NA=SimData.NA,s=s))
+}
+
+sim_obs=function(s=s,mu=mu,rho=rho,P=P,Pcat=NULL,n_states=n_states,seed=seed,pNAs=pNAs){
+  
+  # This function simulates observations conditional on latent states s
+  
+  # Arguments:
+  # s: vector of latent states
+  # mu: state conditional mean
+  # rho: state conditional correlation
+  # P: number of variables
+  # n_states: number of states
+  # seed: seed
+  
+  mu=c(-mu,0,mu)
+  Sigma <- matrix(rho,ncol=P,nrow=P)
+  diag(Sigma)=1
+  
+  Sim = matrix(0, M, P * n_states)
+  SimData = matrix(0, M, P)
+  
+  set.seed(seed)
+  for(k in 1:n_states){
+    u = MASS::mvrnorm(M,rep(mu[k],P),Sigma)
+    Sim[, (P * k - P + 1):(k * P)] = u
+  }
+  
+  for (i in 1:M) {
+    k = s[i]
+    SimData[i, ] = Sim[i, (P * k - P + 1):(P * k)]
+  }
+  
+  if(Pcat!=0){
+    SimData[,1:Pcat]=apply(SimData[,1:Pcat],2,get_cat,mc=s,mu=mu,phi=phi)
+    SimData=as.data.frame(SimData)
+    SimData[,1:Pcat]=SimData[,1:Pcat]%>%mutate_all(as.factor)
+  }
+  
+  if(pNAs>0){
+    SimData.NA=apply(SimData,2,punct,pNAs=pNAs,type=0)
+    SimData.NA=as.data.frame(SimData.NA)
+    SimData.NA[,1:Pcat]=SimData.NA[,1:Pcat]%>%mutate_all(as.factor)
+    SimData.NA[,-(1:Pcat)]=SimData.NA[,-(1:Pcat)]%>%mutate_all(as.numeric)
+  }
+  else{
+    SimData.NA=SimData
+  }
+  return(list(SimData=SimData,SimData.NA=SimData.NA))
 }
