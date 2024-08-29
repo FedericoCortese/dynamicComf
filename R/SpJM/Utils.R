@@ -2765,7 +2765,8 @@ sim_spatiotemp_JM=function(P,C,seed,
   # Per dare un label sensato ai cluster occorre necessariamente simulare un tempo alla volta
   # e riordinare gli stati con order_states_condMeans.
   # Chiedere ad Antonio se nbatch e nblen cosi hanno senso
-  out <- potts(init, param=theta, nbatch = 200 , blen=10, nspac=1)
+  out <- potts(init, param=theta, nbatch = 200 , blen=1, nspac=1)
+  
   rotate <- function(x) apply(t(x), 2, rev)
   # Recover decoded matrix
   mat=unpackPotts(out$final)
@@ -2822,56 +2823,6 @@ sim_spatiotemp_JM=function(P,C,seed,
 }
 
 
-simpotts_spatiotemp_JM=function(TT,P,C,seed,
-                                rho=0,Pcat=NULL, phi=.8,
-                                mu=3,pNAs=0){
-  if(is.null(Pcat)){
-    Pcat=floor(P/2)
-  }
-  
-  n_states=3
-  M=dim(C)[1]
-  #s=matrix(0,ncol=ncg,nrow=nrg)
-  #s=rep(0,M)
-  set.seed(seed)
-  
-  #require("potts")
-  ncolor = as.integer(n_states) # transizione di fase continua per 1 <= ncolor <= 4
-  nr = sqrt(M)
-  nc = sqrt(M)
-  init <- matrix(sample(ncolor, nr * nc, replace = TRUE), nrow = nr, ncol=nc)
-  init <- packPotts(init, ncol = ncolor)
-  
-  beta <- log(1 + sqrt(ncolor))
-  theta <- c(rep(0, ncolor), beta)
-  out <- potts(init, param=theta, nbatch = 200 , blen=1, nspac=1)
-  rotate <- function(x) apply(t(x), 2, rev)
-  # Recover decoded matrix
-  mat=unpackPotts(out$final)
-  mat=rotate(mat)
-  
-  s= matrix(0,nrow=TT,ncol=M)
-  
-  s[1,]=c(t(mat))
-  # nit=10
-  sim= vector("list",TT)
-  sim[[1]] = out$final
-  for(t in 2:TT){
-    out = potts(sim[[t-1]], param=theta, nbatch = 1 , blen=1, nspac=1)
-
-    temp=unpackPotts(out$final)
-    
-    temp=reassign_labels(c(mat),c(temp))
-    
-    temp=matrix(temp,ncol=sqrt(M))
-    sim[[t]]=packPotts(temp,ncol=ncolor)
-    
-    temp=rotate(temp)
-    s[t,]=c(t(temp))
-
-  }
-}
-  
 
 sim_obs=function(s=s,mu=mu,rho=rho,P=P,Pcat=NULL,n_states=n_states,seed=seed,pNAs=pNAs){
   
@@ -2919,5 +2870,4 @@ sim_obs=function(s=s,mu=mu,rho=rho,P=P,Pcat=NULL,n_states=n_states,seed=seed,pNA
     SimData.NA=SimData
   }
   return(list(SimData=SimData,SimData.NA=SimData.NA))
->>>>>>> 1e1b00eae131a458ade9bb14d3cfba7c03da7ace
 }

@@ -1,14 +1,14 @@
 source("Utils.R")
 
 TT=4
-Ktrue=4
+Ktrue=3
 seed=1
 M=100
 P=20
 mu=3
 phi=.8
 rho=0.2
-Pcat=0
+Pcat=10
 pNAs=0
 sp_indx=1:M
 sp_indx=matrix(sp_indx,ncol=sqrt(M),byrow=T)
@@ -31,12 +31,12 @@ t=1
 simDat=sim_spatiotemp_JM(P,C,t,
                       rho=rho,Pcat=Pcat, phi=phi,
                       mu=mu,pNAs=pNAs,ST=NULL,n_states=Ktrue)
-temp=simDat$SimData
+temp=data.frame(simDat$SimData)
 temp$m=1:M
 temp$t=rep(t,M)
 Y=rbind(Y,temp)
 S_true[t,]=simDat$s
-S_true[t,]=order_states_condMean(Y$V20[Y$t==t],S_true[t,])
+S_true[t,]=order_states_condMean(Y[Y$t==t,dim(Y)[2]-2],S_true[t,])
 
 # Temporal persistence 
 PI=0.9
@@ -44,12 +44,12 @@ for(t in 2:TT){
   simDat=sim_spatiotemp_JM(P,C,t,
                         rho=rho,Pcat=Pcat, phi=phi,
                         mu=mu,pNAs=pNAs,ST=S_true[t-1,],PI=PI,n_states=Ktrue)
-  temp=simDat$SimData
+  temp=data.frame(simDat$SimData)
   temp$m=1:M
   temp$t=rep(t,M)
   Y=rbind(Y,temp)
   S_true[t,]=simDat$s
-  S_true[t,]=order_states_condMean(Y$V20[Y$t==t],S_true[t,])
+  S_true[t,]=order_states_condMean(Y[Y$t==t,dim(Y)[2]-2],S_true[t,])
   
 }
 
@@ -72,15 +72,18 @@ ggplot(data_df, aes(x = X, y = Y, fill = factor(Value))) +
         ) +
   coord_fixed() 
 
-lambda=0.8
-gamma=0.8
+lambda=0.5
+gamma=0.05
 initial_states=NULL
 max_iter=10
 n_init=10
 tol=NULL
 verbose=T
 
+st=Sys.time()
 fit <- STjumpR(Y, n_states = 3, C, jump_penalty=lambda,spatial_penalty = gamma, verbose=T)
+end=Sys.time()
+end-st
 
 best_s=fit$best_s
 for(t in 1:TT){
@@ -145,7 +148,7 @@ init <- packPotts(init, ncol = ncolor)
 
 beta <- log(1 + sqrt(ncolor))
 theta <- c(rep(0, ncolor), beta)
-out <- potts(init, param=theta, nbatch = 200 , blen=1, nspac=1)
+out <- potts(init, param=theta, nbatch = 1 , blen=1, nspac=1)
 
 #nit=10
 sim= vector("list",TT)
@@ -184,7 +187,7 @@ for(t in 2:TT){
 
 Y <- Y %>% select(t, m, everything())
 
-data_matrix <- matrix(S_true[4,], nrow = sqrt(M), ncol = sqrt(M),byrow = T)
+data_matrix <- matrix(S_true[3,], nrow = sqrt(M), ncol = sqrt(M),byrow = T)
 data_df <- as.data.frame(as.table(data_matrix))
 colnames(data_df) <- c("X", "Y", "Value")
 ggplot(data_df, aes(x = X, y = Y, fill = factor(Value))) +
