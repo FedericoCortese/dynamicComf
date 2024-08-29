@@ -69,6 +69,51 @@ order_states_condMean=function(y,s){
   return(states_temp)
 }
 
+compute_cost_matrix <- function(true_labels, predicted_labels) {
+  unique_true_labels <- unique(true_labels)
+  unique_predicted_labels <- unique(predicted_labels)
+  
+  # Create an empty cost matrix
+  cost_matrix <- matrix(0, nrow = length(unique_true_labels), ncol = length(unique_predicted_labels))
+  
+  # Fill the cost matrix
+  for (i in seq_along(unique_true_labels)) {
+    for (j in seq_along(unique_predicted_labels)) {
+      cost_matrix[i, j] <- sum(true_labels == unique_true_labels[i] & predicted_labels == unique_predicted_labels[j])
+    }
+  }
+  
+  return(cost_matrix)
+}
+
+# Function to reassign labels using the Hungarian method
+reassign_labels <- function(true_labels, predicted_labels) {
+  unique_true_labels <- unique(true_labels)
+  unique_predicted_labels <- unique(predicted_labels)
+  
+  cost_matrix <- compute_cost_matrix(true_labels, predicted_labels)
+  
+  # Ensure the cost matrix is square by adding dummy clusters if necessary
+  if (nrow(cost_matrix) > ncol(cost_matrix)) {
+    cost_matrix <- cbind(cost_matrix, matrix(0, nrow = nrow(cost_matrix), ncol = nrow(cost_matrix) - ncol(cost_matrix)))
+  } else if (nrow(cost_matrix) < ncol(cost_matrix)) {
+    cost_matrix <- rbind(cost_matrix, matrix(0, ncol = ncol(cost_matrix), nrow = ncol(cost_matrix) - nrow(cost_matrix)))
+  }
+  
+  # Convert cost matrix to distance matrix
+  distance_matrix <- max(cost_matrix) - cost_matrix
+  
+  # Solve the assignment problem
+  assignment <- solve_LSAP(distance_matrix, maximum = FALSE)
+  
+  # Create a mapping based on the optimal assignment
+  new_labels <- predicted_labels
+  for (i in seq_along(unique_predicted_labels)) {
+    new_labels[predicted_labels == unique_predicted_labels[i]] <- unique_true_labels[assignment[i]]
+  }
+  
+  return(new_labels)
+}
 get_BCD <- function(Y, states) {
   
   n_states=length(unique(states))
@@ -2667,7 +2712,7 @@ STjumpR=function(Y,n_states,C,jump_penalty=1e-5,
 }
 
 sim_spatiotemp_JM=function(P,C,seed,
-                           #pers_fact=4,
+                           n_states=3,
                            rho=0,Pcat=NULL, phi=.8,
                            mu=3,pNAs=0,ST=NULL,PI=.5){
   
@@ -2700,7 +2745,7 @@ sim_spatiotemp_JM=function(P,C,seed,
     Pcat=floor(P/2)
   }
   
-  n_states=3
+  #n_states=3
   M=dim(C)[1]
   #s=matrix(0,ncol=ncg,nrow=nrg)
   #s=rep(0,M)
@@ -2732,7 +2777,8 @@ sim_spatiotemp_JM=function(P,C,seed,
   
   
   # Continuous variables simulation
-  mu=c(-mu,0,mu)
+  #mu=c(-mu,0,mu)
+  mu=seq(-mu,mu,length.out=n_states)
   Sigma <- matrix(rho,ncol=P,nrow=P)
   diag(Sigma)=1
   
@@ -2768,4 +2814,59 @@ sim_spatiotemp_JM=function(P,C,seed,
   s=order_states_freq(s)
   
   return(list(SimData=SimData,SimData.NA=SimData.NA,s=s))
+}
+
+
+
+simpotts_spatiotemp_JM=function(TT,P,C,seed,
+                                rho=0,Pcat=NULL, phi=.8,
+                                mu=3,pNAs=0){
+  if(is.null(Pcat)){
+    Pcat=floor(P/2)
+  }
+  
+  n_states=3
+  M=dim(C)[1]
+  #s=matrix(0,ncol=ncg,nrow=nrg)
+  #s=rep(0,M)
+  set.seed(seed)
+  
+  #require("potts")
+  ncolor = as.integer(n_states) # transizione di fase continua per 1 <= ncolor <= 4
+  nr = sqrt(M)
+  nc = sqrt(M)
+  init <- matrix(sample(ncolor, nr * nc, replace = TRUE), nrow = nr, ncol=nc)
+  init <- packPotts(init, ncol = ncolor)
+  
+  beta <- log(1 + sqrt(ncolor))
+  theta <- c(rep(0, ncolor), beta)
+  out <- potts(init, param=theta, nbatch = 200 , blen=1, nspac=1)
+  rotate <- function(x) apply(t(x), 2, rev)
+  # Recover decoded matrix
+  mat=unpackPotts(out$final)
+  mat=rotate(mat)
+  
+  s= matrix(0,nrow=TT,ncol=M)
+  
+  s[1,]=c(t(mat))
+  # nit=10
+  sim= vector("list",TT)
+  sim[[1]] = out$final
+  for(t in 2:TT){
+    out = potts(sim[[t-1]], param=theta, nbatch = 1 , blen=1, nspac=1)
+
+    temp=unpackPotts(out$final)
+    
+    temp=reassign_labels(c(mat),c(temp))
+    
+    temp=matrix(temp,ncol=sqrt(M))
+    sim[[t]]=packPotts(temp,ncol=ncolor)
+    
+    temp=rotate(temp)
+    s[t,]=c(t(temp))
+
+  }
+  
+  
+  
 }
