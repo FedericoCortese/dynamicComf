@@ -1,14 +1,14 @@
 source("Utils.R")
 
 TT=4
-Ktrue=3
+Ktrue=4
 seed=1
 M=100
 P=20
 mu=3
 phi=.8
 rho=0.2
-Pcat=NULL
+Pcat=0
 pNAs=0
 sp_indx=1:M
 sp_indx=matrix(sp_indx,ncol=sqrt(M),byrow=T)
@@ -27,7 +27,7 @@ Y=NULL
 t=1
 simDat=sim_spatiotemp_JM(P,C,t,
                       rho=rho,Pcat=Pcat, phi=phi,
-                      mu=mu,pNAs=pNAs,ST=NULL)
+                      mu=mu,pNAs=pNAs,ST=NULL,n_states=Ktrue)
 temp=simDat$SimData
 temp$m=1:M
 temp$t=rep(t,M)
@@ -40,7 +40,7 @@ PI=.7
 for(t in 2:TT){
   simDat=sim_spatiotemp_JM(P,C,t,
                         rho=rho,Pcat=Pcat, phi=phi,
-                        mu=mu,pNAs=pNAs,ST=S_true[t-1,],PI=PI)
+                        mu=mu,pNAs=pNAs,ST=S_true[t-1,],PI=PI,n_states=Ktrue)
   temp=simDat$SimData
   temp$m=1:M
   temp$t=rep(t,M)
