@@ -1,6 +1,6 @@
 source("Utils.R")
 
-TT=4
+TT=24
 Ktrue=3
 seed=1
 M=100
@@ -56,23 +56,59 @@ for(t in 2:TT){
 # Put t and m in front of all the others with dplyr
 Y <- Y %>% select(t, m, everything())
 
-data_matrix <- matrix(S_true[4,], nrow = sqrt(M), ncol = sqrt(M),byrow = T)
-data_df <- as.data.frame(as.table(data_matrix))
-colnames(data_df) <- c("X", "Y", "Value")
-ggplot(data_df, aes(x = X, y = Y, fill = factor(Value))) +
-  geom_tile(color = "white") +
-  scale_fill_manual(values = c("1" = "pink", "2" = "orange", "3" = "violet")) +
-  theme_minimal() +
-  theme(axis.title = element_blank(),
-        axis.ticks = element_blank(),
-        axis.text = element_blank(),
-        panel.grid = element_blank()
-        # ,
-        # legend.position = "none"
-        ) +
-  coord_fixed() 
+library(shiny)
+library(ggplot2)
+library(ggpubr)
 
-lambda=0.5
+# Define the UI
+ui <- fluidPage(
+  titlePanel("States evolution"),
+  sidebarLayout(
+    sidebarPanel(
+      # Slider to select time point (tt)
+      sliderInput("time", "Select Time Point:",
+                  min = 1, max = TT, value = 1)  # Adjust max as needed
+    ),
+    mainPanel(
+      # Plot output
+      plotOutput("statePlot")
+    )
+  )
+)
+server <- function(input, output) {
+  
+  output$statePlot <- renderPlot({
+    tt <- input$time
+    
+    # True state plot
+    data_matrix <- matrix(S_true[tt,], nrow = sqrt(M), ncol = sqrt(M), byrow = TRUE)
+    data_df <- as.data.frame(as.table(data_matrix))
+    colnames(data_df) <- c("X", "Y", "Value")
+    
+    # Ensure all levels are present
+    data_df$Value <- factor(data_df$Value, levels = c("1", "2", "3"))
+    
+    ggplot(data_df, aes(x = X, y = Y, fill = factor(Value))) +
+      geom_tile(color = "white") +
+      ggtitle(paste0("t=",tt))+
+      scale_fill_manual(values = c("1" = "pink", "2" = "orange", "3" = "violet")) +
+      theme_minimal() +
+      theme(axis.title = element_blank(),
+            axis.ticks = element_blank(),
+            axis.text = element_blank(),
+            panel.grid = element_blank(),
+            legend.position = "none") +
+      coord_fixed() 
+    
+    
+  })
+}
+
+
+# Run the application 
+shinyApp(ui = ui, server = server)
+
+lambda=0.05
 gamma=0.05
 initial_states=NULL
 max_iter=10
@@ -90,46 +126,72 @@ for(t in 1:TT){
   best_s[t,]=order_states_condMean(Y$V20[Y$t==t],best_s[t,])
 }
 
-tt=2
 
-data_matrix <- matrix(S_true[tt,], nrow = sqrt(M), ncol = sqrt(M),byrow = T)
-data_df <- as.data.frame(as.table(data_matrix))
-colnames(data_df) <- c("X", "Y", "Value")
+# Define the UI
+ui <- fluidPage(
+  titlePanel("Comparison of True and Estimated States"),
+  sidebarLayout(
+    sidebarPanel(
+      # Slider to select time point (tt)
+      sliderInput("time", "Select Time Point:",
+                  min = 1, max = TT, value = 1)  # Adjust max as needed
+    ),
+    mainPanel(
+      # Plot output
+      plotOutput("statePlot")
+    )
+  )
+)
 
-Ptrue=ggplot(data_df, aes(x = X, y = Y, fill = factor(Value))) +
-    geom_tile(color = "white") +
-    scale_fill_manual(values = c("1" = "pink", "2" = "orange", "3" = "violet")) +
-    theme_minimal() +
-    theme(axis.title = element_blank(),
-          axis.ticks = element_blank(),
-          axis.text = element_blank(),
-          panel.grid = element_blank()
-          ,
-          legend.position = "none"
-    ) +
-    coord_fixed() 
+# Define the server
+server <- function(input, output) {
   
-data_matrix <- matrix(best_s[tt,], nrow = sqrt(M), ncol = sqrt(M),byrow = T)
-data_df <- as.data.frame(as.table(data_matrix))
-colnames(data_df) <- c("X", "Y", "Value")
-  
-Pest=ggplot(data_df, aes(x = X, y = Y, fill = factor(Value))) +
-    geom_tile(color = "white") +
-    scale_fill_manual(values = c("1" = "pink", "2" = "orange", "3" = "violet")) +
-    theme_minimal() +
-    theme(axis.title = element_blank(),
-          axis.ticks = element_blank(),
-          axis.text = element_blank(),
-          panel.grid = element_blank()
-          ,
-          legend.position = "none"
-    ) +
-    coord_fixed() 
-  
-library(ggpubr)
-arr_plot=ggarrange(Ptrue, Pest)
-annotate_figure(arr_plot, top = text_grob(paste0("t=",tt), 
-                                            color = "black", face = "bold", size = 14))
+  output$statePlot <- renderPlot({
+    tt <- input$time
+    
+    # True state plot
+    data_matrix <- matrix(S_true[tt,], nrow = sqrt(M), ncol = sqrt(M), byrow = TRUE)
+    data_df <- as.data.frame(as.table(data_matrix))
+    colnames(data_df) <- c("X", "Y", "Value")
+    
+    Ptrue <- ggplot(data_df, aes(x = X, y = Y, fill = factor(Value))) +
+      geom_tile(color = "white") +
+      scale_fill_manual(values = c("1" = "pink", "2" = "orange", "3" = "violet")) +
+      theme_minimal() +
+      theme(axis.title = element_blank(),
+            axis.ticks = element_blank(),
+            axis.text = element_blank(),
+            panel.grid = element_blank(),
+            legend.position = "none") +
+      coord_fixed() 
+    
+    # Estimated state plot
+    data_matrix <- matrix(best_s[tt,], nrow = sqrt(M), ncol = sqrt(M), byrow = TRUE)
+    data_df <- as.data.frame(as.table(data_matrix))
+    colnames(data_df) <- c("X", "Y", "Value")
+    
+    Pest <- ggplot(data_df, aes(x = X, y = Y, fill = factor(Value))) +
+      geom_tile(color = "white") +
+      scale_fill_manual(values = c("1" = "pink", "2" = "orange", "3" = "violet")) +
+      theme_minimal() +
+      theme(axis.title = element_blank(),
+            axis.ticks = element_blank(),
+            axis.text = element_blank(),
+            panel.grid = element_blank(),
+            legend.position = "none") +
+      coord_fixed() 
+    
+    # Arrange the plots
+    arr_plot <- ggarrange(Ptrue, Pest)
+    
+    # Annotate with time point
+    annotate_figure(arr_plot, top = text_grob(paste0("t=", tt), 
+                                              color = "black", face = "bold", size = 14))
+  })
+}
+
+# Run the application 
+shinyApp(ui = ui, server = server)
 
 
 # Potts only --------------------------------------------------------------
