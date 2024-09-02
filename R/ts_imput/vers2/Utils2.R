@@ -32,6 +32,8 @@ library(forecast)
 
 # Imputation --------------------------------------------------------------
 
+# Hint: input more covariates through a list()
+
 fill_sarima=function(y,x,period){
   
   # y is the matrix of time series to be imputed with time in the first column

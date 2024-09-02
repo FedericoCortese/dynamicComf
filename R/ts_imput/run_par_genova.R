@@ -105,7 +105,7 @@ rh_year=dat_rh_wide3[one_year,]
 # first_seas=1:2190
 # L=floor(dim(dat_rh_wide3)[1]/20)
 L=dim(air_year)[1]
-first_wdn=1:(L/6)
+first_wdn=1:(L/3)
 # few_stat=10+1
 
 air_short=air_year[first_wdn,]
@@ -139,7 +139,6 @@ mtext("Relative humidity", side = 3, line = - 2, outer = TRUE)
 # air_short=dat_temp_wide3[1:1000,]
 # rh_short=dat_rh_wide3[1:1000,]
 
-source("vers2/Utils2.R")
 TT=dim(air_short)[1]
 #TT/2-7
 na_len=TT*c(.05,.1,.2)
