@@ -2871,3 +2871,64 @@ sim_obs=function(s=s,mu=mu,rho=rho,P=P,Pcat=NULL,n_states=n_states,seed=seed,pNA
   }
   return(list(SimData=SimData,SimData.NA=SimData.NA))
 }
+
+simstud_STJump=function(lambda,gamma,seed,M,TT,
+                        mu=1,rho=0.2,
+                        K=3,P=30,phi=.8,Pcat=10,pNAs=0){
+  
+  sp_indx=1:M
+  sp_indx=matrix(sp_indx,ncol=sqrt(M),byrow=T)
+  S_true=matrix(0,nrow=TT,ncol=M)
+  C=Cmatrix(sp_indx)
+  Y=NULL
+  
+  t=1
+  simDat=sim_spatiotemp_JM(P,C,seed=seed,
+                           rho=rho,Pcat=Pcat, phi=phi,
+                           mu=mu,pNAs=pNAs,ST=NULL,n_states=K)
+  temp=data.frame(simDat$SimData)
+  temp$m=1:M
+  temp$t=rep(t,M)
+  Y=rbind(Y,temp)
+  S_true[t,]=simDat$s
+  S_true[t,]=order_states_condMean(Y[Y$t==t,dim(Y)[2]-2],S_true[t,])
+  
+  # Temporal persistence 
+  PI=0.7
+  for(t in 2:TT){
+    simDat=sim_spatiotemp_JM(P,C,seed=seed,
+                             rho=rho,Pcat=Pcat, phi=phi,
+                             mu=mu,pNAs=pNAs,ST=S_true[t-1,],PI=PI,n_states=K)
+    temp=data.frame(simDat$SimData)
+    temp$m=1:M
+    temp$t=rep(t,M)
+    Y=rbind(Y,temp)
+    S_true[t,]=simDat$s
+    S_true[t,]=order_states_condMean(Y[Y$t==t,dim(Y)[2]-2],S_true[t,])
+    
+  }
+  
+  # Put t and m in front of all the others with dplyr
+  Y <- Y %>% select(t, m, everything())
+  
+  st=Sys.time()
+  fit <- STjumpR(Y, n_states = K, C=C, jump_penalty=lambda,spatial_penalty = gamma, verbose=F)
+  end=Sys.time()
+  elapsed=end-st
+  
+  best_s=fit$best_s
+  for(t in 1:TT){
+    best_s[t,]=order_states_condMean(Y$V20[Y$t==t],best_s[t,])
+  }
+  
+  ARI=adj.rand.index(S_true,best_s)
+  
+  
+  return(list(lambda=lambda,gamma=gamma,ARI=ARI,
+              seed=seed,
+              M=M,TT=TT,
+              mu=mu,rho=rho,
+              K=K,P=P,phi=phi,Pcat=Pcat,pNAs=pNAs,
+              elapsed=elapsed,
+              S_true=S_true,best_s=best_s))
+}
