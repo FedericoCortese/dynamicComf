@@ -11,15 +11,15 @@ Pcat=10
 pNAs=0
 
 ###
-# lambda=seq(0,0.25,by=.05)
-# gamma=seq(0,0.25,by=.05)
-# seed=1:100
+lambda=seq(0,0.25,by=.05)
+gamma=seq(0,0.25,by=.05)
+seed=1:100
 # M=c(25,100)
 # TT=c(10,50)
 
-lambda=.05
-gamma=.05
-seed=1:2
+# lambda=.05
+# gamma=.05
+# seed=1:2
 M=100
 TT=10
 hp=expand.grid(lambda=lambda,gamma=gamma,seed=seed,M=M,TT=TT)
