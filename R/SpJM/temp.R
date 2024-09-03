@@ -1,132 +1,272 @@
 source("Utils.R")
-YY=sim_data(seed=1,Ktrue=3,N=100,P=5,cors=c(0,.5,.9),pers=.95,m=2)
 
-sqrt(5)
-true_st=YY$true_states
-YY=as.matrix(YY$YY)
-n_states=as.integer(3)
-
-est.nystrup=sparse_jump(YY,n_states,jump_penalty = 1,max_features = sqrt(5)/1.16 ,verbose = T)
-est.mine=sparse_jumpR(YY,3,jump_penalty = 1,max_features = sqrt(5)/1.16 ,verbose = T)
-
-round(est.nystrup[[2]],2)
-round(est.mine$feat_w,2)
-
-adj.rand.index(est.nystrup[[1]],true_st)  
-adj.rand.index(est.mine$states,true_st)  
-
-
-YY1=sim_data(seed=1,Ktrue=3,N=100,P=2,cors=c(0,.5,.9),pers=.95,m=0)
-YY2=sim_data(seed=2,Ktrue=3,N=100,P=2,cors=c(0,.5,.9),pers=.95,m=0)
-YY3=sim_data(seed=3,Ktrue=3,N=100,P=2,cors=c(0,.5,.9),pers=.95,m=0)
-
-Z=array(0,dim=c(100,3,2))
-Z[,1,]=YY1$YY
-Z[,2,]=YY2$YY
-Z[,3,]=YY3$YY
-
-initial_states=cbind(YY1$true_states,YY2$true_states,YY3$true_states);initial_states
-
-#####
-
-
-## ELBOW FOR SELECTION OF LAMBDA
-source("Utils.R")
-YY=sim_data_mixed(seed=123,
-                 TT=1000,
-                 P=10,
-                 Ktrue=3,
-                 mu=1,
-                 phi=.8,
-                 rho=0,
-                 Pcat=NULL,
-                 pers=.95,
-                 pNAs=0,
-                 typeNA=2)
-
-Y=YY$SimData.NA
-#prv1=jump_mixed2(Y,3,jump_penalty = .1,timeflag = F)
-
-lambda=seq(0,2,by=.05)
-res=lapply(lambda,function(x){
-  est=jump_mixed2(Y=Y,4,jump_penalty = x,timeflag = F)
-  dev=get_BCD(Y,est$best_s)
-  WCD=dev$WCD
-  BCD=dev$BCD
-  true_seq=order_states_freq(YY$mchain)
-  est_seq=order_states_freq(est$best_s)
-  true_seq=factor(true_seq,levels=c(1,2,3,4))
-  est_seq=factor(est_seq,levels=c(1,2,3,4))
-  BAC=bacc(true_seq,est_seq)
- 
-  return(list(WCD=sum(WCD),
-              BCD=sum(BCD),
-              K=length(unique(est$best_s)),
-              BAC=BAC))
-})
-
-wcd_lam=data.frame(WCD=unlist(lapply(res,function(x){x$WCD})),
-                   BCD=unlist(lapply(res,function(x){x$BCD})),
-                   K=unlist(lapply(res,function(x){x$K})),
-                   lambda,
-                   BAC=unlist(lapply(res,function(x){x$BAC})))
-
-wcd_lam
-
-plot(wcd_lam$lambda,wcd_lam$K,type="l")
-plot(wcd_lam$lambda,wcd_lam$BCD,type="l",ylab="BCD",xlab="lambda")
-
-prv=jump_mixed2(Y=Y,3,jump_penalty = 1.25,timeflag = F)
-adj.rand.index(prv$best_s,YY$mchain)
-
-prv1=jump_mixed2(Y=Y,3,jump_penalty = 1,timeflag = F)
-adj.rand.index(prv1$best_s,YY$mchain)
-
-prv15=jump_mixed2(Y=Y,3,jump_penalty = 1.5,timeflag = F)
-adj.rand.index(prv15$best_s,YY$mchain)
-
-plot(wcd_lam$lam,wcd_lam$WCD,type="l")
-
-
-states=prv$best_s
-condMM=prv$condMM
-
-prvemp=jump_mixed(enth_tab4,2,jump_penalty = .1)
-prvemp$best_s
-
-
-### spatial JM
-source("utils.R")
-Mtrue=100
-sqMtrue=sqrt(Mtrue)
-sp_indx=matrix(1:Mtrue,ncol=sqMtrue,byrow=T)
-C=Cmatrix(sp_indx)
-P=10
+# Close to 52 weeks
+#TT=50
+TT=4
+Ktrue=3
 seed=1
-spDat=sim_spatial_JM(P,C,seed=sample(1:10,1),rho=0.5,Pcat=NULL, phi=.8,mu=3,pNAs=.1)
-Strue=matrix(order_states_freq(spDat$s),ncol=sqMtrue,byrow=T)
-im=packPotts(Strue,ncolor=3)
-windows()
-image(im,main="True states")
-Y=spDat$SimData
-Y=spDat$SimData.NA
 
-lambdas=seq(11,20,by=1)
-ARIs=rep(0,length(lambdas))
-Ss=list()
+# Close to 21, number of italian regions 
+#M=25
+M=100
+P=20
+mu=1
+phi=.8
+rho=0.2
+Pcat=10
+pNAs=0
+sp_indx=1:M
+sp_indx=matrix(sp_indx,ncol=sqrt(M),byrow=T)
 
-for(i in 1:length(lambdas)){
-  prv=spatial_jump(Y,C,3,jump_penalty = lambdas[i])
-  Ss[[i]]=prv$best_s
-  ARIs[i]=adj.rand.index(prv$best_s,spDat$s)
-  print(i)
+S_true=matrix(0,nrow=TT,ncol=M)
+
+C=Cmatrix(sp_indx)
+# simDat=sim_spatial_JM(P,C,seed,
+#                       rho=rho,Pcat=Pcat, phi=phi,
+#                       mu=mu,pNAs=pNAs)
+
+Y=NULL
+
+
+
+# Mixed Potts-Autoregressive ---------------------------------------------------------------------
+
+# States at time 1
+t=1
+simDat=sim_spatiotemp_JM(P,C,seed=t+10,
+                         rho=rho,Pcat=Pcat, phi=phi,
+                         mu=mu,pNAs=pNAs,ST=NULL,n_states=Ktrue)
+temp=data.frame(simDat$SimData)
+temp$m=1:M
+temp$t=rep(t,M)
+Y=rbind(Y,temp)
+S_true[t,]=simDat$s
+S_true[t,]=order_states_condMean(Y[Y$t==t,dim(Y)[2]-2],S_true[t,])
+
+# Temporal persistence 
+PI=0.7
+for(t in 2:TT){
+  simDat=sim_spatiotemp_JM(P,C,seed=t+10,
+                           rho=rho,Pcat=Pcat, phi=phi,
+                           mu=mu,pNAs=pNAs,ST=S_true[t-1,],PI=PI,n_states=Ktrue)
+  temp=data.frame(simDat$SimData)
+  temp$m=1:M
+  temp$t=rep(t,M)
+  Y=rbind(Y,temp)
+  S_true[t,]=simDat$s
+  S_true[t,]=order_states_condMean(Y[Y$t==t,dim(Y)[2]-2],S_true[t,])
+  
 }
 
-windows()
-plot(lambdas,ARIs,type="l")
-ARIs
+# Put t and m in front of all the others with dplyr
+Y <- Y %>% select(t, m, everything())
 
-est_states=matrix(order_states_freq(Ss[[1]]),ncol=sqMtrue,byrow=T)
-im_est=packPotts(est_states,ncolor=3)
-windows()
-image(im_est,main="Estimated states")
+library(shiny)
+library(ggplot2)
+library(ggpubr)
+
+# Define the UI
+ui <- fluidPage(
+  titlePanel("States evolution"),
+  sidebarLayout(
+    sidebarPanel(
+      # Slider to select time point (tt)
+      sliderInput("time", "Select Time Point:",
+                  min = 1, max = TT, value = 1)  # Adjust max as needed
+    ),
+    mainPanel(
+      # Plot output
+      plotOutput("statePlot")
+    )
+  )
+)
+server <- function(input, output) {
+  
+  output$statePlot <- renderPlot({
+    tt <- input$time
+    
+    # True state plot
+    data_matrix <- matrix(S_true[tt,], nrow = sqrt(M), ncol = sqrt(M), byrow = TRUE)
+    data_df <- as.data.frame(as.table(data_matrix))
+    colnames(data_df) <- c("X", "Y", "Value")
+    
+    # Ensure all levels are present
+    data_df$Value <- factor(data_df$Value, levels = c("1", "2", "3"))
+    
+    ggplot(data_df, aes(x = X, y = Y, fill = factor(Value))) +
+      geom_tile(color = "white") +
+      ggtitle(paste0("t=",tt))+
+      scale_fill_manual(values = c("1" = "pink", "2" = "orange", "3" = "violet")) +
+      theme_minimal() +
+      theme(axis.title = element_blank(),
+            axis.ticks = element_blank(),
+            axis.text = element_blank(),
+            panel.grid = element_blank(),
+            legend.position = "none") +
+      coord_fixed() 
+    
+    
+  })
+}
+
+
+# Run the application 
+shinyApp(ui = ui, server = server)
+
+lambda=0.025
+gamma=0.0
+initial_states=NULL
+max_iter=10
+n_init=10
+tol=NULL
+verbose=T
+
+st=Sys.time()
+fit <- STjumpR(Y, n_states = 3, C, jump_penalty=lambda,spatial_penalty = gamma, verbose=T)
+end=Sys.time()
+end-st
+
+best_s=fit$best_s
+for(t in 1:TT){
+  best_s[t,]=order_states_condMean(Y$V20[Y$t==t],best_s[t,])
+}
+
+adj.rand.index(S_true,best_s)
+
+# Define the UI
+ui <- fluidPage(
+  titlePanel("Comparison of True and Estimated States"),
+  sidebarLayout(
+    sidebarPanel(
+      # Slider to select time point (tt)
+      sliderInput("time", "Select Time Point:",
+                  min = 1, max = TT, value = 1)  # Adjust max as needed
+    ),
+    mainPanel(
+      # Plot output
+      plotOutput("statePlot")
+    )
+  )
+)
+
+# Define the server
+server <- function(input, output) {
+  
+  output$statePlot <- renderPlot({
+    tt <- input$time
+    
+    # True state plot
+    data_matrix <- matrix(S_true[tt,], nrow = sqrt(M), ncol = sqrt(M), byrow = TRUE)
+    data_df <- as.data.frame(as.table(data_matrix))
+    colnames(data_df) <- c("X", "Y", "Value")
+    
+    Ptrue <- ggplot(data_df, aes(x = X, y = Y, fill = factor(Value))) +
+      geom_tile(color = "white") +
+      scale_fill_manual(values = c("1" = "pink", "2" = "orange", "3" = "violet")) +
+      theme_minimal() +
+      theme(axis.title = element_blank(),
+            axis.ticks = element_blank(),
+            axis.text = element_blank(),
+            panel.grid = element_blank(),
+            legend.position = "none") +
+      coord_fixed() 
+    
+    # Estimated state plot
+    data_matrix <- matrix(best_s[tt,], nrow = sqrt(M), ncol = sqrt(M), byrow = TRUE)
+    data_df <- as.data.frame(as.table(data_matrix))
+    colnames(data_df) <- c("X", "Y", "Value")
+    
+    Pest <- ggplot(data_df, aes(x = X, y = Y, fill = factor(Value))) +
+      geom_tile(color = "white") +
+      scale_fill_manual(values = c("1" = "pink", "2" = "orange", "3" = "violet")) +
+      theme_minimal() +
+      theme(axis.title = element_blank(),
+            axis.ticks = element_blank(),
+            axis.text = element_blank(),
+            panel.grid = element_blank(),
+            legend.position = "none") +
+      coord_fixed() 
+    
+    # Arrange the plots
+    arr_plot <- ggarrange(Ptrue, Pest)
+    
+    # Annotate with time point
+    annotate_figure(arr_plot, top = text_grob(paste0("t=", tt), 
+                                              color = "black", face = "bold", size = 14))
+  })
+}
+
+# Run the application 
+shinyApp(ui = ui, server = server)
+
+
+# Potts only --------------------------------------------------------------
+
+require("potts")
+
+Y=NULL
+M=dim(C)[1]
+
+set.seed(2024)
+ncolor = as.integer(3) # transizione di fase continua per 1 <= ncolor <= 4
+nr = sqrt(M)
+nc = sqrt(M)
+init <- matrix(sample(ncolor, nr * nc, replace = TRUE), nrow = nr, ncol=nc)
+init <- packPotts(init, ncol = ncolor)
+
+beta <- log(1 + sqrt(ncolor))
+theta <- c(rep(0, ncolor), beta)
+out <- potts(init, param=theta, nbatch = 1 , blen=1, nspac=1)
+
+#nit=10
+sim= vector("list",TT)
+sim[[1]] = out$final
+rotate <- function(x) apply(t(x), 2, rev)
+# Recover decoded matrix
+mat=unpackPotts(sim[[1]])
+mat=rotate(mat)
+s=c(t(mat))
+
+t=1
+temp=sim_obs(s=s,mu=mu,rho=rho,P=P,Pcat=P/2,n_states=3,seed=seed,pNAs=pNAs)
+temp=temp$SimData
+temp$m=1:M
+temp$t=rep(t,M)
+Y=rbind(Y,temp)
+S_true[t,]=s
+S_true[t,]=order_states_condMean(Y$V20[Y$t==t],S_true[t,])
+
+for(t in 2:TT){
+  out = potts(sim[[t-1]], param=theta, nbatch = 1 , blen=1, nspac=1)
+  sim[[t]] = out$final
+  mat=unpackPotts(sim[[t]])
+  mat=rotate(mat)
+  s=c(t(mat))
+  
+  temp=sim_obs(s=s,mu=mu,rho=rho,P=P,Pcat=P/2,n_states=3,seed=seed,pNAs=pNAs)
+  temp=temp$SimData
+  temp$m=1:M
+  temp$t=rep(t,M)
+  Y=rbind(Y,temp)
+  S_true[t,]=s
+  S_true[t,]=order_states_condMean(Y$V20[Y$t==t],S_true[t,])
+  
+}
+
+Y <- Y %>% select(t, m, everything())
+
+data_matrix <- matrix(S_true[3,], nrow = sqrt(M), ncol = sqrt(M),byrow = T)
+data_df <- as.data.frame(as.table(data_matrix))
+colnames(data_df) <- c("X", "Y", "Value")
+ggplot(data_df, aes(x = X, y = Y, fill = factor(Value))) +
+  geom_tile(color = "white") +
+  scale_fill_manual(values = c("1" = "pink", "2" = "orange", "3" = "violet")) +
+  theme_minimal() +
+  theme(axis.title = element_blank(),
+        axis.ticks = element_blank(),
+        axis.text = element_blank(),
+        panel.grid = element_blank()
+        # ,
+        # legend.position = "none"
+  ) +
+  coord_fixed() 
