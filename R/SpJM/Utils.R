@@ -2653,7 +2653,7 @@ STjumpR=function(Y,n_states,C,jump_penalty=1e-5,
         #loss_by_state_old=t(apply(loss_by_state,1,function(x){x/sum(x)}))
 
         for(k in 1:n_states){
-           loss_by_state=loss_by_state-spatial_penalty*rowSums(S[,which(C[m,]==1)]==k)/length(which(C[m,]==1))
+           loss_by_state[,k]=loss_by_state[,k]-spatial_penalty*rowSums(S[,which(C[m,]==1)]==k)/length(which(C[m,]==1))
           #loss_by_state=loss_by_state+spatial_penalty*length(which(C[m,]==1))/(rowSums(S[,which(C[m,]==1)]==k)+1)
         }
         

@@ -2,21 +2,19 @@ source("Utils.R")
 
 # Close to 52 weeks
 #TT=50
-TT=8
+TT=10
 Ktrue=3
 seed=1
 
 # Close to 21, number of italian regions 
-#M=25
-M=25
-P=20
+M=400
+P=10
 
-# MU=1 REEEEALLY BAD RESULTS, MU=3 GOOD RESULTS
-mu=2
+mu=1
 
 phi=.8
-rho=0.2
-Pcat=10
+rho=0
+Pcat=5
 pNAs=0
 sp_indx=1:M
 sp_indx=matrix(sp_indx,ncol=sqrt(M),byrow=T)
@@ -131,7 +129,7 @@ end-st
 
 best_s=fit$best_s
 for(t in 1:TT){
-  best_s[t,]=order_states_condMean(Y$V20[Y$t==t],best_s[t,])
+  best_s[t,]=order_states_condMean(Y[Y$t==t,dim(Y)[2]-2],best_s[t,])
 }
 
 adj.rand.index(S_true,best_s)
