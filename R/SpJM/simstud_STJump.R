@@ -40,3 +40,9 @@ STJsim <- parallel::mclapply(1:nrow(hp),
 end_STJsim=Sys.time()
 elapsed_STJsim=end_STJsim-start_STJsim
 save(STJsim,elapsed_STJsim,file="STJsim.RData")
+
+
+library(dplyr)
+res=data.frame(hp[,c("lambda","gamma","seed")],ARI=unlist(lapply(STJsim,function(x)x$ARI)))
+
+res_av=res%>%group_by(lambda,gamma)%>%summarise(avARI=mean(ARI,na.rm=T))

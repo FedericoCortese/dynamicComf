@@ -2,15 +2,18 @@ source("Utils.R")
 
 # Close to 52 weeks
 #TT=50
-TT=4
+TT=8
 Ktrue=3
 seed=1
 
 # Close to 21, number of italian regions 
 #M=25
-M=100
+M=25
 P=20
-mu=1
+
+# MU=1 REEEEALLY BAD RESULTS, MU=3 GOOD RESULTS
+mu=2
+
 phi=.8
 rho=0.2
 Pcat=10
@@ -44,7 +47,7 @@ S_true[t,]=simDat$s
 S_true[t,]=order_states_condMean(Y[Y$t==t,dim(Y)[2]-2],S_true[t,])
 
 # Temporal persistence 
-PI=0.7
+PI=0.9
 for(t in 2:TT){
   simDat=sim_spatiotemp_JM(P,C,seed=t+10,
                            rho=rho,Pcat=Pcat, phi=phi,
@@ -113,8 +116,8 @@ server <- function(input, output) {
 # Run the application 
 shinyApp(ui = ui, server = server)
 
-lambda=0.025
-gamma=0.0
+lambda=0.1
+gamma=0.05
 initial_states=NULL
 max_iter=10
 n_init=10

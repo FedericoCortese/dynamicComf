@@ -2656,14 +2656,16 @@ STjumpR=function(Y,n_states,C,jump_penalty=1e-5,
            loss_by_state=loss_by_state-spatial_penalty*rowSums(S[,which(C[m,]==1)]==k)/length(which(C[m,]==1))
           #loss_by_state=loss_by_state+spatial_penalty*length(which(C[m,]==1))/(rowSums(S[,which(C[m,]==1)]==k)+1)
         }
-        loss_by_state=t(apply(loss_by_state,1,function(x){x/sum(x)}))
+        
+        # Normalize
+        # loss_by_state=t(apply(loss_by_state,1,function(x){x/sum(x)}))
         
         V <- loss_by_state
         for (t in (TT-1):1) {
           V[t-1,] <- loss_by_state[t-1,] + apply(V[t,] + Gamma, 2, min)
           
           # Normalize
-          V[t-1,] <- V[t-1,]/sum(V[t-1,])
+          # V[t-1,] <- V[t-1,]/sum(V[t-1,])
           
         }
         
@@ -2708,7 +2710,8 @@ STjumpR=function(Y,n_states,C,jump_penalty=1e-5,
   return(list(best_s=best_s,
               Y=Y,
               K=n_states,
-              lambda=jump_penalty))
+              lambda=jump_penalty,
+              gamma=spatial_penalty))
   
 }
 
