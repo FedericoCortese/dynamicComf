@@ -1360,7 +1360,7 @@ get_cat=function(y,mc,mu,phi){
   # Function to simulate categorical data
   
   # Arguments:
-  # x: continuous variable 
+  # y: continuous variable 
   # mc: Markov chain states
   # mu: numeric mean value
   # phi: conditional probability for the categorical outcome k in state k
@@ -2787,7 +2787,9 @@ sim_spatiotemp_JM=function(P,C,seed,
   
   # Continuous variables simulation
   #mu=c(-mu,0,mu)
+  MU=mu
   mu=seq(-mu,mu,length.out=n_states)
+  
   Sigma <- matrix(rho,ncol=P,nrow=P)
   diag(Sigma)=1
   
@@ -2806,7 +2808,7 @@ sim_spatiotemp_JM=function(P,C,seed,
   }
   
   if(Pcat!=0){
-    SimData[,1:Pcat]=apply(SimData[,1:Pcat],2,get_cat,mc=s,mu=mu,phi=phi)
+    SimData[,1:Pcat]=apply(SimData[,1:Pcat],2,get_cat,mc=s,mu=MU,phi=phi)
     SimData=as.data.frame(SimData)
     SimData[,1:Pcat]=SimData[,1:Pcat]%>%mutate_all(as.factor)
   }
@@ -2877,7 +2879,7 @@ sim_obs=function(s=s,mu=mu,rho=rho,P=P,Pcat=NULL,n_states=n_states,seed=seed,pNA
 
 simstud_STJump=function(lambda,gamma,seed,M,TT,
                         mu=1,rho=0.2,
-                        K=3,P=30,phi=.8,Pcat=10,pNAs=0){
+                        K=3,P=30,phi=.8,Pcat=10,pNAs=0,PI=.9){
   
   sp_indx=1:M
   sp_indx=matrix(sp_indx,ncol=sqrt(M),byrow=T)
@@ -2886,7 +2888,7 @@ simstud_STJump=function(lambda,gamma,seed,M,TT,
   Y=NULL
   
   t=1
-  simDat=sim_spatiotemp_JM(P,C,seed=seed,
+  simDat=sim_spatiotemp_JM(P,C,seed=seed+seed*1000+t-1,
                            rho=rho,Pcat=Pcat, phi=phi,
                            mu=mu,pNAs=pNAs,ST=NULL,n_states=K)
   temp=data.frame(simDat$SimData)
@@ -2897,9 +2899,9 @@ simstud_STJump=function(lambda,gamma,seed,M,TT,
   S_true[t,]=order_states_condMean(Y[Y$t==t,dim(Y)[2]-2],S_true[t,])
   
   # Temporal persistence 
-  PI=0.7
+  # PI=0.7
   for(t in 2:TT){
-    simDat=sim_spatiotemp_JM(P,C,seed=seed,
+    simDat=sim_spatiotemp_JM(P,C,seed=seed+seed*1000+t-1,
                              rho=rho,Pcat=Pcat, phi=phi,
                              mu=mu,pNAs=pNAs,ST=S_true[t-1,],PI=PI,n_states=K)
     temp=data.frame(simDat$SimData)

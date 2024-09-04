@@ -13,6 +13,8 @@ phi=.8
 Pcat=10
 pNAs=0
 
+PI=.9
+
 ###
 lambda=seq(0,0.25,by=.05)
 gamma=seq(0,0.25,by=.05)
@@ -38,7 +40,7 @@ STJsim <- parallel::mclapply(1:nrow(hp),
                                           M=hp[x,]$M,
                                           TT=hp[x,]$TT,
                                           mu=mu,rho=rho,
-                                          K=K,P=P,phi=phi,Pcat=Pcat,pNAs=pNAs),
+                                          K=K,P=P,phi=phi,Pcat=Pcat,pNAs=pNAs,PI=PI),
                              mc.cores = parallel::detectCores())
 end_STJsim=Sys.time()
 elapsed_STJsim=end_STJsim-start_STJsim
@@ -48,4 +50,4 @@ save(STJsim,elapsed_STJsim,file="STJsim.RData")
 library(dplyr)
 res=data.frame(hp[,c("lambda","gamma","seed")],ARI=unlist(lapply(STJsim,function(x)x$ARI)))
 
-res_av=res%>%group_by(lambda,gamma)%>%summarise(avARI=mean(ARI,na.rm=T))
+res_av=res%>%group_by(lambda,gamma)%>%summarise(avARI=median(ARI,na.rm=T))
