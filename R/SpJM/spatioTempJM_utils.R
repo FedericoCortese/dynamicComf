@@ -2,19 +2,20 @@ source("Utils.R")
 
 # Close to 52 weeks
 #TT=50
-TT=10
+TT=5
 Ktrue=3
 seed=1
 
 # Close to 21, number of italian regions 
-M=400
-P=10
+# M=400
+M=25
+P=20
 
 mu=1
 
 phi=.8
 rho=0
-Pcat=5
+Pcat=10
 pNAs=0
 sp_indx=1:M
 sp_indx=matrix(sp_indx,ncol=sqrt(M),byrow=T)
@@ -73,7 +74,8 @@ ui <- fluidPage(
     sidebarPanel(
       # Slider to select time point (tt)
       sliderInput("time", "Select Time Point:",
-                  min = 1, max = TT, value = 1)  # Adjust max as needed
+                  min = 1, max = TT, value = 1,
+                  animate = animationOptions(interval = 1000, loop = TRUE))  # Adjust max as needed
     ),
     mainPanel(
       # Plot output
@@ -99,7 +101,8 @@ server <- function(input, output) {
       ggtitle(paste0("t=",tt))+
       scale_fill_manual(values = c("1" = "pink", "2" = "orange", "3" = "violet")) +
       theme_minimal() +
-      theme(axis.title = element_blank(),
+      theme(plot.title = element_text(size = 20, face = "bold"),
+            axis.title = element_blank(),
             axis.ticks = element_blank(),
             axis.text = element_blank(),
             panel.grid = element_blank(),
@@ -112,13 +115,14 @@ server <- function(input, output) {
 
 
 # Run the application 
-shinyApp(ui = ui, server = server)
+myShiny=shinyApp(ui = ui, server = server)
+runApp(myShiny)
 
 lambda=0.1
 gamma=0.05
 initial_states=NULL
-max_iter=10
-n_init=10
+max_iter=5
+n_init=5
 tol=NULL
 verbose=T
 
@@ -133,6 +137,28 @@ for(t in 1:TT){
 }
 
 adj.rand.index(S_true,best_s)
+
+
+# GAP statistics ----------------------------------------------------------
+
+B=20
+lossB=rep(0,B)
+ARIB=rep(0,B)
+for(b in 1:B){
+  Yb=Y[sample(1:dim(Y)[1],dim(Y)[1],replace=F),]
+  # sort by m and t
+  Yb=Yb[order(Yb$m),]
+  Yb=Yb[order(Yb$t),]
+  fitb <- STjumpR(Yb, n_states = 3, C, jump_penalty=lambda,spatial_penalty = gamma, verbose=F,
+                  max_iter = 5,n_init = 5)
+  
+  best_sb=fit$best_s
+  for(t in 1:TT){
+    best_sb[t,]=order_states_condMean(Y[Y$t==t,dim(Y)[2]-2],best_sb[t,])
+  }
+  lossB[b]=fitb$loss
+  ARIB[b]=adj.rand.index(S_true,best_sb)
+}
 
 # Define the UI
 ui <- fluidPage(
@@ -217,7 +243,7 @@ init <- packPotts(init, ncol = ncolor)
 
 beta <- log(1 + sqrt(ncolor))
 theta <- c(rep(0, ncolor), beta)
-out <- potts(init, param=theta, nbatch = 1 , blen=1, nspac=1)
+out <- potts(init, param=theta, nbatch = 1000 , blen=1, nspac=1)
 
 #nit=10
 sim= vector("list",TT)
@@ -229,7 +255,7 @@ mat=rotate(mat)
 s=c(t(mat))
 
 t=1
-temp=sim_obs(s=s,mu=mu,rho=rho,P=P,Pcat=P/2,n_states=3,seed=seed,pNAs=pNAs)
+temp=sim_obs(s=s,mu=mu,rho=rho,P=P,Pcat=P/2,n_states=3,seed=seed+t,pNAs=pNAs)
 temp=temp$SimData
 temp$m=1:M
 temp$t=rep(t,M)
@@ -238,13 +264,13 @@ S_true[t,]=s
 S_true[t,]=order_states_condMean(Y$V20[Y$t==t],S_true[t,])
 
 for(t in 2:TT){
-  out = potts(sim[[t-1]], param=theta, nbatch = 1 , blen=1, nspac=1)
+  out = potts(sim[[t-1]], param=theta, nbatch = 1000 , blen=1, nspac=1)
   sim[[t]] = out$final
   mat=unpackPotts(sim[[t]])
   mat=rotate(mat)
   s=c(t(mat))
   
-  temp=sim_obs(s=s,mu=mu,rho=rho,P=P,Pcat=P/2,n_states=3,seed=seed,pNAs=pNAs)
+  temp=sim_obs(s=s,mu=mu,rho=rho,P=P,Pcat=P/2,n_states=3,seed=seed+t,pNAs=pNAs)
   temp=temp$SimData
   temp$m=1:M
   temp$t=rep(t,M)
@@ -256,18 +282,55 @@ for(t in 2:TT){
 
 Y <- Y %>% select(t, m, everything())
 
-data_matrix <- matrix(S_true[3,], nrow = sqrt(M), ncol = sqrt(M),byrow = T)
-data_df <- as.data.frame(as.table(data_matrix))
-colnames(data_df) <- c("X", "Y", "Value")
-ggplot(data_df, aes(x = X, y = Y, fill = factor(Value))) +
-  geom_tile(color = "white") +
-  scale_fill_manual(values = c("1" = "pink", "2" = "orange", "3" = "violet")) +
-  theme_minimal() +
-  theme(axis.title = element_blank(),
-        axis.ticks = element_blank(),
-        axis.text = element_blank(),
-        panel.grid = element_blank()
-        # ,
-        # legend.position = "none"
-  ) +
-  coord_fixed() 
+library(shiny)
+library(ggplot2)
+library(ggpubr)
+
+# Define the UI
+ui <- fluidPage(
+  titlePanel("States evolution"),
+  sidebarLayout(
+    sidebarPanel(
+      # Slider to select time point (tt)
+      sliderInput("time", "Select Time Point:",
+                  min = 1, max = TT, value = 1,
+                  animate = animationOptions(interval = 1000, loop = TRUE))  # Adjust max as needed
+    ),
+    mainPanel(
+      # Plot output
+      plotOutput("statePlot")
+    )
+  )
+)
+server <- function(input, output) {
+  
+  output$statePlot <- renderPlot({
+    tt <- input$time
+    
+    # True state plot
+    data_matrix <- matrix(S_true[tt,], nrow = sqrt(M), ncol = sqrt(M), byrow = TRUE)
+    data_df <- as.data.frame(as.table(data_matrix))
+    colnames(data_df) <- c("X", "Y", "Value")
+    
+    # Ensure all levels are present
+    data_df$Value <- factor(data_df$Value, levels = c("1", "2", "3"))
+    
+    ggplot(data_df, aes(x = X, y = Y, fill = factor(Value))) +
+      geom_tile(color = "white") +
+      ggtitle(paste0("t=",tt))+
+      scale_fill_manual(values = c("1" = "pink", "2" = "orange", "3" = "violet")) +
+      theme_minimal() +
+      theme(axis.title = element_blank(),
+            axis.ticks = element_blank(),
+            axis.text = element_blank(),
+            panel.grid = element_blank(),
+            legend.position = "none") +
+      coord_fixed() 
+    
+    
+  })
+}
+
+
+# Run the application 
+shinyApp(ui = ui, server = server)

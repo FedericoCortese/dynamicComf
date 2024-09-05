@@ -2711,7 +2711,8 @@ STjumpR=function(Y,n_states,C,jump_penalty=1e-5,
               Y=Y,
               K=n_states,
               lambda=jump_penalty,
-              gamma=spatial_penalty))
+              gamma=spatial_penalty,
+              loss=best_loss))
   
 }
 
@@ -2881,6 +2882,23 @@ simstud_STJump=function(lambda,gamma,seed,M,TT,
                         mu=1,rho=0.2,
                         K=3,P=30,phi=.8,Pcat=10,pNAs=0,PI=.9){
   
+  # This function simulates data from a 3-states "mixed Potts-AR" model and estimates a ST-JM
+  
+  # Arguments:
+  # lambda: jump penalty
+  # gamma: spatial penalty
+  # seed: seed for the random number generator
+  # M: number of spatial points (only square numbers are allowed)
+  # TT: number of time points
+  # mu: mean value for the continuous variables (default 1)
+  # rho: correlation for the variables (default 0.2)
+  # K: number of states (only 3 states are possible TBU)
+  # P: number of features (default 30)
+  # phi: conditional probability for the categorical outcome k in state k (default 0.8)
+  # Pcat: number of categorical variables (default 10)
+  # pNAs: percentage of missing values (only 0 is allowed TBU)
+  # PI: probability of sampling the same state as the previous one (default 0.9)
+  
   sp_indx=1:M
   sp_indx=matrix(sp_indx,ncol=sqrt(M),byrow=T)
   S_true=matrix(0,nrow=TT,ncol=M)
@@ -2899,7 +2917,6 @@ simstud_STJump=function(lambda,gamma,seed,M,TT,
   S_true[t,]=order_states_condMean(Y[Y$t==t,dim(Y)[2]-2],S_true[t,])
   
   # Temporal persistence 
-  # PI=0.7
   for(t in 2:TT){
     simDat=sim_spatiotemp_JM(P,C,seed=seed+seed*1000+t-1,
                              rho=rho,Pcat=Pcat, phi=phi,
