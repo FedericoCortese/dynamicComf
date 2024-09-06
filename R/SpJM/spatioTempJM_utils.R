@@ -7,11 +7,11 @@ Ktrue=3
 seed=1
 
 # Close to 21, number of italian regions 
-# M=400
+#M=400
 M=25
 P=20
 
-mu=1
+mu=2
 
 phi=.8
 rho=0
@@ -75,7 +75,8 @@ ui <- fluidPage(
       # Slider to select time point (tt)
       sliderInput("time", "Select Time Point:",
                   min = 1, max = TT, value = 1,
-                  animate = animationOptions(interval = 1000, loop = TRUE))  # Adjust max as needed
+                  animate = animationOptions(interval = 1000, loop = TRUE))  
+      # Adjust max as needed
     ),
     mainPanel(
       # Plot output
@@ -121,10 +122,6 @@ runApp(myShiny)
 lambda=0.1
 gamma=0.05
 initial_states=NULL
-max_iter=5
-n_init=5
-tol=NULL
-verbose=T
 
 st=Sys.time()
 fit <- STjumpR(Y, n_states = 3, C, jump_penalty=lambda,spatial_penalty = gamma, verbose=T)
@@ -138,6 +135,75 @@ for(t in 1:TT){
 
 adj.rand.index(S_true,best_s)
 
+# Define the UI
+ui <- fluidPage(
+  titlePanel("Comparison of True and Estimated States"),
+  sidebarLayout(
+    sidebarPanel(
+      # Slider to select time point (tt)
+      sliderInput("time", "Select Time Point:",
+                  min = 1, max = TT, value = 1,
+                  # Play button through the following
+                  animate = animationOptions(interval = 1000, loop = TRUE))
+    ),
+    mainPanel(
+      # Plot output
+      plotOutput("statePlot")
+    )
+  )
+)
+
+# Define the server
+server <- function(input, output) {
+  
+  output$statePlot <- renderPlot({
+    tt <- input$time
+    
+    # True state plot
+    data_matrix <- matrix(S_true[tt,], nrow = sqrt(M), ncol = sqrt(M), byrow = TRUE)
+    data_df <- as.data.frame(as.table(data_matrix))
+    colnames(data_df) <- c("X", "Y", "Value")
+    
+    Ptrue <- ggplot(data_df, aes(x = X, y = Y, fill = factor(Value))) +
+      geom_tile(color = "white") +
+      ggtitle("True")+
+      scale_fill_manual(values = c("1" = "pink", "2" = "orange", "3" = "violet")) +
+      theme_minimal() +
+      theme(axis.title = element_blank(),
+            axis.ticks = element_blank(),
+            axis.text = element_blank(),
+            panel.grid = element_blank(),
+            legend.position = "none") +
+      coord_fixed() 
+    
+    # Estimated state plot
+    data_matrix <- matrix(best_s[tt,], nrow = sqrt(M), ncol = sqrt(M), byrow = TRUE)
+    data_df <- as.data.frame(as.table(data_matrix))
+    colnames(data_df) <- c("X", "Y", "Value")
+    
+    Pest <- ggplot(data_df, aes(x = X, y = Y, fill = factor(Value))) +
+      geom_tile(color = "white") +
+      ggtitle("ST-JM Estimates")+
+      scale_fill_manual(values = c("1" = "pink", "2" = "orange", "3" = "violet")) +
+      theme_minimal() +
+      theme(axis.title = element_blank(),
+            axis.ticks = element_blank(),
+            axis.text = element_blank(),
+            panel.grid = element_blank(),
+            legend.position = "none") +
+      coord_fixed() 
+    
+    # Arrange the plots
+    arr_plot <- ggarrange(Ptrue, Pest)
+    
+    # Annotate with time point
+    annotate_figure(arr_plot, top = text_grob(paste0("t=", tt), 
+                                              color = "black", face = "bold", size = 14))
+  })
+}
+
+# Run the application 
+shinyApp(ui = ui, server = server)
 
 # GAP statistics ----------------------------------------------------------
 
@@ -160,72 +226,7 @@ for(b in 1:B){
   ARIB[b]=adj.rand.index(S_true,best_sb)
 }
 
-# Define the UI
-ui <- fluidPage(
-  titlePanel("Comparison of True and Estimated States"),
-  sidebarLayout(
-    sidebarPanel(
-      # Slider to select time point (tt)
-      sliderInput("time", "Select Time Point:",
-                  min = 1, max = TT, value = 1)  # Adjust max as needed
-    ),
-    mainPanel(
-      # Plot output
-      plotOutput("statePlot")
-    )
-  )
-)
-
-# Define the server
-server <- function(input, output) {
-  
-  output$statePlot <- renderPlot({
-    tt <- input$time
-    
-    # True state plot
-    data_matrix <- matrix(S_true[tt,], nrow = sqrt(M), ncol = sqrt(M), byrow = TRUE)
-    data_df <- as.data.frame(as.table(data_matrix))
-    colnames(data_df) <- c("X", "Y", "Value")
-    
-    Ptrue <- ggplot(data_df, aes(x = X, y = Y, fill = factor(Value))) +
-      geom_tile(color = "white") +
-      scale_fill_manual(values = c("1" = "pink", "2" = "orange", "3" = "violet")) +
-      theme_minimal() +
-      theme(axis.title = element_blank(),
-            axis.ticks = element_blank(),
-            axis.text = element_blank(),
-            panel.grid = element_blank(),
-            legend.position = "none") +
-      coord_fixed() 
-    
-    # Estimated state plot
-    data_matrix <- matrix(best_s[tt,], nrow = sqrt(M), ncol = sqrt(M), byrow = TRUE)
-    data_df <- as.data.frame(as.table(data_matrix))
-    colnames(data_df) <- c("X", "Y", "Value")
-    
-    Pest <- ggplot(data_df, aes(x = X, y = Y, fill = factor(Value))) +
-      geom_tile(color = "white") +
-      scale_fill_manual(values = c("1" = "pink", "2" = "orange", "3" = "violet")) +
-      theme_minimal() +
-      theme(axis.title = element_blank(),
-            axis.ticks = element_blank(),
-            axis.text = element_blank(),
-            panel.grid = element_blank(),
-            legend.position = "none") +
-      coord_fixed() 
-    
-    # Arrange the plots
-    arr_plot <- ggarrange(Ptrue, Pest)
-    
-    # Annotate with time point
-    annotate_figure(arr_plot, top = text_grob(paste0("t=", tt), 
-                                              color = "black", face = "bold", size = 14))
-  })
-}
-
-# Run the application 
-shinyApp(ui = ui, server = server)
-
+GAP=mean(log(lossB))-log(fit$loss)
 
 # Potts only --------------------------------------------------------------
 
