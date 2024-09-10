@@ -56,7 +56,7 @@ generate_spatio_temporal_data <- function(M, TT, theta, rho, K = 4) {
 # Example usage
 M <- 100  # Number of spatial locations
 TT <- 4   # Number of time steps
-theta <- 0.01 # Spatial persistence (the lower the more persistent)
+theta <- 0.1 # Spatial persistence (the lower the more persistent)
 rho <- .9    # Temporal persistence
 K=4
 result <- generate_spatio_temporal_data(M, TT, theta, rho,K)
