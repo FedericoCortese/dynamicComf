@@ -2587,8 +2587,28 @@ STjumpR=function(Y,n_states,C,jump_penalty=1e-5,
                  spatial_penalty=1e-5,
                  initial_states=NULL,
                   max_iter=10, n_init=10, tol=NULL, verbose=FALSE){
+  
+  # This function implements the spatio-temporal jump algorithm for clustering spatio-temporal data
+  # based on adjacency 
+  
+  # Arguments:
   # Y is a dataframe in long format with mandatory columns t and m which are time and spatial indexes
   # n_states is the number of states
+  # C is the adjacency matrix of the spatial grid
+  # jump_penalty is the penalty for jumping between states
+  # spatial_penalty is the penalty for jumping between spatially close points
+  # initial_states is a matrix with the initial state of each point
+  # max_iter is the maximum number of iterations
+  # n_init is the number of initializations
+  # tol is the tolerance for stopping the algorithm
+  # verbose is a boolean for printing the loss at each iteration
+  
+  # Value:
+  # best_s is the best state sequence
+  # Y is the imputed data
+  # loss is the loss function at the optimum
+  
+  
   
   Gamma <- jump_penalty * (1 - diag(n_states))
   best_loss <- NULL
@@ -2713,6 +2733,34 @@ STjumpR=function(Y,n_states,C,jump_penalty=1e-5,
               lambda=jump_penalty,
               gamma=spatial_penalty,
               loss=best_loss))
+  
+}
+
+STjump_geo=function(Y,n_states,D,
+                    jump_penalty=1e-5,
+                    spatial_penalty=1e-5,
+                    initial_states=NULL,
+                    max_iter=10, n_init=10, tol=NULL, verbose=FALSE){
+  
+  # This function implements the spatio-temporal jump algorithm for clustering spatio-temporal data
+  # based on a distance matrix
+  
+  # Arguments:
+  # Y is a dataframe in long format with mandatory columns t and m which are T times and M spatial indexes
+  # n_states is the number of states
+  # D is the distance matrix of dimension MxM
+  # jump_penalty is the penalty for jumping between states
+  # spatial_penalty is the penalty for jumping between spatially close points
+  # initial_states is a matrix with the initial state of each point
+  # max_iter is the maximum number of iterations
+  # n_init is the number of initializations
+  # tol is the tolerance for stopping the algorithm
+  # verbose is a boolean for printing the loss at each iteration
+  
+  # Value:
+  # best_s is the best state sequence
+  # Y is the imputed data
+  # loss is the loss function at the optimum
   
 }
 
