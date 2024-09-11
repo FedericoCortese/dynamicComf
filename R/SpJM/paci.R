@@ -25,7 +25,7 @@ generate_spatio_temporal_data <- function(M, TT, theta, rho, K = 4) {
   
   # Initial time step data (from spatial process)
   data[, 1] <- mvrnorm(1, mu = rep(0, M), Sigma = spatial_cov)
-  
+
   cluster_levels <- quantile(data[,1], probs = seq(0, 1, length.out = K + 1))
   clusters[,1] <- cut(data[,1], breaks = cluster_levels, labels = FALSE,
                                                include.lowest =T)
@@ -34,6 +34,7 @@ generate_spatio_temporal_data <- function(M, TT, theta, rho, K = 4) {
   for (t in 2:TT) {
     eta_t <- mvrnorm(1, mu = rep(0, M), Sigma = spatial_cov)  # Spatial noise
     #data[, t] <- rho * data[, t - 1] + eta_t  # Temporal correlation
+
     data[, t] <- rho * data[, t - 1] + (1-rho) * eta_t
     cluster_levels <- quantile(data[,t], probs = seq(0, 1, length.out = K + 1))
     clusters[,t] <- cut(data[,t], breaks = cluster_levels, labels = FALSE,
@@ -56,8 +57,8 @@ generate_spatio_temporal_data <- function(M, TT, theta, rho, K = 4) {
 # Example usage
 M <- 100  # Number of spatial locations
 TT <- 4   # Number of time steps
-theta <- 0.1 # Spatial persistence (the lower the more persistent)
-rho <- .9    # Temporal persistence
+theta <- .01 # Spatial persistence
+rho <- 0.8    # Temporal persistence
 K=4
 result <- generate_spatio_temporal_data(M, TT, theta, rho,K)
 
@@ -65,4 +66,4 @@ plot(result$spatial_points,col=result$clusters[,1],pch=19,cex=1.5)
 plot(result$spatial_points,col=result$clusters[,2],pch=19,cex=1.5)
 plot(result$spatial_points,col=result$clusters[,3],pch=19,cex=1.5)
 plot(result$spatial_points,col=result$clusters[,4],pch=19,cex=1.5)
-
+matplot(as.data.frame(result$data),type='l')
