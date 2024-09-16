@@ -1365,6 +1365,8 @@ get_cat=function(y,mc,mu,phi){
   # mu: numeric mean value
   # phi: conditional probability for the categorical outcome k in state k
   
+  library(dplyr)
+  
   mu=c(-mu,0,mu)
   #K=length(unique(mc))
   #mu=seq(-mu,mu,length.out=K)
@@ -2769,7 +2771,7 @@ sim_spatiotemp_JM=function(P,C,seed,
                            rho=0,Pcat=NULL, phi=.8,
                            mu=3,pNAs=0,ST=NULL,PI=.5){
   
-  # This function simulates data from a 3-states spatial jump model (to be updated)
+  # This function simulates data from a 3-states spatiotemporal jump model (to be updated)
   
   # Arguments:
   # P: number of features
@@ -2835,7 +2837,6 @@ sim_spatiotemp_JM=function(P,C,seed,
   
   
   # Continuous variables simulation
-  #mu=c(-mu,0,mu)
   MU=mu
   mu=seq(-mu,mu,length.out=n_states)
   
