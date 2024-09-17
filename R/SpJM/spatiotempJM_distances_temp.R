@@ -1,19 +1,21 @@
 source("Utils.R")
 
 # Example usage
-M <- 20# Number of spatial locations
+M <- 25 # Number of spatial locations
 TT <- 5   # Number of time steps
-theta <- .1 # Spatial persistence
-beta <- .7    # Temporal persistence
+theta <- .01 # Spatial persistence
+beta <- 0.99    # Temporal persistence
 K=3
-P=20
-Pcat=10
+P=10
+Pcat=5
 result <- generate_spatio_temporal_data(M, TT, theta, beta, K = 3,
-                                        mu=1,rho=0.2,phi=.8,
+                                        mu=.5,rho=0,phi=.8,
                                         P=P,Pcat=Pcat,seed=1)
 
 Y=result$Y
 D=result$dist_matrix
+# maxD=max(D,na.rm=T)
+# DD=D/maxD
 
 library(shiny)
 # Define UI
@@ -50,12 +52,12 @@ server <- function(input, output) {
 # Run the app
 shinyApp(ui = ui, server = server)
 
-lambda=0.05
-gamma=0.05
+lambda=0.2
+gamma=1
 prova=STjumpDist(Y,3,D,jump_penalty = lambda,spatial_penalty = gamma,verbose = T,timeflag = F)
 best_s=prova$best_s
 for(t in 1:TT){
-  best_s[t,]=order_states_condMean(Y$V20[Y$t==t],best_s[t,])
+  best_s[t,]=order_states_condMean(Y[Y$t==t,dim(Y)[2]],best_s[t,])
 }
 adj.rand.index(best_s,result$S)
 
