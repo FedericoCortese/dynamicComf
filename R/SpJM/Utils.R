@@ -15,6 +15,9 @@ library(MCMCprecision)
 require("potts")
 #py_install("scipy")
 
+library(MASS)  # For multivariate normal sampling
+library(spdep)  # For spatial correlation
+
 # Import the python module
  import("scipy")
 # 
@@ -985,6 +988,7 @@ jump_mixed2 <- function(Y, n_states, jump_penalty=1e-5,
   # n_init: number of initializations
   # tol: tolerance for convergence
   # verbose: print progress
+  # timeflag: if TRUE, times are not equally sampled
   
   # Value:
   # List with state sequence and imputed data
@@ -2583,7 +2587,7 @@ simstud_spatialJM=function(Ktrue=3,
 }
 
 
-# Spatio-temporal JM --------------------------------------------------------
+# Spatio-temporal JM based on adjacency--------------------------------------------------------
 
 STjumpR=function(Y,n_states,C,jump_penalty=1e-5,
                  spatial_penalty=1e-5,
@@ -2627,6 +2631,10 @@ STjumpR=function(Y,n_states,C,jump_penalty=1e-5,
   cont.indx=which(sapply(YY, is.numeric))
   
   Ycont=YY[,cont.indx]
+  ###
+  Ycont=apply(Ycont,2,scale)
+  ###
+  
   Ycat=YY[,cat.indx]
   
   n_cat=length(cat.indx)
@@ -2738,33 +2746,6 @@ STjumpR=function(Y,n_states,C,jump_penalty=1e-5,
   
 }
 
-STjump_geo=function(Y,n_states,D,
-                    jump_penalty=1e-5,
-                    spatial_penalty=1e-5,
-                    initial_states=NULL,
-                    max_iter=10, n_init=10, tol=NULL, verbose=FALSE){
-  
-  # This function implements the spatio-temporal jump algorithm for clustering spatio-temporal data
-  # based on a distance matrix
-  
-  # Arguments:
-  # Y is a dataframe in long format with mandatory columns t and m which are T times and M spatial indexes
-  # n_states is the number of states
-  # D is the distance matrix of dimension MxM
-  # jump_penalty is the penalty for jumping between states
-  # spatial_penalty is the penalty for jumping between spatially close points
-  # initial_states is a matrix with the initial state of each point
-  # max_iter is the maximum number of iterations
-  # n_init is the number of initializations
-  # tol is the tolerance for stopping the algorithm
-  # verbose is a boolean for printing the loss at each iteration
-  
-  # Value:
-  # best_s is the best state sequence
-  # Y is the imputed data
-  # loss is the loss function at the optimum
-  
-}
 
 sim_spatiotemp_JM=function(P,C,seed,
                            n_states=3,
@@ -3002,4 +2983,337 @@ simstud_STJump=function(lambda,gamma,seed,M,TT,
               K=K,P=P,phi=phi,Pcat=Pcat,pNAs=pNAs,
               elapsed=elapsed,
               S_true=S_true,best_s=best_s))
+}
+
+
+# Spatio-temporal JM based on distances -----------------------------------
+
+# Function to simulate observations given latent states sequence
+simulate_observations <- function(mu=1,rho=0,phi=.8,n_states=3,P,Pcat,M,s,seed,pNAs=0,tpNA=0) {
+  
+  # This function simulates data from a multivariate normal distribution given the latent states sequence
+  
+  # Arguments:
+  # mu: Mean values for data simulation (first state has mean = mu, last state has mean = -mu, and all intermediate states are equally spaced between them)
+  # rho: Correlation between variables
+  # n_states: Number of states
+  # P: Number of features
+  # Pcat: Number of categorical features
+  # M: Number of spatial points
+  # s: Latent states sequence
+  # seed: Random seed
+  
+  
+  if(is.null(Pcat)){
+    Pcat=floor(P/2)
+  }
+  
+  MU=mu
+  mu=seq(-mu,mu,length.out=n_states)
+  
+  Sigma <- matrix(rho,ncol=P,nrow=P)
+  diag(Sigma)=1
+  
+  Sim = matrix(0, M, P * n_states)
+  SimData = matrix(0, M, P)
+  
+  set.seed(seed)
+  for(k in 1:n_states){
+    u = MASS::mvrnorm(M,rep(mu[k],P),Sigma)
+    Sim[, (P * k - P + 1):(k * P)] = u
+  }
+  
+  for (i in 1:M) {
+    k = s[i]
+    SimData[i, ] = Sim[i, (P * k - P + 1):(P * k)]
+  }
+  
+  if(Pcat!=0){
+    SimData[,1:Pcat]=apply(SimData[,1:Pcat],2,get_cat,mc=s,mu=MU,phi=phi)
+    SimData=as.data.frame(SimData)
+    SimData[,1:Pcat]=SimData[,1:Pcat]%>%mutate_all(as.factor)
+  }
+  
+  if(pNAs>0){
+    SimData.NA=apply(SimData,2,punct,pNAs=pNAs,type=tpNA)
+    SimData.NA=as.data.frame(SimData.NA)
+    SimData.NA[,1:Pcat]=SimData.NA[,1:Pcat]%>%mutate_all(as.factor)
+    SimData.NA[,-(1:Pcat)]=SimData.NA[,-(1:Pcat)]%>%mutate_all(as.numeric)
+  }
+  
+  else{
+    SimData.NA=SimData
+  }
+  
+  return(list(SimData=SimData,SimData.NA=SimData.NA))
+  
+}
+
+# Function to create spatial points
+generate_spatial_points <- function(n, max_distance = 10) {
+  x <- runif(n, 0, max_distance)
+  y <- runif(n, 0, max_distance)
+  return(data.frame(x = x, y = y))
+}
+
+# Function to generate spatio-temporal data with spatial (theta) and temporal (rho) persistence
+generate_spatio_temporal_data <- function(M, TT, theta, beta, K = 3,
+                                          mu=1,rho=0,phi=.8,
+                                          P,Pcat,seed) {
+  
+  # Increment TT by one as the first time step will be removed
+  TT=TT+1
+  
+  # Generate spatial points
+  spatial_points <- generate_spatial_points(M)
+  
+  # Create spatial covariance matrix based on distance and theta
+  dist_matrix <- as.matrix(dist(spatial_points)) # Eventually substitute with Gower distance
+  
+  spatial_cov <- exp(-theta * dist_matrix)
+  
+  # Initialize data matrix
+  data <- array(0, dim = c(TT, M))
+  
+  S=matrix(0,TT,M)
+  
+  # Initial time step data (from spatial process)
+  data[1, ] <- mvrnorm(1, mu = rep(0, M), Sigma = spatial_cov)
+  
+  cluster_levels <- quantile(data[1,], probs = seq(0, 1, length.out = K + 1))
+  S[1,] <- cut(data[1,], breaks = cluster_levels, labels = FALSE,
+               include.lowest =T)
+  
+  temp=simulate_observations(mu=mu,rho=rho,phi=phi,
+                             n_states=K,P=P,Pcat=Pcat,M=M,
+                             s=S[1,],seed=seed+seed*1000)
+  
+  Y=temp$SimData
+  Y.NA=temp$SimData.NA
+  
+  Y=data.frame(Y)
+  Y$m=1:M
+  Y$t=rep(0,M)
+  
+  S[1,]=order_states_condMean(Y[Y$t==0,dim(Y)[2]-2],S[1,])
+  
+  Y.NA=data.frame(Y.NA)
+  Y.NA$m=1:M
+  Y.NA$t=rep(0,M)
+  
+  # Generate data for each subsequent time step
+  for (t in 2:TT) {
+    eta_t <- mvrnorm(1, mu = rep(0, M), Sigma = spatial_cov)  # Spatial noise
+    data[t, ] <- beta * data[t-1, ] + eta_t  # Temporal correlation
+    
+    #data[t, ] <- beta * data[t-1, ] + (1-beta)*eta_t  # Temporal correlation
+    
+    cluster_levels <- quantile(data[t,], probs = seq(0, 1, length.out = K + 1))
+    S[t,] <- cut(data[t,], breaks = cluster_levels, labels = FALSE,
+                 include.lowest =T)
+    
+    simDat=simulate_observations(mu=mu,rho=rho,phi=phi,
+                                 n_states=K,P=P,Pcat=Pcat,M=M,
+                                 s=S[t,],seed=seed+seed*1000+t-1)
+    
+    temp=data.frame(simDat$SimData)
+    temp$m=1:M
+    temp$t=rep(t-1,M)
+    Y=rbind(Y,temp)
+    
+    temp=data.frame(simDat$SimData.NA)
+    temp$m=1:M
+    temp$t=rep(t-1,M)
+    Y.NA=rbind(Y.NA,temp)
+    
+    S[t,]=order_states_condMean(Y[Y$t==(t-1),dim(Y)[2]-2],S[t,])
+    
+  }
+  
+  data=data[-1,]
+  S=S[-1,]
+  Y=Y[-which(Y$t==0),]
+  Y.NA=Y.NA[-which(Y.NA$t==0),]
+  
+  Y <- Y %>% select(t, m, everything())
+  Y.NA <- Y.NA %>% select(t, m, everything())
+  
+  return(list(data = data, 
+              S = S, 
+              Y=Y,
+              Y.NA=Y.NA,
+              spatial_points = spatial_points,
+              spatial_cov = spatial_cov,
+              dist_matrix = dist_matrix))
+}
+
+STjumpDist=function(Y,n_states,
+                    D,
+                    jump_penalty=1e-5,
+                    spatial_penalty=1e-5,
+                    initial_states=NULL,
+                    max_iter=10, n_init=10, tol=NULL, verbose=FALSE,timeflag=T){
+  
+  # This function implements the spatio-temporal jump algorithm for clustering spatio-temporal data
+  # based on a distance matrix
+  
+  # Arguments:
+  # Y is a dataframe in long format with mandatory columns t and m which are T times and M spatial indexes
+  # n_states is the number of states
+  # D is the distance matrix of dimension MxM
+  # jump_penalty is the penalty for jumping between states
+  # spatial_penalty is the penalty for jumping between spatially close points
+  # initial_states is a matrix with the initial state of each point
+  # max_iter is the maximum number of iterations
+  # n_init is the number of initializations
+  # tol is the tolerance for stopping the algorithm
+  # verbose is a boolean for printing the loss at each iteration
+  # timeflag is a boolean, if TRUE the times are not equally sampled
+  
+  # Value:
+  # best_s is the best state sequence
+  # Y is the imputed data
+  # loss is the loss function at the optimum
+  
+  # Rescale distance
+  #D=D/max(D)
+  
+  # Time differences
+  Y.orig=Y
+  
+  if(timeflag){
+    time=unique(Y.orig$t)
+    dtime=diff(time)
+    dtime=dtime/as.numeric(min(dtime))
+    dtime=as.numeric(dtime)
+    Y=subset(Y,select=-c(t,m))
+    Y=Y%>%mutate_if(is.numeric,function(x)as.numeric(scale(x)))
+  }
+  
+  else{
+    Y=subset(Y,select=-c(t,m))
+    Y=Y%>%mutate_if(is.numeric,function(x)as.numeric(scale(x)))
+  }
+  
+  Gamma <- jump_penalty * (1 - diag(n_states))
+  best_loss <- NULL
+  best_s <- NULL
+  
+  library(dplyr)
+  Y <- data.frame(t=Y.orig$t,m=Y.orig$m,Y)
+  YY=subset(Y,select=-c(t,m))
+  
+  TT=length(unique(Y$t))
+  M=length(unique(Y$m))
+  
+  cat.indx=which(sapply(YY, is.factor))
+  cont.indx=which(sapply(YY, is.numeric))
+  
+  Ycont=YY[,cont.indx]
+  
+  Ycat=YY[,cat.indx]
+  
+  n_cat=length(cat.indx)
+  n_cont=P-n_cat
+  
+  # Missing data imputation TBD
+  
+  # State initialization through kmeans++
+  S=matrix(0,nrow=TT,ncol=M)
+  for(m in 1:M){
+    S[,m]=initialize_states(Y[which(Y$m==m),],n_states)
+  }
+  
+  for (init in 1:n_init) {
+    mu <- matrix(0, nrow=n_states, ncol=length(cont.indx))
+    mo <- matrix(0, nrow=n_states, ncol=length(cat.indx))
+    loss_old <- 1e10
+    
+    for (it in 1:max_iter) {
+      for (i in unique(as.vector(S))) {
+        mu[i,] <- colMeans(Ycont[as.vector(t(S))==i,])
+        mo[i,]=apply(Ycat[as.vector(t(S))==i,],2,Mode)
+      }
+      
+      mu=data.frame(mu)
+      mo=data.frame(mo,stringsAsFactors=TRUE)
+      for(i in 1:n_cat){
+        mo[,i]=factor(mo[,i],levels=levels(Ycat[,i]))
+      }
+      mumo=data.frame(matrix(0,nrow=n_states,ncol=P))
+      mumo[,cat.indx]=mo
+      mumo[,cont.indx]=mu
+      colnames(mumo)=colnames(YY)
+      
+      # Fit state sequence
+      S_old <- S
+      
+      loss_v=NULL
+      
+      # Re-fill-in missings TBD 
+      
+      
+      ###
+      for(m in 1:M){
+        loss_by_state=gower.dist(Y[which(Y$m==m),-(1:2)],mumo)
+        
+        for(k in 1:n_states){
+          #temp <- t(t((S[,-m]==k))/D[m,-m])
+          temp <- t(t((S[,-m]==k))*exp(-D[m,-m]))
+          loss_by_state[,k]=loss_by_state[,k]-spatial_penalty*rowSums(temp)
+        }
+        
+        V <- loss_by_state
+        for (t in (TT-1):1) {
+          #V[t-1,] <- loss_by_state[t-1,] + apply(V[t,] + Gamma, 2, min)
+          if(timeflag){
+            V[t-1,] <- loss_by_state[t-1,] + apply(V[t,]/dtime[t] + Gamma, 2, min)
+          }
+          else{
+            V[t-1,] <- loss_by_state[t-1,] + apply(V[t,] + Gamma, 2, min)
+          }
+        }
+        
+        S[1,m] <- which.min(V[1,])
+        for (t in 2:TT) {
+          S[t,m] <- which.min(V[t,] + Gamma[S[t-1,m],])
+        }
+        loss_v=c(loss_v,min(V[1,]))
+      }
+      if (length(unique(S)) == 1) {
+        break
+      }
+      loss <- mean(loss_v)
+      if (verbose) {
+        cat(sprintf('Iteration %d: %.6e\n', it, loss))
+      }
+      if (!is.null(tol)) {
+        epsilon <- loss_old - loss
+        if (epsilon < tol) {
+          break
+        }
+      } else if (all(S == S_old)) {
+        break
+      }
+      loss_old <- loss
+      
+      ###
+      
+    }
+    if (is.null(best_s) || (loss_old < best_loss)) {
+      best_loss <- loss_old
+      best_s <- S
+    }
+    
+    for(m in 1:M){
+      S[,m]=initialize_states(Y[which(Y$m==m),],n_states)
+    }
+  }
+  return(list(best_s=best_s,
+              Y=Y,
+              K=n_states,
+              lambda=jump_penalty,
+              gamma=spatial_penalty,
+              loss=best_loss))
+  
 }
