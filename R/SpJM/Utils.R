@@ -3275,8 +3275,7 @@ STjumpDist=function(Y,n_states,
       mumo[,cont.indx]=mu
       colnames(mumo)=colnames(YY)
       
-      # Update NAs
-      
+    
       # Fit state sequence
       S_old <- S
       
