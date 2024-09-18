@@ -3059,10 +3059,14 @@ generate_spatial_points <- function(n, max_distance = 10) {
 # Function to generate spatio-temporal data with spatial (theta) and temporal (rho) persistence
 generate_spatio_temporal_data <- function(M, TT, theta, beta, K = 3,
                                           mu=1,rho=0,phi=.8,
-                                          P,Pcat,seed) {
+                                          P,Pcat,seed,
+                                          timeflag=F,
+                                          pGap=.2) {
+  
   
   # Increment TT by one as the first time step will be removed
   TT=TT+1
+    
   
   # Generate spatial points
   spatial_points <- generate_spatial_points(M)
@@ -3135,8 +3139,15 @@ generate_spatio_temporal_data <- function(M, TT, theta, beta, K = 3,
   Y=Y[-which(Y$t==0),]
   Y.NA=Y.NA[-which(Y.NA$t==0),]
   
-  Y <- Y %>% select(t, m, everything())
-  Y.NA <- Y.NA %>% select(t, m, everything())
+  Y <- Y %>% relocate(t,m)
+  Y.NA <- Y.NA %>% relocate(t,m)
+  
+  if(timeflag){
+    set.seed(seed)
+    gaps=sort(sample(1:TT,round(TT*pGap),replace=F))
+    Y=Y[-which(Y$t %in% gaps),]
+    Y.NA=Y.NA[-which(Y.NA$t %in% gaps),]
+  }
   
   return(list(data = data, 
               S = S, 
@@ -3216,7 +3227,26 @@ STjumpDist=function(Y,n_states,
   n_cat=length(cat.indx)
   n_cont=P-n_cat
   
+  ###
   # Missing data imputation TBD
+  # Track missings with 0 1 matrix
+  Mcont=ifelse(is.na(Ycont),T,F)
+  Mcat=ifelse(is.na(Ycat),T,F)
+  # Initialize mu 
+  mu <- colMeans(Ycont,na.rm = T)
+  # Initialize modes
+  mo <- apply(Ycat,2,Mode)
+  # Impute missing values with mean of observed states
+  for(i in 1:n_cont){
+    Ycont[,i]=ifelse(Mcont[,i],mu[i],Ycont[,i])
+  }
+  for(i in 1:n_cat){
+    x=Ycat[,i]
+    Ycat[which(is.na(Ycat[,i])),i]=mo[i]
+  }
+  YY[,-cat.indx]=Ycont
+  YY[,cat.indx]=Ycat
+  ###
   
   # State initialization through kmeans++
   S=matrix(0,nrow=TT,ncol=M)
@@ -3244,6 +3274,8 @@ STjumpDist=function(Y,n_states,
       mumo[,cat.indx]=mo
       mumo[,cont.indx]=mu
       colnames(mumo)=colnames(YY)
+      
+      # Update NAs
       
       # Fit state sequence
       S_old <- S

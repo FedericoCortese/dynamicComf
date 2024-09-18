@@ -1,16 +1,21 @@
 source("Utils.R")
 
 # Example usage
-M <- 25 # Number of spatial locations
-TT <- 5   # Number of time steps
+M <- 10 # Number of spatial locations
 theta <- .01 # Spatial persistence
-beta <- 0.99    # Temporal persistence
+beta <- 0.9   # Temporal persistence
 K=3
-P=10
+P=15
 Pcat=5
+
+pg=.2
+TT <- 1000   # Number of time steps
+TT=TT+round(TT*pg)
+tf=T
+
 result <- generate_spatio_temporal_data(M, TT, theta, beta, K = 3,
                                         mu=.5,rho=0,phi=.8,
-                                        P=P,Pcat=Pcat,seed=1)
+                                        P=P,Pcat=Pcat,seed=1,timeflag=tf,pGap=pg)
 
 Y=result$Y
 D=result$dist_matrix
@@ -52,30 +57,61 @@ server <- function(input, output) {
 # Run the app
 shinyApp(ui = ui, server = server)
 
-lambda=0.2
-gamma=1
-prova=STjumpDist(Y,3,D,jump_penalty = lambda,spatial_penalty = gamma,verbose = T,timeflag = F)
+lambda=0.05
+gamma=0.05
+prova=STjumpDist(Y,3,D,jump_penalty = lambda,spatial_penalty = gamma,verbose = T,timeflag = tf)
 best_s=prova$best_s
-for(t in 1:TT){
-  best_s[t,]=order_states_condMean(Y[Y$t==t,dim(Y)[2]],best_s[t,])
-}
-adj.rand.index(best_s,result$S)
 
-server <- function(input, output) {
+TY=unique(Y$t)
+S_true=result$S[TY,]
+
+for(t in 1:length(TY)){
+  best_s[t,]=order_states_condMean(Y[Y$t==TY[t],dim(Y)[2]],best_s[t,])
+}
+adj.rand.index(best_s,S_true)
+
+ui <- fluidPage(
+  titlePanel("Dynamic Plot for Varying t"),
+  
+  sidebarLayout(
+    sidebarPanel(
+      sliderInput("t", "Select t:", 
+                  min = min(TY), 
+                  max = max(TY), 
+                  value = TY[1], 
+                  step = NULL)  # step is NULL to allow discrete values
+    ),
+    
+    mainPanel(
+      plotOutput("dynamicPlot")
+    )
+  )
+)
+
+server <- function(input, output, session) {
+  # Update slider to only allow values from TY
+  observe({
+    updateSliderInput(session, "t", 
+                      min = min(TY), 
+                      max = max(TY), 
+                      value = TY[1], 
+                      step = NULL)
+  })
   
   output$dynamicPlot <- renderPlot({
-    t <- input$t
+    # Ensure t is one of the values from TY
+    t_value <- input$t
     
-    # Define color mapping based on selected t
+    # Define color mapping based on selected t_value
     par(mfrow=c(1,2))
     plot(result$spatial_points, 
-         col = result$S[t, ], 
+         col = S_true[t_value, ], 
          pch = 19, cex = 1.5, 
          main = paste("True"))
     plot(result$spatial_points, 
-         col = best_s[t, ], 
+         col = best_s[t_value, ], 
          pch = 19, cex = 1.5, 
-         main = paste("Estimated with lambda = ", lambda," gamma = ", gamma))
+         main = bquote("ST-JM with " ~ lambda == .(lambda) ~ " and " ~ gamma == .(gamma)))
   })
 }
 
