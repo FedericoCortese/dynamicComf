@@ -1475,6 +1475,7 @@ sim_data_mixed=function(seed=123,
   # value:
   # SimData: matrix of simulated data
   
+  MU=mu
   mu=c(-mu,0,mu)
   
   if(is.null(Pcat)){
@@ -1514,7 +1515,7 @@ sim_data_mixed=function(seed=123,
   }
   
   if(Pcat!=0){
-    SimData[,1:Pcat]=apply(SimData[,1:Pcat],2,get_cat,mc=x,mu=mu,phi=phi)
+    SimData[,1:Pcat]=apply(SimData[,1:Pcat],2,get_cat,mc=x,mu=MU,phi=phi)
     SimData=as.data.frame(SimData)
     SimData[,1:Pcat]=SimData[,1:Pcat]%>%mutate_all(as.factor)
   }
@@ -2989,7 +2990,9 @@ simstud_STJump=function(lambda,gamma,seed,M,TT,
 # Spatio-temporal JM based on distances -----------------------------------
 
 # Function to simulate observations given latent states sequence
-simulate_observations <- function(mu=1,rho=0,phi=.8,n_states=3,P,Pcat,M,s,seed,pNAs=0,tpNA=0) {
+simulate_observations <- function(mu=1,rho=0,phi=.8,n_states=3,P,Pcat,M,s,seed
+                                  #,pNAs,typeNA=0
+                                  ) {
   
   # This function simulates data from a multivariate normal distribution given the latent states sequence
   
@@ -3002,6 +3005,8 @@ simulate_observations <- function(mu=1,rho=0,phi=.8,n_states=3,P,Pcat,M,s,seed,p
   # M: Number of spatial points
   # s: Latent states sequence
   # seed: Random seed
+  # pNAs: Percentage of missing values
+  # tpNA: Type of missing values (0 = random missing pattern, 1 = block (continuous) missing pattern)
   
   
   if(is.null(Pcat)){
@@ -3034,18 +3039,23 @@ simulate_observations <- function(mu=1,rho=0,phi=.8,n_states=3,P,Pcat,M,s,seed,p
     SimData[,1:Pcat]=SimData[,1:Pcat]%>%mutate_all(as.factor)
   }
   
-  if(pNAs>0){
-    SimData.NA=apply(SimData,2,punct,pNAs=pNAs,type=tpNA)
-    SimData.NA=as.data.frame(SimData.NA)
-    SimData.NA[,1:Pcat]=SimData.NA[,1:Pcat]%>%mutate_all(as.factor)
-    SimData.NA[,-(1:Pcat)]=SimData.NA[,-(1:Pcat)]%>%mutate_all(as.numeric)
-  }
+  # if(pNAs>0){
+  #   SimData.NA=apply(SimData,2,punct,pNAs=pNAs,type=typeNA)
+  #   SimData.NA=as.data.frame(SimData.NA)
+  #   SimData.NA[,1:Pcat]=SimData.NA[,1:Pcat]%>%mutate_all(as.factor)
+  #   SimData.NA[,-(1:Pcat)]=SimData.NA[,-(1:Pcat)]%>%mutate_all(as.numeric)
+  # }
   
-  else{
+  #else{
     SimData.NA=SimData
-  }
+  #}
   
-  return(list(SimData=SimData,SimData.NA=SimData.NA))
+  return(
+    #list(
+    SimData=SimData
+    #,SimData.NA=SimData.NA
+    #)
+    )
   
 }
 
@@ -3056,12 +3066,39 @@ generate_spatial_points <- function(n, max_distance = 10) {
   return(data.frame(x = x, y = y))
 }
 
-# Function to generate spatio-temporal data with spatial (theta) and temporal (rho) persistence
 generate_spatio_temporal_data <- function(M, TT, theta, beta, K = 3,
                                           mu=1,rho=0,phi=.8,
                                           P,Pcat,seed,
-                                          timeflag=F,
-                                          pGap=.2) {
+                                          pGap=.2,
+                                          pNAs=0) {
+  
+  
+  # Function to generate spatio-temporal data with spatial and temporal persistence
+  
+  # Arguments:
+  # M: Number of spatial points
+  # TT: Number of time points
+  # theta: Spatial correlation parameter (the lower, the higher the spatial correlation)
+  # beta: Temporal correlation parameter (the higher, the higher the temporal correlation)
+  # K: Number of states (only K=3 available at the moment)
+  # mu: Mean values for data simulation (first state has mean = mu, last state has mean = -mu, and all intermediate states are equally spaced between them)
+  # rho: Correlation between variables
+  # phi: Conditional probability for the categorical outcome k in state k
+  # P: Number of features
+  # Pcat: Number of categorical features
+  # seed: Random seed
+  # pGap: Percentage of time points to be removed 
+  # pNAs: Percentage of missing values (only random missing pattern is available at the moment)
+  
+  # Value:
+  # A list with the following elements:
+  # S: A matrix TTxM with the simulated states
+  # Y: A data frame with the complete simulated data in long format
+  # Y.NA: A data frame with the simulated data with missing values in long format
+  # spatial_points: A data frame with the spatial points
+  # spatial_cov: The spatial covariance matrix
+  # dist_matrix: The distance matrix
+  
   
   
   # Increment TT by one as the first time step will be removed
@@ -3090,10 +3127,12 @@ generate_spatio_temporal_data <- function(M, TT, theta, beta, K = 3,
   
   temp=simulate_observations(mu=mu,rho=rho,phi=phi,
                              n_states=K,P=P,Pcat=Pcat,M=M,
-                             s=S[1,],seed=seed+seed*1000)
+                             s=S[1,],seed=seed+seed*1000
+                             #,pNAs=pNAs,typeNA=0
+                             )
   
-  Y=temp$SimData
-  Y.NA=temp$SimData.NA
+  Y=temp#$SimData
+  #Y.NA=temp$SimData.NA
   
   Y=data.frame(Y)
   Y$m=1:M
@@ -3101,9 +3140,9 @@ generate_spatio_temporal_data <- function(M, TT, theta, beta, K = 3,
   
   S[1,]=order_states_condMean(Y[Y$t==0,dim(Y)[2]-2],S[1,])
   
-  Y.NA=data.frame(Y.NA)
-  Y.NA$m=1:M
-  Y.NA$t=rep(0,M)
+  # Y.NA=data.frame(Y.NA)
+  # Y.NA$m=1:M
+  # Y.NA$t=rep(0,M)
   
   # Generate data for each subsequent time step
   for (t in 2:TT) {
@@ -3118,17 +3157,20 @@ generate_spatio_temporal_data <- function(M, TT, theta, beta, K = 3,
     
     simDat=simulate_observations(mu=mu,rho=rho,phi=phi,
                                  n_states=K,P=P,Pcat=Pcat,M=M,
-                                 s=S[t,],seed=seed+seed*1000+t-1)
+                                 s=S[t,],seed=seed+seed*1000+t-1
+                                 #,pNAs=pNAs,typeNA=0
+                                 )
     
-    temp=data.frame(simDat$SimData)
+    temp=data.frame(simDat#$SimData
+                    )
     temp$m=1:M
     temp$t=rep(t-1,M)
     Y=rbind(Y,temp)
     
-    temp=data.frame(simDat$SimData.NA)
-    temp$m=1:M
-    temp$t=rep(t-1,M)
-    Y.NA=rbind(Y.NA,temp)
+    # temp=data.frame(simDat$SimData.NA)
+    # temp$m=1:M
+    # temp$t=rep(t-1,M)
+    #Y.NA=rbind(Y.NA,temp)
     
     S[t,]=order_states_condMean(Y[Y$t==(t-1),dim(Y)[2]-2],S[t,])
     
@@ -3137,25 +3179,31 @@ generate_spatio_temporal_data <- function(M, TT, theta, beta, K = 3,
   data=data[-1,]
   S=S[-1,]
   Y=Y[-which(Y$t==0),]
-  Y.NA=Y.NA[-which(Y.NA$t==0),]
+  #Y.NA=Y.NA[-which(Y.NA$t==0),]
   
   Y <- Y %>% relocate(t,m)
-  Y.NA <- Y.NA %>% relocate(t,m)
+  #Y.NA <- Y.NA %>% relocate(t,m)
   
-  if(timeflag){
+    Y.NA=apply(Y[,-(1:2)],2,punct,pNAs=pNAs,type=0)
+    Y.NA=as.data.frame(Y.NA)
+    Y.NA[,1:Pcat]=Y.NA[,1:Pcat]%>%mutate_all(as.factor)
+    Y.NA[,-(1:Pcat)]=Y.NA[,-(1:Pcat)]%>%mutate_all(as.numeric)
+    Y.NA=data.frame(t=Y$t,m=Y$m,Y.NA)
+  
+  if(pGap>0){
     set.seed(seed)
     gaps=sort(sample(1:TT,round(TT*pGap),replace=F))
     Y=Y[-which(Y$t %in% gaps),]
     Y.NA=Y.NA[-which(Y.NA$t %in% gaps),]
   }
   
-  return(list(data = data, 
-              S = S, 
+  return(list(S = S, 
               Y=Y,
               Y.NA=Y.NA,
               spatial_points = spatial_points,
               spatial_cov = spatial_cov,
-              dist_matrix = dist_matrix))
+              dist_matrix = dist_matrix)
+         )
 }
 
 STjumpDist=function(Y,n_states,
@@ -3186,8 +3234,6 @@ STjumpDist=function(Y,n_states,
   # Y is the imputed data
   # loss is the loss function at the optimum
   
-  # Rescale distance
-  #D=D/max(D)
   
   # Time differences
   Y.orig=Y
@@ -3282,7 +3328,12 @@ STjumpDist=function(Y,n_states,
       loss_v=NULL
       
       # Re-fill-in missings TBD 
-      
+      for(i in 1:nrow(Mcont)){
+        Ycont[i,]=unlist(ifelse(Mcont[i,],mu[as.vector(t(S))[i],],Ycont[i,]))
+      }
+      for(i in 1:nrow(Mcat)){
+        Ycat[i,]=unlist(ifelse(Mcat[i,],mo[as.vector(t(S))[i],],Ycat[i,]))
+      }
       
       ###
       for(m in 1:M){

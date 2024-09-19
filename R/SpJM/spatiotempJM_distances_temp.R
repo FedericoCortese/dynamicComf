@@ -1,24 +1,29 @@
 source("Utils.R")
 
 # Example usage
-M <- 10 # Number of spatial locations
-theta <- .01 # Spatial persistence
-beta <- 0.9   # Temporal persistence
+M <- 50 # Number of spatial locations
+theta <- .001 # Spatial persistence
+beta <- 0.7   # Temporal persistence
 K=3
 P=15
 Pcat=5
 
-pg=.2
-TT <- 1000   # Number of time steps
+pg=0.2
+TT <- 10  # Number of time steps
 TT=TT+round(TT*pg)
-tf=T
+pNAs=0
 
 result <- generate_spatio_temporal_data(M, TT, theta, beta, K = 3,
                                         mu=.5,rho=0,phi=.8,
-                                        P=P,Pcat=Pcat,seed=1,timeflag=tf,pGap=pg)
+                                        P=P,Pcat=Pcat,seed=1,pGap=pg,pNAs=pNAs)
 
-Y=result$Y
+Y.compl=result$Y
 D=result$dist_matrix
+Y=result$Y.NA
+
+# Count % NAs for each column of Y.NA
+colMeans(is.na(Y))
+
 # maxD=max(D,na.rm=T)
 # DD=D/maxD
 
@@ -57,8 +62,9 @@ server <- function(input, output) {
 # Run the app
 shinyApp(ui = ui, server = server)
 
+tf=I(pg>0)
 lambda=0.05
-gamma=0.05
+gamma=0.1
 prova=STjumpDist(Y,3,D,jump_penalty = lambda,spatial_penalty = gamma,verbose = T,timeflag = tf)
 best_s=prova$best_s
 
