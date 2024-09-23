@@ -6,14 +6,15 @@ source("Utils.R")
 K=3
 P=20
 ###
-mu=1
-rho=0
+mu=.5
+rho=0.2
 ###
 phi=.8
 Pcat=10
 pNAs=0
-
-PI=.9
+pg=.2
+beta=.9
+theta=.01
 
 ###
 lambda=seq(0,0.25,by=.05)
@@ -22,6 +23,7 @@ seed=1:100
 M=c(25,400)
 TT=c(5,50)
 
+
 hp=expand.grid(lambda=lambda,gamma=gamma,seed=seed,M=M,TT=TT)
 
 
@@ -29,13 +31,20 @@ hp=expand.grid(lambda=lambda,gamma=gamma,seed=seed,M=M,TT=TT)
 start_STJsim=Sys.time()
 STJsim <- parallel::mclapply(1:nrow(hp),
                              function(x)
-                               simstud_STJump(lambda=hp[x,]$lambda,
-                                          gamma=hp[x,]$gamma,
-                                          seed=hp[x,]$seed,
-                                          M=hp[x,]$M,
-                                          TT=hp[x,]$TT,
-                                          mu=mu,rho=rho,
-                                          K=K,P=P,phi=phi,Pcat=Pcat,pNAs=pNAs,PI=PI),
+                               simstud_STJump_dist(lambda=hp[x,]$lambda,
+                                                   gamma=hp[x,]$gamma,
+                                                   seed=hp[x,]$seed,
+                                                   M=hp[x,]$M,
+                                                   TT=hp[x,]$TT,
+                                                   beta=beta, 
+                                                   theta=theta,
+                                                   mu=mu,
+                                                   rho=rho,
+                                                   K=K,P=P,
+                                                   phi=phi,
+                                                   Pcat=Pcat,
+                                                   pNAs=pNAs,
+                                                   pg=pg),
                              mc.cores = parallel::detectCores())
 end_STJsim=Sys.time()
 elapsed_STJsim=end_STJsim-start_STJsim

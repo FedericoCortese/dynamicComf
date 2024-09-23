@@ -3399,3 +3399,42 @@ STjumpDist=function(Y,n_states,
               loss=best_loss))
   
 }
+
+simstud_STJump_dist=function(lambda,gamma,seed,M,TT,beta, theta,
+                             mu=.5,rho=0.2,
+                             K=3,P=20,phi=.8,Pcat=10,pNAs=0,pg=0){
+  
+  
+  
+  result <- generate_spatio_temporal_data(M, TT, theta, beta, K = K,
+                                          mu=mu,rho=rho,phi=phi,
+                                          P=P,Pcat=Pcat,seed=seed,pGap=pg,pNAs=pNAs)
+  
+  Y.compl=result$Y
+  D=result$dist_matrix
+  Y=result$Y.NA
+  
+  tf=I(pg>0)
+  prova=STjumpDist(Y,K,D,jump_penalty = lambda,spatial_penalty = gamma,verbose = T,timeflag = tf)
+  best_s=prova$best_s
+  
+  TY=unique(Y$t)
+  S_true=result$S[TY,]
+  
+  for(t in 1:length(TY)){
+    best_s[t,]=order_states_condMean(Y[Y$t==TY[t],dim(Y)[2]],best_s[t,])
+  }
+  
+  ARI=adj.rand.index(best_s,S_true)
+  
+  
+  return(list(ARI=ARI,
+              S_true=S_true,best_s=best_s,
+              lambda=lambda,
+              gamma=gamma,
+              seed=seed,
+              M=M,TT=TT,
+              mu=mu,rho=rho,
+              K=K,P=P,phi=phi,Pcat=Pcat,pNAs=pNAs,
+              elapsed=elapsed))
+}
