@@ -48,4 +48,4 @@ STJsim <- parallel::mclapply(1:nrow(hp),
                              mc.cores = parallel::detectCores())
 end_STJsim=Sys.time()
 elapsed_STJsim=end_STJsim-start_STJsim
-save(STJsim,elapsed_STJsim,file="STJsim_dist.RData")
+save(STJsim,elapsed_STJsim,file="STJsim_dist_pg.RData")
