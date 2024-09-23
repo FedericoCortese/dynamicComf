@@ -3435,6 +3435,5 @@ simstud_STJump_dist=function(lambda,gamma,seed,M,TT,beta, theta,
               seed=seed,
               M=M,TT=TT,
               mu=mu,rho=rho,
-              K=K,P=P,phi=phi,Pcat=Pcat,pNAs=pNAs,
-              elapsed=elapsed))
+              K=K,P=P,phi=phi,Pcat=Pcat,pNAs=pNAs))
 }

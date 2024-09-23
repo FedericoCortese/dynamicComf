@@ -9,7 +9,7 @@ rho=.2
 phi=.8
 beta=.9
 theta=.01
-k=3
+K=3
 P=20
 Pcat=10
 
