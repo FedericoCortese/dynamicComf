@@ -1,6 +1,8 @@
 library(parallel)
-library(snow)
-library(doSNOW)
+# library(snow)
+# library(doSNOW)
+
+source("Utils.R")
 
 mu=.5
 rho=.2
