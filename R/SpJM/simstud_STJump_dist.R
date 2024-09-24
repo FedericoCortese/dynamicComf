@@ -1,6 +1,6 @@
 library(parallel)
-# library(snow)
-# library(doSNOW)
+library(plotly)
+library(dplyr)
 
 source("Utils.R")
 
@@ -51,7 +51,6 @@ elapsed_STJsim=end_STJsim-start_STJsim
 save(STJsim,elapsed_STJsim,file="STJsim_dist_pg.RData")
 
 
-library(dplyr)
 load("C:/Users/federico/OneDrive - CNR/Comfort - HMM/simres_STJM_dist/STJsim_dist_pg.RData")
 res=data.frame(hp,ARI=unlist(lapply(STJsim,function(x)x$ARI)))
 
@@ -60,8 +59,6 @@ res_av=res%>%group_by(M,TT,lambda,gamma)%>%summarise(avARI=mean(ARI,na.rm=T))
 res_max=res_av%>%group_by(M,TT)%>%summarise(maxARI=max(avARI),
                                             lambdaARI=lambda[which.max(avARI)],
                                             gammaARI=gamma[which.max(avARI)])
-# Load necessary library
-library(plotly)
 
 # Extract unique combinations of T and M
 unique_combinations <- unique(res_av[, c("TT", "M")])
@@ -130,6 +127,43 @@ plots[[3]]
 plots[[4]]
 
 
+# 5 % NA ------------------------------------------------------------------
+
+pNAs=0.05
+pg=0
+
+###
+lambda=seq(0,0.25,by=.05)
+gamma=seq(0,0.25,by=.05)
+seed=1:100
+M=c(10,50)
+TT=c(10,50)
+
+hp=expand.grid(lambda=lambda,gamma=gamma,seed=seed,M=M,TT=TT)
+
+start_STJsim=Sys.time()
+STJsim_NA5 <- parallel::mclapply(1:nrow(hp),
+                                function(x)
+                                  simstud_STJump_dist(lambda=hp[x,]$lambda,
+                                                      gamma=hp[x,]$gamma,
+                                                      seed=hp[x,]$seed,
+                                                      M=hp[x,]$M,
+                                                      TT=hp[x,]$TT,
+                                                      beta=beta, 
+                                                      theta=theta,
+                                                      mu=mu,
+                                                      rho=rho,
+                                                      K=K,P=P,
+                                                      phi=phi,
+                                                      Pcat=Pcat,
+                                                      pNAs=pNAs,
+                                                      pg=pg),
+                                mc.cores = parallel::detectCores())
+end_STJsim=Sys.time()
+elapsed_STJsim=end_STJsim-start_STJsim
+save(STJsim_NA5,elapsed_STJsim,file="STJsim_dist_NA5.RData")
+
+
 # 20 % NA -----------------------------------------------------------------
 
 pNAs=0.2
@@ -164,4 +198,13 @@ STJsim_NA <- parallel::mclapply(1:nrow(hp),
                              mc.cores = parallel::detectCores())
 end_STJsim=Sys.time()
 elapsed_STJsim=end_STJsim-start_STJsim
-save(STJsim_NA,elapsed_STJsim,file="STJsim_dist_NA.RData")
+save(STJsim_NA,elapsed_STJsim,file="STJsim_dist_NA20.RData")
+
+load("C:/Users/federico/OneDrive - CNR/Comfort - HMM/simres_STJM_dist/STJsim_dist_NA.RData")
+res_NA20=data.frame(hp,ARI=unlist(lapply(STJsim_NA,function(x)x$ARI)))
+
+res_NA20_av=res_NA%>%group_by(M,TT,lambda,gamma)%>%summarise(avARI=mean(ARI,na.rm=T))
+
+res_NA20_max=res_NA_av%>%group_by(M,TT)%>%summarise(maxARI=max(avARI),
+                                            lambdaARI=lambda[which.max(avARI)],
+                                            gammaARI=gamma[which.max(avARI)])
