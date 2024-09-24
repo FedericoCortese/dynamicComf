@@ -17,7 +17,7 @@ cozie_q.wd <- cozie_q.wd %>%
   mutate(date = as.Date(time))  # Extract the date (year-month-day) from the time column
 
 # Retrieve data for future comparison with STJM estimates
-time_range=c(as.Date('2023-04-16'),as.Date('2023-04-23'))
+time_range=c(as.Date('2023-04-18'),as.Date('2023-04-25'))
 cozie_compare=cozie_q.wd %>%
   group_by(date) %>%
   filter(date >= time_range[1] & date <= time_range[2])
@@ -73,6 +73,7 @@ data_air_temp=data_air_temp%>%
   summarise_if(is.numeric, mean, na.rm = TRUE) 
 
 data_air_temp=data.frame(data_air_temp)
+max(diff(data_air_temp$time))
 
 # For RH, retrieve the data for the same time range as the comfort data
 
@@ -93,7 +94,7 @@ data_rh=data_rh%>%
   group_by(time=floor_date(time,wdn))%>%
   summarise_if(is.numeric, mean, na.rm = TRUE)
 
-data_rh=data.frame(data_rh)
+max(diff(data_rh$time))
 
 # For rainfall, retrieve the data for the same time range as the comfort data
 
@@ -115,7 +116,7 @@ data_rainfall=data_rainfall%>%
   group_by(time=floor_date(time,wdn))%>%
   summarise_if(is.numeric, mean, na.rm = TRUE)
 
-data_rainfall=data.frame(data_rainfall)
+max(diff(data_rainfall$time))
 
 # For wind_speed, retrieve the data for the same time range as the comfort data
 
@@ -138,7 +139,7 @@ data_wind_speed=data_wind_speed%>%
   group_by(time=floor_date(time,wdn))%>%
   summarise_if(is.numeric, mean, na.rm = TRUE)
 
-data_wind_speed=data.frame(data_wind_speed)
+max(diff(data_wind_speed$time))
 
 # For wind_dir, retrieve the data for the same time range as the comfort data
 
@@ -161,7 +162,33 @@ data_wind_dir=data_wind_dir%>%
   group_by(time=floor_date(time,wdn))%>%
   summarise_if(is.numeric, mean, na.rm = TRUE)
 
+max(diff(data_wind_dir$time))
+
+TT=nrow(data_air_temp)
+
+data_air_temp$t=1:TT
+TT=nrow(data_air_temp)
+# Introduce temporal gaps
+pGap=.05
+set.seed(123)
+gaps=sort(sample(1:TT,round(TT*pGap),replace=F))
+data_air_temp=data_air_temp[-gaps,]
+
+data_rh=data.frame(data_rh)
+data_rh$t=1:TT
+data_rh=data_rh[-gaps,]
+
+data_rainfall=data.frame(data_rainfall)
+data_rainfall$t=1:TT
+data_rainfall=data_rainfall[-gaps,]
+
+data_wind_speed=data.frame(data_wind_speed)
+data_wind_speed$t=1:TT
+data_wind_speed=data_wind_speed[-gaps,]
+
 data_wind_dir=data.frame(data_wind_dir)
+data_wind_dir$t=1:TT
+data_wind_dir=data_wind_dir[-gaps,]
 
 
 # Keep only relevant stations
@@ -178,22 +205,22 @@ data_wind_dir=data_wind_dir[,stats]
 
 # Long format
 data_air_temp_long <- data_air_temp %>%
-  gather(key = "station", value = "air_temp", -time)
+  gather(key = "station", value = "air_temp", -c(t,time))
 data_rh_long <- data_rh %>%
-  gather(key = "station", value = "rh", -time)
+  gather(key = "station", value = "rh", -c(t,time))
 data_rainfall_long <- data_rainfall %>%
-  gather(key = "station", value = "rainfall", -time)
+  gather(key = "station", value = "rainfall", -c(t,time))
 data_wind_speed_long <- data_wind_speed %>%
-  gather(key = "station", value = "wind_speed", -time)
+  gather(key = "station", value = "wind_speed", -c(t,time))
 data_wind_dir_long <- data_wind_dir %>%
-  gather(key = "station", value = "wind_dir", -time)
+  gather(key = "station", value = "wind_dir", -c(t,time))
 
 # Merge all the weather data
 data_weather_long <- data_air_temp_long %>%
-  left_join(data_rh_long, by = c("time", "station")) %>%
-  left_join(data_rainfall_long, by = c("time", "station")) %>%
-  left_join(data_wind_speed_long, by = c("time", "station")) %>%
-  left_join(data_wind_dir_long, by = c("time", "station"))
+  left_join(data_rh_long, by = c("t","time", "station")) %>%
+  left_join(data_rainfall_long, by = c("t","time", "station")) %>%
+  left_join(data_wind_speed_long, by = c("t","time", "station")) %>%
+  left_join(data_wind_dir_long, by = c("t","time", "station"))
 
 # ggplot each variable, for each station, in a grid
 data_weather_long %>%
@@ -235,6 +262,7 @@ data_weather_long %>%
 loc_weath=locations %>%
   filter(id %in% stats)
 
+
 # Save the data
 save(cozie_compare,loc_weath,
      data_air_temp, data_rh, data_rainfall, data_wind_speed, data_wind_dir, 
@@ -244,8 +272,46 @@ save(cozie_compare,loc_weath,
 # Load the data
 load("data_weather.RData")
 
+# Summary of the data
+summary(data_weather_long)
+
+# Missinf values
+apply(data_air_temp, 2, function(x) 100*sum(is.na(x))/length(x))
+apply(data_rh, 2, function(x) 100*sum(is.na(x))/length(x))
+apply(data_rainfall, 2, function(x) 100*sum(is.na(x))/length(x))
+apply(data_wind_speed, 2, function(x) 100*sum(is.na(x))/length(x))
+apply(data_wind_dir, 2, function(x) 100*sum(is.na(x))/length(x))
+
+# Spatial distribution of stations with respect to feedback locations
 plot(y=loc_weath$latitude,x=loc_weath$longitude, xlab = "Long", 
      ylab = "Lat", main = " ", pch = 19, col = "blue")
 points(
   y=cozie_compare$ws_latitude, x=cozie_compare$ws_longitude,
   col='red',pch=19)
+
+
+library(geosphere)
+# Distances (in km) between weather stations and feedback locations
+cozie_dist=distm(cozie_compare[,c("ws_longitude","ws_latitude")],loc_weath[,c("longitude","latitude")], 
+      fun = distGeo)/1000
+summary(cozie_dist)
+
+# Radius for the neighbourhood
+R=max(apply(cozie_dist, 1, min ))
+
+# Which stations are in the neighbourhood of each feedback location
+neigh=cozie_dist<R
+colnames(neigh)=loc_weath$id
+# Distances between stations
+D=distm(loc_weath[,c("longitude","latitude")], loc_weath[,c("longitude","latitude")], 
+      fun = distGeo)/1000
+
+# Round times in cozie_compare to hours
+wdn="1 hour"
+cozie_compare$time=round_date(cozie_compare$time,wdn)
+
+tmp=list()
+for(i in loc_weath$id){
+  tmp[[i]]=cozie_compare$time[which(neigh[,i])]
+  cozie_compare$time[i]
+}
