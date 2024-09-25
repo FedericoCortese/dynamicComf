@@ -1,6 +1,7 @@
 library(RcppHMM)
 library(reticulate)
 library(pdfCluster)
+library(caret)
 library(boot)
 library(xtable)
 library(dplyr)
@@ -3436,4 +3437,15 @@ simstud_STJump_dist=function(lambda,gamma,seed,M,TT,beta, theta,
               M=M,TT=TT,
               mu=mu,rho=rho,
               K=K,P=P,phi=phi,Pcat=Pcat,pNAs=pNAs))
+}
+
+
+BAC=function(obj,levs=3){
+  A=as.character(obj$S_true)
+  B=as.character(obj$best_s)
+  
+  A=factor(A,levels=1:levs)
+  B=factor(B,levels=1:levs)
+  
+  return(confusionMatrix(A,B)$overall[1])
 }

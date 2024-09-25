@@ -13,12 +13,6 @@ K=3
 P=20
 Pcat=10
 
-
-# 20% gaps, no missing ----------------------------------------------------
-
-pNAs=0
-pg=.2
-
 ###
 lambda=seq(0,0.25,by=.05)
 gamma=seq(0,0.25,by=.05)
@@ -27,6 +21,13 @@ M=c(10,50)
 TT=c(10,50)
 
 hp=expand.grid(lambda=lambda,gamma=gamma,seed=seed,M=M,TT=TT)
+
+
+# 20% gaps, no missing ----------------------------------------------------
+
+pNAs=0
+pg=.2
+
 
 start_STJsim=Sys.time()
 STJsim <- parallel::mclapply(1:nrow(hp),
@@ -51,14 +52,26 @@ elapsed_STJsim=end_STJsim-start_STJsim
 save(STJsim,elapsed_STJsim,file="STJsim_dist_pg.RData")
 
 
-load("C:/Users/federico/OneDrive - CNR/Comfort - HMM/simres_STJM_dist/STJsim_dist_pg.RData")
+load("C:/Users/federico/OneDrive - CNR/Comfort - HMM/simres_STJM_dist/STJsim_dist_pg20.RData")
 res=data.frame(hp,ARI=unlist(lapply(STJsim,function(x)x$ARI)))
 
-res_av=res%>%group_by(M,TT,lambda,gamma)%>%summarise(avARI=mean(ARI,na.rm=T))
+res_av=res%>%group_by(M,TT,lambda,gamma)%>%summarise(avARI=mean(ARI,na.rm=T),
+                                                     sdARI=sd(ARI,na.rm=T))
 
 res_max=res_av%>%group_by(M,TT)%>%summarise(maxARI=max(avARI),
+                                            sd_maxARI=sdARI[which.max(avARI)],
                                             lambdaARI=lambda[which.max(avARI)],
                                             gammaARI=gamma[which.max(avARI)])
+
+BAC_gap20=as.vector(unlist(lapply(STJsim,BAC)))
+res_BAC_gap20=data.frame(hp,BAC=BAC_gap20)
+res_BAC_gap20_av=res_BAC_gap20%>%group_by(M,TT,lambda,gamma)%>%summarise(avBAC=mean(BAC,na.rm=T),
+                                                                       sdBAC=sd(BAC,na.rm=T))
+res_BAC_gap20_max=res_BAC_gap20_av%>%group_by(M,TT)%>%summarise(maxBAC=max(avBAC),
+                                                              sd_maxBAC=sdBAC[which.max(avBAC)],
+                                                              lambdaBAC=lambda[which.max(avBAC)],
+                                                              gammaBAC=gamma[which.max(avBAC)])
+
 
 # Extract unique combinations of T and M
 unique_combinations <- unique(res_av[, c("TT", "M")])
@@ -132,15 +145,6 @@ plots[[4]]
 pNAs=0.05
 pg=0
 
-###
-lambda=seq(0,0.25,by=.05)
-gamma=seq(0,0.25,by=.05)
-seed=1:100
-M=c(10,50)
-TT=c(10,50)
-
-hp=expand.grid(lambda=lambda,gamma=gamma,seed=seed,M=M,TT=TT)
-
 start_STJsim=Sys.time()
 STJsim_NA5 <- parallel::mclapply(1:nrow(hp),
                                 function(x)
@@ -163,20 +167,33 @@ end_STJsim=Sys.time()
 elapsed_STJsim=end_STJsim-start_STJsim
 save(STJsim_NA5,elapsed_STJsim,file="STJsim_dist_NA5.RData")
 
+load("C:/Users/federico/OneDrive - CNR/Comfort - HMM/simres_STJM_dist/STJsim_dist_NA5.RData")
+res_NA5=data.frame(hp,ARI=unlist(lapply(STJsim_NA5,function(x)x$ARI)))
+
+res_NA5_av=res_NA5%>%group_by(M,TT,lambda,gamma)%>%summarise(avARI=mean(ARI,na.rm=T),
+                                                             sdARI=sd(ARI,na.rm=T))
+
+res_NA5_max=res_NA5_av%>%group_by(M,TT)%>%summarise(maxARI=max(avARI),
+                                                    sd_maxARI=sdARI[which.max(avARI)],
+                                                    lambdaARI=lambda[which.max(avARI)],
+                                                    gammaARI=gamma[which.max(avARI)])
+
+# BAC 
+BAC_NA5=as.vector(unlist(lapply(STJsim_NA5,BAC)))
+res_BAC_NA5=data.frame(hp,BAC=BAC_NA5)
+res_BAC_NA5_av=res_BAC_NA5%>%group_by(M,TT,lambda,gamma)%>%summarise(avBAC=mean(BAC,na.rm=T),
+                                                                     sdBAC=sd(BAC,na.rm=T))
+res_BAC_NA5_max=res_BAC_NA5_av%>%group_by(M,TT)%>%summarise(maxBAC=max(avBAC),
+                                                            sd_maxBAC=sdBAC[which.max(avBAC)],
+                                                            lambdaBAC=lambda[which.max(avBAC)],
+                                                            gammaBAC=gamma[which.max(avBAC)])
+
+
 
 # 20 % NA -----------------------------------------------------------------
 
 pNAs=0.2
 pg=0
-
-###
-lambda=seq(0,0.25,by=.05)
-gamma=seq(0,0.25,by=.05)
-seed=1:100
-M=c(10,50)
-TT=c(10,50)
-
-hp=expand.grid(lambda=lambda,gamma=gamma,seed=seed,M=M,TT=TT)
 
 start_STJsim=Sys.time()
 STJsim_NA <- parallel::mclapply(1:nrow(hp),
@@ -200,11 +217,22 @@ end_STJsim=Sys.time()
 elapsed_STJsim=end_STJsim-start_STJsim
 save(STJsim_NA,elapsed_STJsim,file="STJsim_dist_NA20.RData")
 
-load("C:/Users/federico/OneDrive - CNR/Comfort - HMM/simres_STJM_dist/STJsim_dist_NA.RData")
+load("C:/Users/federico/OneDrive - CNR/Comfort - HMM/simres_STJM_dist/STJsim_dist_NA20.RData")
 res_NA20=data.frame(hp,ARI=unlist(lapply(STJsim_NA,function(x)x$ARI)))
 
-res_NA20_av=res_NA%>%group_by(M,TT,lambda,gamma)%>%summarise(avARI=mean(ARI,na.rm=T))
+res_NA20_av=res_NA%>%group_by(M,TT,lambda,gamma)%>%summarise(avARI=mean(ARI,na.rm=T),
+                                                             sdARI=sd(ARI,na.rm=T))
 
 res_NA20_max=res_NA_av%>%group_by(M,TT)%>%summarise(maxARI=max(avARI),
                                             lambdaARI=lambda[which.max(avARI)],
                                             gammaARI=gamma[which.max(avARI)])
+
+# BAC 
+BAC_NA20=as.vector(unlist(lapply(STJsim_NA,BAC)))
+res_BAC_NA20=data.frame(hp,BAC=BAC_NA20)
+res_BAC_NA20_av=res_BAC_NA20%>%group_by(M,TT,lambda,gamma)%>%summarise(avBAC=mean(BAC,na.rm=T),
+                                                                     sdBAC=sd(BAC,na.rm=T))
+res_BAC_NA20_max=res_BAC_NA20_av%>%group_by(M,TT)%>%summarise(maxBAC=max(avBAC),
+                                                            sd_maxBAC=sdBAC[which.max(avBAC)],
+                                                            lambdaBAC=lambda[which.max(avBAC)],
+                                                            gammaBAC=gamma[which.max(avBAC)])
