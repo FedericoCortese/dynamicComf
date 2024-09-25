@@ -304,38 +304,46 @@ data_stat_number=data_stat_number[order(data_stat_number$m),]
 Y=data_weather_long %>%
   left_join(data_stat_number[,c("station","m")], by = c("station"))
 
-# Drop time and station columns
-
-Y=Y[,-c(1,3)]
-
 # Order based on t and m
 Y=Y[order(Y$t,Y$m),]
-Y <- Y[,c(1,7,2:6)]
 rownames(Y)=NULL
 
 # Add categorical features
-Y$rainy=ifelse(Y$rainfall>0,1,0)
-Y$windy=ifelse(Y$wind_speed>3,1,0)
+Y$rainy=ifelse(Y$rainfall>0,1,0)+1
+Y$windy=ifelse(Y$wind_speed>3,1,0)+1
+Y$hour=hour(Y$time)
 
 # Change NaN in NA
-for(i in 1:ncol(Y)){
+for(i in 2:ncol(Y)){
   Y[,i]=ifelse(is.nan(Y[,i]),NA,Y[,i])
 }
 
 Y$rainy=as.factor(Y$rainy)
 Y$windy=as.factor(Y$windy)
+Y$hour=as.factor(Y$hour)
+
+# Drop time and station columns
+times=Y[,1]
+Y=Y[,-c(1,3)]
+head(Y)
+str(Y)
+
+summary(Y)
 
 # STJM fit ----------------------------------------------------------------
 
 source("Utils.R")
-
+library(geosphere)
 D=distm(data_stat_number[,c("longitude","latitude")], 
         data_stat_number[,c("longitude","latitude")], 
         fun = distGeo)/1000
 
+lambda=.05
+gamma=.05
+
 fit=STjumpDist(Y,3,D,
-           jump_penalty=0.05,
-           spatial_penalty=0.05,
+           jump_penalty=lambda,
+           spatial_penalty=gamma,
            initial_states=NULL,
            max_iter=10, n_init=10, 
            tol=NULL, 
@@ -354,10 +362,85 @@ tapply(Y_res$wind_speed,Y_res$State,mean,na.rm=T)
 tapply(Y_res$wind_dir,Y_res$State,mean,na.rm=T)
 tapply(Y_res$rainy,Y_res$State,Mode)
 tapply(Y_res$windy,Y_res$State,Mode)
+tapply(Y_res$hour,Y_res$State,Mode)
 table(Y_res$State)
 
+# Graphic representation of the results
+TY=unique(Y$t)
+timesY=unique(times)
+TT=length(TY)
+
+# Strano che ws_timestamp_start ha SOLO orari dalle 2 di notte alle 11 di mattina, forse meglio prendere time
+
+q_data=cozie_compare[,c("q_thermal_preference","time","ws_longitude","ws_latitude")]
+#q_data=cozie_compare[,c("q_thermal_preference","ws_timestamp_start","ws_longitude","ws_latitude")]
+colnames(q_data)[2:4]=c("time","longitude","latitude")
+wdn="1 hour"
+q_data$time=round_date(q_data$time,wdn)
+q_data$State=q_data$q_thermal_preference
+q_data$State=recode(q_data$State, "Warmer" = 3, "Cooler" = 1, "No change" = 2)
+
+library(shiny)
+# Define UI
+ui <- fluidPage(
+  titlePanel("Dynamic Plot for Varying t"),
+  
+  sidebarLayout(
+    sidebarPanel(
+      sliderInput("t", "Select t:", 
+                  min = min(TY), 
+                  max = max(TY), 
+                  value = TY[1], 
+                  step = NULL)  # step is NULL to allow discrete values
+    ),
+    
+    mainPanel(
+      plotOutput("dynamicPlot")
+    )
+  )
+)
+
+server <- function(input, output, session) {
+  # Update slider to only allow values from TY
+  observe({
+    updateSliderInput(session, "t", 
+                      min = min(TY), 
+                      max = max(TY), 
+                      value = TY[1], 
+                      step = 1)
+  })
+  
+  output$dynamicPlot <- renderPlot({
+    # Ensure t is one of the values from TY
+    t_value <- input$t
+    
+    # Define color mapping based on selected t_value
+    #par(mfrow=c(1,2))
+    # plot(result$spatial_points, 
+    #      col = S_true[t_value, ], 
+    #      pch = 19, cex = 1.5, 
+    #      main = paste("True"))
+    plot(data_stat_number[,c("longitude","latitude")], 
+         col = fit$best_s[t_value, ], 
+         pch = 17, cex = 1.5, 
+         #main = bquote("ST-JM " ~ lambda == .(lambda) ~ " and " ~ gamma == .(gamma))
+         main = paste("t = ", timesY[t_value])
+         )
+    if(any(q_data$time==timesY[t_value])){
+      points(q_data$longitude[which(q_data$time==timesY[t_value])], 
+             q_data$latitude[which(q_data$time==timesY[t_value])], 
+             col = q_data$State[which(q_data$time==timesY[t_value])], pch = 19)
+    }
+    legend("topright", legend = 1:3, fill = 1:3)
+  })
+}
+
+# Run the app
+shinyApp(ui = ui, server = server)
 
 # Comparison with feedback TBD ------------------------------------------------
+
+
 
 library(geosphere)
 # Distances (in km) between weather stations and feedback locations
