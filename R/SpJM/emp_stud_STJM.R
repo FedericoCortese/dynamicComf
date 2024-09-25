@@ -2,16 +2,16 @@
 ### Empirical study of the STJM model paper ###
 ###############################################
 
+library(dplyr)
+library(lubridate) 
+library(tidyr)
+library(tidyverse)
+
 # Rich dataset of weather data
 load("C:/Users/federico/OneDrive - CNR/General - Comfort/Kaggle/cleaned data/cleaned_data.RData")
 
 # Dataset pulito da Antonio
 load("C:/Users/federico/OneDrive - CNR/General - Comfort/Kaggle/singapore/q_outdoor.RData")
-
-library(dplyr)
-library(lubridate) 
-library(tidyr)
-library(tidyverse)
 
 cozie_q.wd <- cozie_q.wd %>%
   mutate(date = as.Date(time))  # Extract the date (year-month-day) from the time column
@@ -222,6 +222,23 @@ data_weather_long <- data_air_temp_long %>%
   left_join(data_wind_speed_long, by = c("t","time", "station")) %>%
   left_join(data_wind_dir_long, by = c("t","time", "station"))
 
+# Retrieve relevant locations
+loc_weath=locations %>%
+  filter(id %in% stats)
+
+
+# Save the data
+save(cozie_compare,loc_weath,
+     data_air_temp, data_rh, data_rainfall, data_wind_speed, data_wind_dir, 
+     data_weather_long, 
+     file = "data_weather.RData")
+
+
+# Load data  --------------------------------------------------------------
+
+# Load the data
+load("data_weather.RData")
+
 # ggplot each variable, for each station, in a grid
 data_weather_long %>%
   ggplot(aes(x = time, y = air_temp)) +
@@ -258,24 +275,10 @@ data_weather_long %>%
   labs(title = "Wind direction (°)", x = "Time", y = " ") +
   theme_minimal()
 
-# Retrieve relevant locations
-loc_weath=locations %>%
-  filter(id %in% stats)
-
-
-# Save the data
-save(cozie_compare,loc_weath,
-     data_air_temp, data_rh, data_rainfall, data_wind_speed, data_wind_dir, 
-     data_weather_long, 
-     file = "data_weather.RData")
-
-# Load the data
-load("data_weather.RData")
-
 # Summary of the data
 summary(data_weather_long)
 
-# Missinf values
+# Missing values
 apply(data_air_temp, 2, function(x) 100*sum(is.na(x))/length(x))
 apply(data_rh, 2, function(x) 100*sum(is.na(x))/length(x))
 apply(data_rainfall, 2, function(x) 100*sum(is.na(x))/length(x))
@@ -289,6 +292,72 @@ points(
   y=cozie_compare$ws_latitude, x=cozie_compare$ws_longitude,
   col='red',pch=19)
 
+
+# Features construction ---------------------------------------------------
+
+M=dim(loc_weath)[1]
+data_stat_number=data.frame(station=loc_weath$id, m=1:M,
+                            longitude=loc_weath$longitude,
+                            latitude=loc_weath$latitude)
+data_stat_number=data_stat_number[order(data_stat_number$m),]
+
+Y=data_weather_long %>%
+  left_join(data_stat_number[,c("station","m")], by = c("station"))
+
+# Drop time and station columns
+
+Y=Y[,-c(1,3)]
+
+# Order based on t and m
+Y=Y[order(Y$t,Y$m),]
+Y <- Y[,c(1,7,2:6)]
+rownames(Y)=NULL
+
+# Add categorical features
+Y$rainy=ifelse(Y$rainfall>0,1,0)
+Y$windy=ifelse(Y$wind_speed>3,1,0)
+
+# Change NaN in NA
+for(i in 1:ncol(Y)){
+  Y[,i]=ifelse(is.nan(Y[,i]),NA,Y[,i])
+}
+
+Y$rainy=as.factor(Y$rainy)
+Y$windy=as.factor(Y$windy)
+
+# STJM fit ----------------------------------------------------------------
+
+source("Utils.R")
+
+D=distm(data_stat_number[,c("longitude","latitude")], 
+        data_stat_number[,c("longitude","latitude")], 
+        fun = distGeo)/1000
+
+fit=STjumpDist(Y,3,D,
+           jump_penalty=0.05,
+           spatial_penalty=0.05,
+           initial_states=NULL,
+           max_iter=10, n_init=10, 
+           tol=NULL, 
+           verbose=T,timeflag=T)
+
+# State characterization
+
+State=c(t(fit$best_s))
+
+Y_res=data.frame(Y,State)
+
+tapply(Y_res$air_temp,Y_res$State,mean,na.rm=T)
+tapply(Y_res$rh,Y_res$State,mean,na.rm=T)
+tapply(Y_res$rainfall,Y_res$State,mean,na.rm=T)
+tapply(Y_res$wind_speed,Y_res$State,mean,na.rm=T)
+tapply(Y_res$wind_dir,Y_res$State,mean,na.rm=T)
+tapply(Y_res$rainy,Y_res$State,Mode)
+tapply(Y_res$windy,Y_res$State,Mode)
+table(Y_res$State)
+
+
+# Comparison with feedback TBD ------------------------------------------------
 
 library(geosphere)
 # Distances (in km) between weather stations and feedback locations

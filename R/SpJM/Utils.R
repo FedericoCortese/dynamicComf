@@ -3235,7 +3235,7 @@ STjumpDist=function(Y,n_states,
   # Y is the imputed data
   # loss is the loss function at the optimum
   
-  
+  P=ncol(Y)-2
   # Time differences
   Y.orig=Y
   
@@ -3272,7 +3272,7 @@ STjumpDist=function(Y,n_states,
   Ycat=YY[,cat.indx]
   
   n_cat=length(cat.indx)
-  n_cont=P-n_cat
+  n_cont=length(cont.indx)
   
   ###
   # Missing data imputation TBD
@@ -3293,6 +3293,9 @@ STjumpDist=function(Y,n_states,
   }
   YY[,-cat.indx]=Ycont
   YY[,cat.indx]=Ycat
+  
+  Y[,-(1:2)]=YY
+  
   ###
   
   # State initialization through kmeans++
@@ -3328,13 +3331,18 @@ STjumpDist=function(Y,n_states,
       
       loss_v=NULL
       
-      # Re-fill-in missings TBD 
+      # Re-fill-in missings 
       for(i in 1:nrow(Mcont)){
         Ycont[i,]=unlist(ifelse(Mcont[i,],mu[as.vector(t(S))[i],],Ycont[i,]))
       }
       for(i in 1:nrow(Mcat)){
         Ycat[i,]=unlist(ifelse(Mcat[i,],mo[as.vector(t(S))[i],],Ycat[i,]))
       }
+      
+      YY[,-cat.indx]=Ycont
+      YY[,cat.indx]=Ycat
+      
+      Y[,-(1:2)]=YY
       
       ###
       for(m in 1:M){
@@ -3436,7 +3444,7 @@ simstud_STJump_dist=function(lambda,gamma,seed,M,TT,beta, theta,
               seed=seed,
               M=M,TT=TT,
               mu=mu,rho=rho,
-              K=K,P=P,phi=phi,Pcat=Pcat,pNAs=pNAs))
+              K=K,P=P,phi=phi,Pcat=Pcat,pNAs=pNAs,pg=pg))
 }
 
 
