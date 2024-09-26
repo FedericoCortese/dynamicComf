@@ -9,6 +9,8 @@ library(lubridate)
 library(tidyr)
 library(tidyverse)
 library(shiny)
+library(geosphere)
+
 
 # Raw data loading --------------------------------------------------------
 # Rich dataset of weather data
@@ -19,13 +21,18 @@ load("C:/Users/federico/OneDrive - CNR/General - Comfort/Kaggle/singapore/q_outd
 
 cozie_q.wd <- cozie_q.wd %>%
   mutate(date = as.Date(time))  # Extract the date (year-month-day) from the time column
+wdn="1 hour"
+cozie_q.wd$time=round_date(cozie_q.wd$time,wdn)
+cozie_q.wd$ws_timestamp_start=round_date(cozie_q.wd$time,wdn)
+cozie_q.wd$ws_timestamp_location=round_date(cozie_q.wd$ws_timestamp_location,wdn)
 
 # Retrieve data for future comparison with STJM estimates
 time_range=c(as.Date('2023-04-18'),as.Date('2023-04-25'))
 cozie_compare=cozie_q.wd %>%
   group_by(date) %>%
   filter(date >= time_range[1] & date <= time_range[2])
-  
+
+
 # # Count the number of observations for each specific day
 # daily_counts <- cozie_q.wd %>%
 #   group_by(date) %>%
@@ -172,10 +179,16 @@ TT=nrow(data_air_temp)
 
 data_air_temp$t=1:TT
 TT=nrow(data_air_temp)
+
+
 # Introduce temporal gaps
 pGap=.05
+time_set=data_air_temp$time
+time_set=time_set[-which(time_set%in%unique(cozie_compare$time))]
 set.seed(123)
-gaps=sort(sample(1:TT,round(TT*pGap),replace=F))
+gaps=sort(sample(time_set,round(TT*pGap),replace=F))
+gaps=which(data_air_temp$time%in%gaps)
+
 data_air_temp=data_air_temp[-gaps,]
 
 data_rh=data.frame(data_rh)
@@ -375,14 +388,13 @@ timesY=unique(times)
 TT=length(TY)
 
 # Strano che ws_timestamp_start ha SOLO orari dalle 2 di notte alle 11 di mattina, forse meglio prendere time
-
 q_data=cozie_compare[,c("q_thermal_preference","time","ws_longitude","ws_latitude")]
 #q_data=cozie_compare[,c("q_thermal_preference","ws_timestamp_start","ws_longitude","ws_latitude")]
 colnames(q_data)[2:4]=c("time","longitude","latitude")
-wdn="1 hour"
-q_data$time=round_date(q_data$time,wdn)
+# wdn="1 hour"
+# q_data$time=round_date(q_data$time,wdn)
 q_data$State=q_data$q_thermal_preference
-q_data$State=recode(q_data$State, "Warmer" = 3, "Cooler" = 1, "No change" = 2)
+q_data$State=recode(q_data$State, "Warmer" = 1, "Cooler" = 2, "No change" = 3)
 
 # Hourly average of the data
 data_hour_av=Y_res%>%
@@ -439,37 +451,40 @@ server <- function(input, output, session) {
              q_data$latitude[which(q_data$time==timesY[t_value])], 
              col = q_data$State[which(q_data$time==timesY[t_value])], pch = 19)
     }
-    legend("topright", legend = 1:3, fill = 1:3)
+    #legend("topright", legend = 1:3, fill = 1:3)
+    legend("topright", legend = c("Cold","Hot","Neutral"), fill = 1:3)
   })
 }
 
 # Run the app
 shinyApp(ui = ui, server = server)
 
-# Comparison with feedback TBD ------------------------------------------------
+# Comparison with feedback ------------------------------------------------
 
-library(geosphere)
 # Distances (in km) between weather stations and feedback locations
-cozie_dist=distm(cozie_compare[,c("ws_longitude","ws_latitude")],loc_weath[,c("longitude","latitude")], 
+cozie_dist=distm(q_data[,c("longitude","latitude")],data_stat_number[,c("longitude","latitude")], 
       fun = distGeo)/1000
+
 summary(cozie_dist)
 
 # Radius for the neighbourhood
 R=max(apply(cozie_dist, 1, min ))
 
 # Which stations are in the neighbourhood of each feedback location
-neigh=cozie_dist<R
+neigh=cozie_dist<=R
 colnames(neigh)=loc_weath$id
-# Distances between stations
-D=distm(loc_weath[,c("longitude","latitude")], loc_weath[,c("longitude","latitude")], 
-      fun = distGeo)/1000
+neigh=data.frame(time=q_data$time,neigh)
+colnames(neigh)[2:ncol(neigh)]=data_stat_number$m
+sum(apply(neigh[,-1],1,sum))
 
-# Round times in cozie_compare to hours
-wdn="1 hour"
-cozie_compare$time=round_date(cozie_compare$time,wdn)
+S_est=data.frame(time=timesY,fit$best_s)
+colnames(S_est)[2:ncol(S_est)]=paste("S", data_stat_number$m)
+indx=left_join(neigh,S_est,by="time")
+indx=indx[,2:15]*indx[,16:29]
+indx[indx==0]=NA
 
-tmp=list()
-for(i in loc_weath$id){
-  tmp[[i]]=cozie_compare$time[which(neigh[,i])]
-  cozie_compare$time[i]
-}
+modes=factor(apply(indx,1,Mode,na.rm=T))
+comparison=factor(q_data$State)
+confusionMatrix(modes,comparison)
+
+
