@@ -2,11 +2,15 @@
 ### Empirical study of the STJM model paper ###
 ###############################################
 
+
+# Packages loading --------------------------------------------------------
 library(dplyr)
 library(lubridate) 
 library(tidyr)
 library(tidyverse)
+library(shiny)
 
+# Raw data loading --------------------------------------------------------
 # Rich dataset of weather data
 load("C:/Users/federico/OneDrive - CNR/General - Comfort/Kaggle/cleaned data/cleaned_data.RData")
 
@@ -353,7 +357,7 @@ fit=STjumpDist(Y,3,D,
 
 State=c(t(fit$best_s))
 
-Y_res=data.frame(Y,State)
+Y_res=data.frame(Y,State,times)
 
 tapply(Y_res$air_temp,Y_res$State,mean,na.rm=T)
 tapply(Y_res$rh,Y_res$State,mean,na.rm=T)
@@ -380,7 +384,11 @@ q_data$time=round_date(q_data$time,wdn)
 q_data$State=q_data$q_thermal_preference
 q_data$State=recode(q_data$State, "Warmer" = 3, "Cooler" = 1, "No change" = 2)
 
-library(shiny)
+# Hourly average of the data
+data_hour_av=Y_res%>%
+  group_by(times)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)
+
 # Define UI
 ui <- fluidPage(
   titlePanel("Dynamic Plot for Varying t"),
@@ -439,8 +447,6 @@ server <- function(input, output, session) {
 shinyApp(ui = ui, server = server)
 
 # Comparison with feedback TBD ------------------------------------------------
-
-
 
 library(geosphere)
 # Distances (in km) between weather stations and feedback locations
