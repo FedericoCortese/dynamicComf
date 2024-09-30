@@ -10,6 +10,7 @@ library(tidyr)
 library(tidyverse)
 library(shiny)
 library(geosphere)
+library(caret)
 
 
 # Raw data loading --------------------------------------------------------
@@ -350,7 +351,7 @@ summary(Y)
 # STJM fit ----------------------------------------------------------------
 
 source("Utils.R")
-library(geosphere)
+
 D=distm(data_stat_number[,c("longitude","latitude")], 
         data_stat_number[,c("longitude","latitude")], 
         fun = distGeo)/1000
