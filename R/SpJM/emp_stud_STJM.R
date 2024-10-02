@@ -254,8 +254,9 @@ save(cozie_compare,loc_weath,
 
 # Load data  --------------------------------------------------------------
 
-# Load the data
+# Load weather data
 load("data_weather.RData")
+
 
 # ggplot each variable, for each station, in a grid
 data_weather_long %>%
@@ -286,12 +287,12 @@ data_weather_long %>%
   labs(title = "Wind speed (m/s)", x = "Time", y = " ") +
   theme_minimal()
 
-data_weather_long %>%
-  ggplot(aes(x = time, y = wind_dir)) +
-  geom_line(col='purple',linewidth=.6) +
-  facet_wrap(~station, scales = "free_y") +
-  labs(title = "Wind direction (°)", x = "Time", y = " ") +
-  theme_minimal()
+# data_weather_long %>%
+#   ggplot(aes(x = time, y = wind_dir)) +
+#   geom_line(col='purple',linewidth=.6) +
+#   facet_wrap(~station, scales = "free_y") +
+#   labs(title = "Wind direction (°)", x = "Time", y = " ") +
+#   theme_minimal()
 
 # Summary of the data
 summary(data_weather_long)
@@ -311,6 +312,36 @@ points(
   col='red',pch=19)
 
 
+# Match geo and weather data ---------------------------------------------
+
+# Load geo data
+load("geo_feat.Rdata")
+
+D_geo_weath=distm(loc_weath[,c("longitude","latitude")], 
+        geo_feat[,c("longitude","latitude")], 
+        fun = distGeo)/1000
+indx=apply(D_geo_weath, 1,which.min)
+
+# 21 is teh closest with no 0 entries for the indexes
+indx8=sort(D_geo_weath[8,])[21]
+i8=which(D_geo_weath[8,]==indx8)
+geo_feat[i8,]
+
+indx[8]=i8
+
+# Maximum distance between locations of SVF and GVF and weather station is less than 800 m
+max(diag(D_geo_weath[,indx]))
+
+data_geo_weath=geo_feat[indx,]
+data_geo_weath$station=loc_weath$id
+
+# Does the order of the stations match? YES!
+plot(data_geo_weath$longitude,data_geo_weath$latitude, xlab = "Long", 
+     ylab = "Lat", main = " ", pch = 19, col = as.numeric(data_geo_weath$station))
+points(loc_weath$longitude,loc_weath$latitude, col = as.numeric(loc_weath$id), pch = 2)
+
+
+
 # Features construction ---------------------------------------------------
 
 M=dim(loc_weath)[1]
@@ -319,16 +350,44 @@ data_stat_number=data.frame(station=loc_weath$id, m=1:M,
                             latitude=loc_weath$latitude)
 data_stat_number=data_stat_number[order(data_stat_number$m),]
 
+# data_stat_number=merge(data_stat_number,data_geo_weath[,c("station",
+#                                                           "green_view_mean",
+#                                                           "sky_view_mean",
+#                                                           "building_view_mean")],
+#                        by="station")
+
+# Y=data_weather_long %>%
+#   left_join(data_stat_number[,c("station","m","green_view_mean", "sky_view_mean")], by = c("station"))
+
 Y=data_weather_long %>%
   left_join(data_stat_number[,c("station","m")], by = c("station"))
+
+
 
 # Order based on t and m
 Y=Y[order(Y$t,Y$m),]
 rownames(Y)=NULL
 
 # Add categorical features
-Y$rainy=ifelse(Y$rainfall>0,1,0)+1
-Y$windy=ifelse(Y$wind_speed>3,1,0)+1
+# Y$rainy=ifelse(Y$rainfall>0,1,0)+1
+# Y$windy=ifelse(Y$wind_speed>3,1,0)+1
+
+# Construct rainy feature according to Table 1 of Marsico 2021
+Y$rainy=factor(
+  cut(Y$rainfall, breaks = c(-Inf, 2.5, 10, 50, Inf), labels = c(1, 2, 3, 4)),
+  levels = c(1, 2, 3, 4)
+)
+Y$rainy=droplevels(Y$rainy)
+
+# Same for Beaufort scale, remember to start from light air
+Y$windy=factor(
+  cut(Y$wind_speed, breaks = c(-Inf, 1.5, 
+                               3.3,5.4,7.9,10.7,
+                               13.8,Inf), labels = 1:7,
+  levels = 1:7
+))
+Y$windy=droplevels(Y$windy)
+
 Y$hour=hour(Y$time)
 
 # Change NaN in NA
@@ -336,9 +395,9 @@ for(i in 2:ncol(Y)){
   Y[,i]=ifelse(is.nan(Y[,i]),NA,Y[,i])
 }
 
+Y$hour=as.factor(Y$hour)
 Y$rainy=as.factor(Y$rainy)
 Y$windy=as.factor(Y$windy)
-Y$hour=as.factor(Y$hour)
 
 # Drop time and station columns
 times=Y[,1]
@@ -346,7 +405,11 @@ Y=Y[,-c(1,3)]
 head(Y)
 str(Y)
 
+# Drop wind direction
+Y=select(Y,subset=-wind_dir)
+
 summary(Y)
+cor(Y[complete.cases(Y),2:5])
 
 # STJM fit ----------------------------------------------------------------
 
@@ -370,6 +433,7 @@ fit=STjumpDist(Y,3,D,
 # State characterization
 
 State=c(t(fit$best_s))
+State=order_states_condMean(Y$air_temp,State)
 
 Y_res=data.frame(Y,State,times)
 
@@ -381,6 +445,9 @@ tapply(Y_res$wind_dir,Y_res$State,mean,na.rm=T)
 tapply(Y_res$rainy,Y_res$State,Mode)
 tapply(Y_res$windy,Y_res$State,Mode)
 tapply(Y_res$hour,Y_res$State,Mode)
+# tapply(Y_res$green_view_mean,Y_res$State,mean,na.rm=T)
+# tapply(Y_res$sky_view_mean,Y_res$State,mean,na.rm=T)
+
 table(Y_res$State)
 
 # Graphic representation of the results
@@ -453,7 +520,7 @@ server <- function(input, output, session) {
              col = q_data$State[which(q_data$time==timesY[t_value])], pch = 19)
     }
     #legend("topright", legend = 1:3, fill = 1:3)
-    legend("topright", legend = c("Cold","Hot","Neutral"), fill = 1:3)
+    legend("topright", legend = c("Cold","Neutral","Hot"), fill = 1:3)
   })
 }
 
@@ -488,4 +555,4 @@ modes=factor(apply(indx,1,Mode,na.rm=T))
 comparison=factor(q_data$State)
 confusionMatrix(modes,comparison)
 
-
+adj.rand.index(modes,comparison)
