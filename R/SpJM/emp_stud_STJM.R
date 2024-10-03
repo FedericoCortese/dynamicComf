@@ -12,6 +12,7 @@ library(shiny)
 library(geosphere)
 library(caret)
 
+source("Utils.R")
 
 # Raw data loading --------------------------------------------------------
 # Rich dataset of weather data
@@ -350,12 +351,10 @@ data_stat_number=data.frame(station=loc_weath$id, m=1:M,
                             latitude=loc_weath$latitude)
 data_stat_number=data_stat_number[order(data_stat_number$m),]
 
-# data_stat_number=merge(data_stat_number,data_geo_weath[,c("station",
-#                                                           "green_view_mean",
-#                                                           "sky_view_mean",
+# data_stat_number=merge(data_stat_number,data_geo_weath[,c("station",                                                           "green_view_mean",                                                           "sky_view_mean",
 #                                                           "building_view_mean")],
 #                        by="station")
-
+# 
 # Y=data_weather_long %>%
 #   left_join(data_stat_number[,c("station","m","green_view_mean", "sky_view_mean")], by = c("station"))
 
@@ -400,21 +399,90 @@ Y$rainy=as.factor(Y$rainy)
 Y$windy=as.factor(Y$windy)
 
 # Drop time and station columns
-times=Y[,1]
-Y=Y[,-c(1,3)]
-head(Y)
-str(Y)
+# times=Y[,1]
+# Y=Y[,-c(1,3)]
+# head(Y)
+# str(Y)
 
 # Drop wind direction
-Y=select(Y,subset=-wind_dir)
+Y=subset(Y,select=-wind_dir)
 
 summary(Y)
-cor(Y[complete.cases(Y),2:5])
+cor(Y[complete.cases(Y),4:7])
+
+
+# Merge with solar power data ---------------------------------------------------
+
+S100=read.csv("S100.csv",header = T)
+S100=pw_time(S100,var_name="S100")
+S104=read.csv("S104.csv",header = T)
+S104=pw_time(S104,var_name="S104")
+S107=read.csv("S107.csv",header = T)
+S107=pw_time(S107,var_name="S107")
+S108=read.csv("S108.csv",header = T)
+S108=pw_time(S108,var_name="S108")
+S109=read.csv("S109.csv",header = T)
+S109=pw_time(S109,var_name="S109")
+S111=read.csv("S111.csv",header = T)
+S111=pw_time(S111,var_name="S111")
+S115=read.csv("S115.csv",header = T)
+S115=pw_time(S115,var_name="S115")
+S116=read.csv("S116.csv",header = T)
+S116=pw_time(S116,var_name="S116")
+S121=read.csv("S121.csv",header = T)
+S121=pw_time(S121,var_name="S121")
+S115=read.csv("S115.csv",header = T)
+S115=pw_time(S115,var_name="S115")
+S116=read.csv("S116.csv",header = T)
+S116=pw_time(S116,var_name="S116")
+S121=read.csv("S121.csv",header = T)
+S121=pw_time(S121,var_name="S121")
+S24=read.csv("S24.csv",header = T)
+S24=pw_time(S24,var_name="S24")
+S43=read.csv("S43.csv",header = T)
+S43=pw_time(S43,var_name="S43")
+S44=read.csv("S44.csv",header = T)
+S44=pw_time(S44,var_name="S44")
+S50=read.csv("S50.csv",header = T)
+S50=pw_time(S50,var_name="S50")
+S60=read.csv("S60.csv",header = T)
+S60=pw_time(S60,var_name="S60")
+
+# Merge
+data_power=rbind(S100,S104,S107,
+                 S108,S109,S111,
+                 S115,S116,S121,
+                 S24,S43,S44,
+                 S50,S60)
+
+Y_complete=merge(Y,data_power,by=c("time","station"))
+Y_complete=Y_complete[order(Y_complete$time),]
+
+Y=Y_complete[,-(1:2)]
+times=Y_complete[,1]
+
+
+# Summ stats --------------------------------------------------------------
+
+Y <- Y %>% dplyr::select(t, m, everything())
+summary(Y)
+cor(Y[complete.cases(Y),-c(1:2,7:9)])
+
+#save(Y,data_stat_number,times,cozie_compare,file="Y.Rdata")
+
+
+# Load Y ------------------------------------------------------------------
+#load("Y.Rdata")
+# Remove air pressure
+Y=subset(Y,select=-c(PS))
+cor(Y[complete.cases(Y),-c(1:2,7:9)])
+summary(Y)
+
 
 # STJM fit ----------------------------------------------------------------
 
-source("Utils.R")
 
+source("Utils.R")
 D=distm(data_stat_number[,c("longitude","latitude")], 
         data_stat_number[,c("longitude","latitude")], 
         fun = distGeo)/1000
@@ -426,7 +494,7 @@ fit=STjumpDist(Y,3,D,
            jump_penalty=lambda,
            spatial_penalty=gamma,
            initial_states=NULL,
-           max_iter=10, n_init=10, 
+           max_iter=10, n_init=5, 
            tol=NULL, 
            verbose=T,timeflag=T)
 
@@ -441,12 +509,14 @@ tapply(Y_res$air_temp,Y_res$State,mean,na.rm=T)
 tapply(Y_res$rh,Y_res$State,mean,na.rm=T)
 tapply(Y_res$rainfall,Y_res$State,mean,na.rm=T)
 tapply(Y_res$wind_speed,Y_res$State,mean,na.rm=T)
-tapply(Y_res$wind_dir,Y_res$State,mean,na.rm=T)
+#tapply(Y_res$wind_dir,Y_res$State,mean,na.rm=T)
 tapply(Y_res$rainy,Y_res$State,Mode)
 tapply(Y_res$windy,Y_res$State,Mode)
 tapply(Y_res$hour,Y_res$State,Mode)
 # tapply(Y_res$green_view_mean,Y_res$State,mean,na.rm=T)
 # tapply(Y_res$sky_view_mean,Y_res$State,mean,na.rm=T)
+tapply(Y_res$ALLSKY_SFC_SW_DWN,Y_res$State,mean,na.rm=T)
+tapply(Y_res$ALLSKY_SFC_LW_DWN,Y_res$State,mean,na.rm=T)
 
 table(Y_res$State)
 
@@ -462,7 +532,7 @@ colnames(q_data)[2:4]=c("time","longitude","latitude")
 # wdn="1 hour"
 # q_data$time=round_date(q_data$time,wdn)
 q_data$State=q_data$q_thermal_preference
-q_data$State=recode(q_data$State, "Warmer" = 1, "Cooler" = 2, "No change" = 3)
+q_data$State=recode(q_data$State, "Warmer" = 1, "No change" = 3, "Cooler" = 2)
 
 # Hourly average of the data
 data_hour_av=Y_res%>%

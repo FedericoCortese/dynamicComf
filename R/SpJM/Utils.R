@@ -2623,7 +2623,7 @@ STjumpR=function(Y,n_states,C,jump_penalty=1e-5,
   best_s <- NULL
   
   library(dplyr)
-  Y <- Y %>% select(t, m, everything())
+  Y <- Y %>% dplyr::select(t, m, everything())
   YY=subset(Y,select=-c(t,m))
   
   TT=length(unique(Y$t))
@@ -3235,12 +3235,15 @@ STjumpDist=function(Y,n_states,
   # Y is the imputed data
   # loss is the loss function at the optimum
   
+  #
+  Y=Y[order(Y$t,Y$m),]
+  
   P=ncol(Y)-2
   # Time differences
   Y.orig=Y
   
   if(timeflag){
-    time=unique(Y.orig$t)
+    time=sort(unique(Y.orig$t))
     dtime=diff(time)
     dtime=dtime/as.numeric(min(dtime))
     dtime=as.numeric(dtime)
@@ -3457,3 +3460,14 @@ BAC=function(obj,levs=3){
   
   return(confusionMatrix(A,B)$overall[1])
 }
+
+pw_time=function(data_pw,var_name){
+  data_pw$time <- 
+    as.POSIXct(paste(data_pw$YEAR, data_pw$MO, 
+                     data_pw$DY, data_pw$HR, sep = "-"), 
+               format = "%Y-%m-%d-%H")
+  data_pw=subset(data_pw,select=-c(YEAR,MO,DY,HR,ALLSKY_SFC_SW_DIFF))
+  #stat_name=deparse(substitute(data_pw))
+  data_pw$station=rep(var_name,nrow(data_pw))
+  return(data_pw)
+} 
