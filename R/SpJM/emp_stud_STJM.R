@@ -71,7 +71,7 @@ points(
 data_air_temp <- air_temp%>%
   mutate(date = as.Date(time)) %>%
   filter(date >= time_range[1] & date <= time_range[2])%>%
-  select(-date)
+  dplyr::select(-date)
 
 # Count NAs for each station
 apply(data_air_temp, 2, function(x) 100*sum(is.na(x))/length(x))
@@ -93,7 +93,7 @@ max(diff(data_air_temp$time))
 data_rh <- RH%>%
   mutate(date = as.Date(time)) %>%
   filter(date >= time_range[1] & date <= time_range[2])%>%
-  select(-date)
+  dplyr::select(-date)
 
 # Count NAs for each station
 apply(data_rh, 2, function(x) 100*sum(is.na(x))/length(x))
@@ -114,7 +114,7 @@ max(diff(data_rh$time))
 data_rainfall <- rainfall%>%
   mutate(date = as.Date(time)) %>%
   filter(date >= time_range[1] & date <= time_range[2])%>%
-  select(-date)
+  dplyr::select(-date)
 
 # Count NAs for each station
 sts=apply(data_rainfall, 2, function(x) 100*sum(is.na(x))/length(x))
@@ -136,7 +136,7 @@ max(diff(data_rainfall$time))
 data_wind_speed <- wind_speed%>%
   mutate(date = as.Date(time)) %>%
   filter(date >= time_range[1] & date <= time_range[2])%>%
-  select(-date)
+  dplyr::select(-date)
 
 # Count NAs for each station
 sts=apply(data_wind_speed, 2, function(x) 100*sum(is.na(x))/length(x))
@@ -159,7 +159,7 @@ max(diff(data_wind_speed$time))
 data_wind_dir <- wind_dir%>%
   mutate(date = as.Date(time)) %>%
   filter(date >= time_range[1] & date <= time_range[2])%>%
-  select(-date)
+  dplyr::select(-date)
 
 # Count NAs for each station
 sts=apply(data_wind_dir, 2, function(x) 100*sum(is.na(x))/length(x))
@@ -178,19 +178,21 @@ data_wind_dir=data_wind_dir%>%
 max(diff(data_wind_dir$time))
 
 TT=nrow(data_air_temp)
-
 data_air_temp$t=1:TT
-TT=nrow(data_air_temp)
 
 
 # Introduce temporal gaps
 pGap=.05
 time_set=data_air_temp$time
 time_set=time_set[-which(time_set%in%unique(cozie_compare$time))]
-set.seed(123)
+set.seed(1234)
 gaps=sort(sample(time_set,round(TT*pGap),replace=F))
 gaps=which(data_air_temp$time%in%gaps)
 
+times_complete=data_air_temp$time
+
+data_air_temp=data.frame(data_air_temp)
+data_air_temp$t=1:TT
 data_air_temp=data_air_temp[-gaps,]
 
 data_rh=data.frame(data_rh)
@@ -368,19 +370,19 @@ Y=Y[order(Y$t,Y$m),]
 rownames(Y)=NULL
 
 # Add categorical features
-# Y$rainy=ifelse(Y$rainfall>0,1,0)+1
-# Y$windy=ifelse(Y$wind_speed>3,1,0)+1
+#Y$rainy=ifelse(Y$rainfall>0,1,0)+1
+#Y$windy=ifelse(Y$wind_speed>3,1,0)+1
 
 # Construct rainy feature according to Table 1 of Marsico 2021
-Y$rainy=factor(
-  cut(Y$rainfall, breaks = c(-Inf, 2.5, 10, 50, Inf), labels = c(1, 2, 3, 4)),
-  levels = c(1, 2, 3, 4)
-)
-Y$rainy=droplevels(Y$rainy)
-
-# Same for Beaufort scale, remember to start from light air
+# Y$rainy=factor(
+#   cut(Y$rainfall, breaks = c(-Inf, 2.5, 10, 50, Inf), labels = c(1, 2, 3, 4)),
+#   levels = c(1, 2, 3, 4)
+# )
+# Y$rainy=droplevels(Y$rainy)
+# 
+# # Same for Beaufort scale, remember to start from light air
 Y$windy=factor(
-  cut(Y$wind_speed, breaks = c(-Inf, 1.5, 
+  cut(Y$wind_speed, breaks = c(-Inf, 1.5,
                                3.3,5.4,7.9,10.7,
                                13.8,Inf), labels = 1:7,
   levels = 1:7
@@ -395,7 +397,7 @@ for(i in 2:ncol(Y)){
 }
 
 Y$hour=as.factor(Y$hour)
-Y$rainy=as.factor(Y$rainy)
+#Y$rainy=as.factor(Y$rainy)
 Y$windy=as.factor(Y$windy)
 
 # Drop time and station columns
@@ -413,6 +415,7 @@ cor(Y[complete.cases(Y),4:7])
 
 # Merge with solar power data ---------------------------------------------------
 
+source("Utils.R")
 S100=read.csv("S100.csv",header = T)
 S100=pw_time(S100,var_name="S100")
 S104=read.csv("S104.csv",header = T)
@@ -474,8 +477,8 @@ cor(Y[complete.cases(Y),-c(1:2,7:9)])
 # Load Y ------------------------------------------------------------------
 #load("Y.Rdata")
 # Remove air pressure
-Y=subset(Y,select=-c(PS))
-cor(Y[complete.cases(Y),-c(1:2,7:9)])
+Y=subset(Y,select=-c(PS,ALLSKY_SFC_SW_DWN))
+cor(Y[complete.cases(Y),-c(1:2,7:8)])
 summary(Y)
 
 
@@ -494,8 +497,8 @@ fit=STjumpDist(Y,3,D,
            jump_penalty=lambda,
            spatial_penalty=gamma,
            initial_states=NULL,
-           max_iter=10, n_init=5, 
-           tol=NULL, 
+           max_iter=10, n_init=10, 
+           tol=1e-4, 
            verbose=T,timeflag=T)
 
 # State characterization
@@ -503,22 +506,23 @@ fit=STjumpDist(Y,3,D,
 State=c(t(fit$best_s))
 State=order_states_condMean(Y$air_temp,State)
 
+S_est=matrix(State,ncol=M,byrow = T)
+
 Y_res=data.frame(Y,State,times)
+table(Y_res$State)
 
 tapply(Y_res$air_temp,Y_res$State,mean,na.rm=T)
 tapply(Y_res$rh,Y_res$State,mean,na.rm=T)
 tapply(Y_res$rainfall,Y_res$State,mean,na.rm=T)
 tapply(Y_res$wind_speed,Y_res$State,mean,na.rm=T)
 #tapply(Y_res$wind_dir,Y_res$State,mean,na.rm=T)
-tapply(Y_res$rainy,Y_res$State,Mode)
+#tapply(Y_res$rainy,Y_res$State,Mode)
 tapply(Y_res$windy,Y_res$State,Mode)
 tapply(Y_res$hour,Y_res$State,Mode)
 # tapply(Y_res$green_view_mean,Y_res$State,mean,na.rm=T)
 # tapply(Y_res$sky_view_mean,Y_res$State,mean,na.rm=T)
-tapply(Y_res$ALLSKY_SFC_SW_DWN,Y_res$State,mean,na.rm=T)
+# tapply(Y_res$ALLSKY_SFC_SW_DWN,Y_res$State,mean,na.rm=T)
 tapply(Y_res$ALLSKY_SFC_LW_DWN,Y_res$State,mean,na.rm=T)
-
-table(Y_res$State)
 
 # Graphic representation of the results
 TY=unique(Y$t)
@@ -532,7 +536,7 @@ colnames(q_data)[2:4]=c("time","longitude","latitude")
 # wdn="1 hour"
 # q_data$time=round_date(q_data$time,wdn)
 q_data$State=q_data$q_thermal_preference
-q_data$State=recode(q_data$State, "Warmer" = 1, "No change" = 3, "Cooler" = 2)
+q_data$State=recode(q_data$State, "Warmer" = 1, "No change" = 2, "Cooler" = 3)
 
 # Hourly average of the data
 data_hour_av=Y_res%>%
@@ -579,7 +583,7 @@ server <- function(input, output, session) {
     #      pch = 19, cex = 1.5, 
     #      main = paste("True"))
     plot(data_stat_number[,c("longitude","latitude")], 
-         col = fit$best_s[t_value, ], 
+         col = S_est[t_value, ], 
          pch = 17, cex = 1.5, 
          #main = bquote("ST-JM " ~ lambda == .(lambda) ~ " and " ~ gamma == .(gamma))
          main = paste("t = ", timesY[t_value])
@@ -590,7 +594,7 @@ server <- function(input, output, session) {
              col = q_data$State[which(q_data$time==timesY[t_value])], pch = 19)
     }
     #legend("topright", legend = 1:3, fill = 1:3)
-    legend("topright", legend = c("Cold","Neutral","Hot"), fill = 1:3)
+    legend("topright", legend = c("Cool","Neutral","Hot"), fill = c(1,2,3))
   })
 }
 
@@ -600,7 +604,8 @@ shinyApp(ui = ui, server = server)
 # Comparison with feedback ------------------------------------------------
 
 # Distances (in km) between weather stations and feedback locations
-cozie_dist=distm(q_data[,c("longitude","latitude")],data_stat_number[,c("longitude","latitude")], 
+cozie_dist=distm(q_data[,c("longitude","latitude")],
+                 data_stat_number[,c("longitude","latitude")], 
       fun = distGeo)/1000
 
 summary(cozie_dist)
@@ -624,5 +629,60 @@ indx[indx==0]=NA
 modes=factor(apply(indx,1,Mode,na.rm=T))
 comparison=factor(q_data$State)
 confusionMatrix(modes,comparison)
+
+adj.rand.index(modes,comparison)
+
+
+
+# SJM fit with K=2 --------------------------------------------------------
+source("Utils.R")
+D=distm(data_stat_number[,c("longitude","latitude")], 
+        data_stat_number[,c("longitude","latitude")], 
+        fun = distGeo)/1000
+
+lambda=.05
+gamma=.05
+fit2=STjumpDist(Y,2,D,
+           jump_penalty=lambda,
+           spatial_penalty=gamma,
+           initial_states=NULL,
+           max_iter=10, n_init=5, 
+           tol=NULL, 
+           verbose=T,timeflag=T)
+
+State2=c(t(fit2$best_s))
+State2=order_states_condMean(Y$air_temp,State2)
+
+Y_res2=data.frame(Y,State2,times)
+
+tapply(Y_res2$air_temp,Y_res2$State,mean,na.rm=T)
+tapply(Y_res2$rh,Y_res2$State,mean,na.rm=T)
+tapply(Y_res2$rainfall,Y_res2$State,mean,na.rm=T)
+tapply(Y_res2$wind_speed,Y_res2$State,mean,na.rm=T)
+#tapply(Y_res2$wind_dir,Y_res2$State,mean,na.rm=T)
+tapply(Y_res2$rainy,Y_res2$State,Mode)
+tapply(Y_res2$windy,Y_res2$State,Mode)
+tapply(Y_res2$hour,Y_res2$State,Mode)
+# tapply(Y_res2$green_view_mean,Y_res2$State,mean,na.rm=T)
+# tapply(Y_res2$sky_view_mean,Y_res2$State,mean,na.rm=T)
+tapply(Y_res2$ALLSKY_SFC_SW_DWN,Y_res2$State,mean,na.rm=T)
+tapply(Y_res2$ALLSKY_SFC_LW_DWN,Y_res2$State,mean,na.rm=T)
+
+table(Y_res2$State)
+
+# Consider only two response categories, warmer-no change or cooler
+q_data$State2=recode(q_data$q_thermal_preference, "Warmer" = 1, "No change" = 1, "Cooler" = 2)
+
+S_est2=data.frame(time=timesY,fit2$best_s)
+colnames(S_est2)[2:ncol(S_est2)]=paste("S", data_stat_number$m)
+indx2=left_join(neigh,S_est2,by="time")
+indx2=indx2[,2:15]*indx2[,16:29]
+indx2[indx2==0]=NA
+
+modes=factor(apply(indx2,1,Mode,na.rm=T))
+comparison=factor(q_data$State2)
+confusionMatrix(modes,comparison)
+
+# Accuracy around 40%, not good
 
 adj.rand.index(modes,comparison)
