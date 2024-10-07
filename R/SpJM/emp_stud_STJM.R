@@ -370,7 +370,7 @@ Y=Y[order(Y$t,Y$m),]
 rownames(Y)=NULL
 
 # Add categorical features
-#Y$rainy=ifelse(Y$rainfall>0,1,0)+1
+Y$rainy=ifelse(Y$rainfall>0,1,0)+1
 #Y$windy=ifelse(Y$wind_speed>3,1,0)+1
 
 # Construct rainy feature according to Table 1 of Marsico 2021
@@ -397,7 +397,7 @@ for(i in 2:ncol(Y)){
 }
 
 Y$hour=as.factor(Y$hour)
-#Y$rainy=as.factor(Y$rainy)
+Y$rainy=as.factor(Y$rainy)
 Y$windy=as.factor(Y$windy)
 
 # Drop time and station columns
@@ -461,15 +461,15 @@ data_power=rbind(S100,S104,S107,
 Y_complete=merge(Y,data_power,by=c("time","station"))
 Y_complete=Y_complete[order(Y_complete$time),]
 
-Y=Y_complete[,-(1:2)]
-times=Y_complete[,1]
-
 
 # Summ stats --------------------------------------------------------------
 
+Y=Y_complete[,-(1:4)]
+times=Y_complete[,1]
+
 Y <- Y %>% dplyr::select(t, m, everything())
 summary(Y)
-cor(Y[complete.cases(Y),-c(1:2,7:9)])
+cor(Y[complete.cases(Y),5:8])
 
 #save(Y,data_stat_number,times,cozie_compare,file="Y.Rdata")
 
@@ -477,7 +477,7 @@ cor(Y[complete.cases(Y),-c(1:2,7:9)])
 # Load Y ------------------------------------------------------------------
 #load("Y.Rdata")
 # Remove air pressure
-Y=subset(Y,select=-c(PS,ALLSKY_SFC_SW_DWN))
+Y=subset(Y,select=-c(PS,ALLSKY_SFC_SW_DWN,ALLSKY_SFC_LW_DWN))
 cor(Y[complete.cases(Y),-c(1:2,7:8)])
 summary(Y)
 
@@ -635,6 +635,7 @@ adj.rand.index(modes,comparison)
 
 
 # SJM fit with K=2 --------------------------------------------------------
+# Not good
 source("Utils.R")
 D=distm(data_stat_number[,c("longitude","latitude")], 
         data_stat_number[,c("longitude","latitude")], 
