@@ -379,6 +379,12 @@ Y_3%>%group_by(m)%>%
   ggplot(aes(x=t,y=rainfall_rollmean,color=as.factor(m)))+
   geom_line()
 
+summary(Y_3)
+table(diff(timesY))/length(timesY)*100
+cor(Y_3[complete.cases(Y_3),3:6])
+library(ppcor)
+pcor(Y_3[complete.cases(Y_3), 3:6])
+
 # Y_3%>%group_by(m)%>%
 #   ggplot(aes(x=t,y=airtemp_rh_corr,color=as.factor(m)))+
 #   geom_line()
@@ -412,7 +418,7 @@ S_est=matrix(State,ncol=M,byrow = T)
 
 times=Y_complete$time[-(1:((wdn-1)*M))]
 Y_res=data.frame(Y_3,State,times)
-table(Y_res$State)
+table(Y_res$State)/length(times)*100
 
 tapply(Y_res$air_temp,Y_res$State,mean,na.rm=T)
 tapply(Y_res$rh,Y_res$State,mean,na.rm=T)

@@ -292,6 +292,19 @@ end_STJsim=Sys.time()
 elapsed_STJsim=end_STJsim-start_STJsim
 save(STJsim_pg_P10,elapsed_STJsim,file="STJsim_dist_pg_P10.RData")
 
+load("C:/Users/federico/OneDrive - CNR/Comfort - HMM/simres_STJM_dist/STJsim_dist_pg_P10.RData")
+
+BAC_gap20_P10=as.vector(unlist(lapply(STJsim_pg_P10,BAC)))
+res_BAC_gap20_P10=data.frame(hp,BAC=BAC_gap20_P10)
+res_BAC_gap20_av_P10=res_BAC_gap20_P10%>%group_by(M,TT,lambda,gamma)%>%summarise(avBAC=mean(BAC,na.rm=T),
+                                                                         sdBAC=sd(BAC,na.rm=T))
+res_BAC_gap20_max_P10=res_BAC_gap20_av_P10%>%group_by(M,TT)%>%summarise(maxBAC=max(avBAC),
+                                                                sd_maxBAC=sdBAC[which.max(avBAC)],
+                                                                lambdaBAC=lambda[which.max(avBAC)],
+                                                                gammaBAC=gamma[which.max(avBAC)])
+
+
+
 # 5% NA
 pNAs=0.05
 pg=0
@@ -318,6 +331,17 @@ end_STJsim=Sys.time()
 elapsed_STJsim=end_STJsim-start_STJsim
 save(STJsim_NA5_P10,elapsed_STJsim,file="STJsim_dist_NA5_P10.RData")
 
+load("C:/Users/federico/OneDrive - CNR/Comfort - HMM/simres_STJM_dist/STJsim_dist_NA5_P10.RData")
+
+BAC_NA5_P10=as.vector(unlist(lapply(STJsim_NA5_P10,BAC)))
+res_BAC_NA5_P10=data.frame(hp,BAC=BAC_NA5_P10)
+res_BAC_NA5_av_P10=res_BAC_NA5_P10%>%group_by(M,TT,lambda,gamma)%>%summarise(avBAC=mean(BAC,na.rm=T),
+                                                                                 sdBAC=sd(BAC,na.rm=T))
+res_BAC_NA5_max_P10=res_BAC_NA5_av_P10%>%group_by(M,TT)%>%summarise(maxBAC=max(avBAC),
+                                                                        sd_maxBAC=sdBAC[which.max(avBAC)],
+                                                                        lambdaBAC=lambda[which.max(avBAC)],
+                                                                        gammaBAC=gamma[which.max(avBAC)])
+
 #20% NA
 pNAs=0.2
 pg=0
@@ -343,3 +367,14 @@ STJsim_NA20_P10 <- parallel::mclapply(1:nrow(hp),
 end_STJsim=Sys.time()
 elapsed_STJsim=end_STJsim-start_STJsim
 save(STJsim_NA20_P10,elapsed_STJsim,file="STJsim_dist_NA20_P10.RData")
+
+load("C:/Users/federico/OneDrive - CNR/Comfort - HMM/simres_STJM_dist/STJsim_dist_NA20_P10.RData")
+
+BAC_NA20_P10=as.vector(unlist(lapply(STJsim_NA20_P10,BAC)))
+res_BAC_NA20_P10=data.frame(hp,BAC=BAC_NA20_P10)
+res_BAC_NA20_av_P10=res_BAC_NA20_P10%>%group_by(M,TT,lambda,gamma)%>%summarise(avBAC=mean(BAC,na.rm=T),
+                                                                             sdBAC=sd(BAC,na.rm=T))
+res_BAC_NA20_max_P10=res_BAC_NA20_av_P10%>%group_by(M,TT)%>%summarise(maxBAC=max(avBAC),
+                                                                    sd_maxBAC=sdBAC[which.max(avBAC)],
+                                                                    lambdaBAC=lambda[which.max(avBAC)],
+                                                                    gammaBAC=gamma[which.max(avBAC)])
