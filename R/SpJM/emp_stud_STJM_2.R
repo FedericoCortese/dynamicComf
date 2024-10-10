@@ -5,6 +5,7 @@ library(tidyverse)
 library(shiny)
 library(geosphere)
 library(caret)
+library(leaflet)
 
 # Set Singapore time zone
 Sys.setenv(TZ="GMT+8")
@@ -379,11 +380,36 @@ Y_3%>%group_by(m)%>%
   ggplot(aes(x=t,y=rainfall_rollmean,color=as.factor(m)))+
   geom_line()
 
+
+# Summ stat ---------------------------------------------------------------
+
 summary(Y_3)
 table(diff(timesY))/length(timesY)*100
 cor(Y_3[complete.cases(Y_3),3:6])
 library(ppcor)
 pcor(Y_3[complete.cases(Y_3), 3:6])
+
+# Leaflet map of Singapore ------------------------------------------------
+# Create a leaflet map of Singapore
+leaflet(data_stat_number) %>%
+  addTiles() %>%  # Add default OpenStreetMap tiles
+  addCircleMarkers(
+    ~longitude, ~latitude,  # Specify longitude and latitude
+    radius = 6,  # Set circle size
+    color = "red",  # Outline color of the circle
+    fillColor = "red",  # Fill color of the circle
+    fillOpacity = 0.6,  # Circle fill opacity
+    label = ~paste0("S", m),  # Use m to label the stations as "S1", "S2", ...
+    labelOptions = labelOptions(noHide = TRUE, textsize = "12px", direction = "top", style = list("color" = "red"))  # Set label options
+  ) %>%
+  addMarkers(
+    ~longitude, ~latitude, 
+    label = ~paste0("S", m), 
+    popup = ~paste("Station:", station), 
+    labelOptions = labelOptions(noHide = TRUE, textsize = "12px", direction = "top", style = list("color" = "red"))
+  ) %>%
+  setView(lng = mean(data_stat_number$longitude), lat = mean(data_stat_number$latitude), zoom = 12)
+
 
 # Y_3%>%group_by(m)%>%
 #   ggplot(aes(x=t,y=airtemp_rh_corr,color=as.factor(m)))+
@@ -436,23 +462,6 @@ tapply(Y_res$hour,Y_res$State,Mode)
 # tapply(Y_res$airtemp_windspeed_corr,Y_res$State,mean,na.rm=T)
 # tapply(Y_res$rh_windspeed_corr,Y_res$State,mean,na.rm=T)
 
-windows()
-par(mfrow=c(3,1))
-barplot(
-  prop.table(table(Y_res$hour[which(Y_res$State == 1)])), 
-  ylab = "Frequency", xlab = "Hour", col = "grey50", main = "State 1"
-)
-
-barplot(
-  prop.table(table(Y_res$hour[which(Y_res$State == 2)])), 
-  ylab = "Frequency", xlab = "Hour", col = 2, main = "State 2"
-)
-
-barplot(
-  prop.table(table(Y_res$hour[which(Y_res$State == 3)])), 
-  ylab = "Frequency", xlab = "Hour", col = 3, main = "State 3"
-)
-
 
 TY=unique(Y_3$t)
 timesY=unique(times)
@@ -493,6 +502,8 @@ modes=factor(apply(indx,1,Mode,na.rm=T),levels=1:3)
 comparison=factor(q_data$State)
 confusionMatrix(modes,comparison)
 
+
+# Shiny plot of the map ---------------------------------------------------
 # Hourly average of the data
 data_hour_av=Y_res%>%
   group_by(times)%>%
@@ -556,3 +567,293 @@ server <- function(input, output, session) {
 
 # Run the app
 shinyApp(ui = ui, server = server)
+
+
+# Time evol of weather vars and state seq decod ---------------------------
+
+long_df <- S_est %>%
+  pivot_longer(cols = starts_with("S "), names_to = "Station", values_to = "ComfortLevel")
+
+# Step 2: Calculate the proportion of each ComfortLevel for each time point
+S_summary <- long_df %>%
+  group_by(time, ComfortLevel) %>%
+  summarise(Proportion = n() / n_distinct(long_df$Station), .groups = 'drop')  # Calculate proportion correctly
+
+# Step 3: Extract hour from the time column
+S_summary <- S_summary %>%
+  mutate(time = as.POSIXct(time, format = "%Y-%m-%d %H:%M:%S"),
+         Hour = hour(time))  # Extract hour as integer
+
+S_summary$ComfortLevel <- factor(S_summary$ComfortLevel, levels = c("1", "2", "3"))
+
+S_summary_complete <- S_summary %>%
+  complete(time, ComfortLevel = factor(1:3), fill = list(Proportion = 0))
+
+S_summary_complete <- S_summary_complete %>%
+  mutate(Hour = hour(time))
+
+avg_weath <- Y_res%>%
+  group_by(times)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)
+
+# Create the initial plot object for the area plot
+plot_base <- ggplot(S_summary_complete, aes(x = time, y = Proportion, fill = as.factor(ComfortLevel))) +
+  geom_area(alpha = 0.6, size = .7, color = "black") +
+  scale_fill_manual(values = c("lightblue", "orange", "lightgreen"), 
+                    name = "Comfort Level") +
+  labs(
+    #title = "Temporal Evolution of Thermal Comfort Levels and Wind Speed",
+    x = "Date and Hour",
+    y = "Proportion of Locations",
+    fill = "Comfort Level") +
+  scale_x_datetime(date_breaks = "12 hours", date_labels = "%Y-%m-%d %H:%M") +
+  theme_minimal() +
+  theme(text = element_text(size = 12),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "top")+
+  geom_vline(xintercept = x_breaks, color = "grey30", linetype = "dotted", size = 0.5)
+
+wind_state_plot <- plot_base +
+  geom_line(data = avg_weath, aes(x = times, y = wind_speed 
+                                  / 10
+  ),  # Scale wind speed for better visualization
+  color = "red", size = 1, inherit.aes = FALSE,linetype=6) +
+  #geom_point(data = avg_weath, aes(x = times, y = wind_speed / 10),  # Scale wind speed for better visualization
+  # color = "blue", size = 2, inherit.aes = FALSE) +
+  scale_y_continuous(
+    name = "Proportion of Locations",
+    sec.axis = sec_axis(~ . * 10, name = "Average Wind Speed (m/s)", labels = scales::number_format(accuracy = 0.1))
+  )
+
+wind_state_plot
+
+rainfall_state_plot <- plot_base +
+  geom_line(data = avg_weath, aes(x = times, y = rainfall 
+                                  #/ 10
+  ),  
+  color = "red", size = 1, inherit.aes = FALSE,linetype=6) +
+  #geom_point(data = avg_weath, aes(x = times, y = wind_speed / 10),  # Scale wind speed for better visualization
+  # color = "blue", size = 2, inherit.aes = FALSE) +
+  scale_y_continuous(
+    name = "Proportion of Locations",
+    sec.axis = sec_axis(~ . * 1, name = "Average Rainfall (mm)", 
+                        labels = scales::number_format(accuracy = 0.1))
+  )
+rainfall_state_plot
+
+temp_state_plot <- plot_base +
+  geom_line(data = avg_weath, aes(x = times, y = air_temp 
+                                  / 40
+  ),  
+  color = "red", size = 1, inherit.aes = FALSE,linetype=6) +
+  #geom_point(data = avg_weath, aes(x = times, y = wind_speed / 10),  # Scale wind speed for better visualization
+  # color = "blue", size = 2, inherit.aes = FALSE) +
+  scale_y_continuous(
+    name = "Proportion of Locations",
+    sec.axis = sec_axis(~ . * 40, name = "Average Air Temp (°C)", 
+                        labels = scales::number_format(accuracy = 0.1))
+  )
+temp_state_plot
+
+rh_state_plot <- plot_base +
+  geom_line(data = avg_weath, aes(x = times, y = rh 
+                                  / 100
+  ),  #
+  color = "red", size = 1, inherit.aes = FALSE,linetype=6) +
+  #geom_point(data = avg_weath, aes(x = times, y = wind_speed / 10),  # Scale wind speed for better visualization
+  # color = "blue", size = 2, inherit.aes = FALSE) +
+  scale_y_continuous(
+    name = "Proportion of Locations",
+    sec.axis = sec_axis(~ . * 100, name = "Relative Humidity (%)", 
+                        labels = scales::number_format(accuracy = 0.1))
+  )
+rh_state_plot
+
+# Hourly bar plot ----------------------------------------------------
+
+# Ensure 'time' column is in POSIXct format
+S_summary$time <- as.POSIXct(S_summary$time, format = "%Y-%m-%d %H:%M:%S")
+
+# Extract hour from the 'time' column
+S_summary$Hour <- hour(S_summary$time)
+
+# Summarize the proportion of each comfort level at each hour
+hourly_distribution <- S_summary %>%
+  group_by(Hour, ComfortLevel) %>%
+  summarise(Proportion = sum(Proportion)) %>%
+  ungroup()
+
+# Create the stacked bar plot
+barplot_state=ggplot(hourly_distribution, aes(x = factor(Hour), 
+                                              y = Proportion, 
+                                              fill = as.factor(ComfortLevel))) +
+  geom_bar(stat = "identity", position = "fill", color = "black", size = 0.5) +  # Add solid black lines between bars
+  scale_fill_manual(values = c("lightblue", "orange", "lightgreen"), 
+                    name = "Comfort Level") +
+  labs(
+    #title = "Comfort Level Distribution by Hour",
+       x = "Hour of Day",
+       y = "Proportion of Locations") +
+  theme_minimal() +
+  theme(text = element_text(size = 12),
+        axis.text.x = element_text(size = 10),
+        axis.text.y = element_text(size = 10),
+        legend.position = "top")
+barplot_state
+
+
+# Station bar plot --------------------------------------------------------
+
+# Step 1: Convert the data frame to long format
+S_est_long <- S_est %>%
+  pivot_longer(cols = starts_with("S "), names_to = "Station", values_to = "ComfortLevel")
+
+# Step 2: Summarize to get the count of each comfort level for each station
+station_summary <- S_est_long %>%
+  group_by(Station, ComfortLevel) %>%
+  summarise(Count = n()/length(timesY), .groups = 'drop')
+
+station_summary$Station <- factor(station_summary$Station, levels = paste0("S ", 1:14))
+
+# Step 4: Create a bar plot showing the distribution of comfort levels for each station
+ggplot(station_summary, aes(x = Station, y = Count, fill = as.factor(ComfortLevel))) +
+  geom_bar(stat = "identity", position = "dodge", color = "black") +
+  scale_fill_manual(values = c("lightblue", "orange", "lightgreen"), name = "Comfort Level") +
+  labs(
+    #title = "Distribution of Comfort Levels for Each Station",
+       x = "Station",
+       y = "% Comfort Levels") +
+  theme_minimal() +
+  theme(text = element_text(size = 12),
+        axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+
+# Heatmap -----------------------------------------------------------------
+
+S_est_heat=S_est[,-1]
+S_est_heat$t=timesY
+
+S_long <- melt(S_est_heat, id.vars = "t", 
+               variable.name = "Location", value.name = "ComfortLevel")
+
+ggplot(S_long, aes(x = Location, y = t, fill = as.factor(ComfortLevel))) +
+  geom_tile() +
+  scale_fill_manual(values = c("lightblue", "orange", "lightgreen"), 
+                    name = "Comfort Level"
+                    # ,
+                    # labels = c("Hot", "Neutral", "Cool")
+  ) +
+  labs(
+    #title = "Heatmap",
+       x = "Spatial Location",
+       y = "Time (Hourly)") +
+  theme_minimal() +
+  theme(text = element_text(size = 12),
+        axis.text.y = element_text(angle = 45, hjust = 1),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "top")
+  
+
+
+
+# leaflet with colored areas ----------------------------------------------
+
+data_stat_number2=data_stat_number[,-1]
+data_stat_number2$Station=paste("S",data_stat_number2$m)
+
+S_long <- S_est %>%
+  pivot_longer(cols = starts_with("S"), names_to = "Station", values_to = "ComfortLevel")
+
+# Merge the spatial data with comfort levels data
+S_long <- S_long %>%
+  left_join(data_stat_number2, by = "Station")
+
+# Define a color palette for the comfort levels
+comfort_colors <- list("1" = "lightblue", "2" = "orange", "3" = "lightgreen")
+
+# Shiny UI
+ui <- fluidPage(
+  titlePanel("Dynamic Comfort Level Map"),
+  
+  sidebarLayout(
+    sidebarPanel(
+      # Slider bar to select a specific time point
+      sliderInput("time", "Select Time:", 
+                  min = min(S_long$time), 
+                  max = max(S_long$time), 
+                  value = min(S_long$time), 
+                  timeFormat = "%Y-%m-%d %H:%M:%S", 
+                  step = 3600, 
+                  animate = animationOptions(interval = 1000, loop = TRUE))
+    ),
+    mainPanel(
+      # Display the selected time as text above the map
+     # textOutput("selectedTime", container = tags$h3, align = "center"), 
+      
+      # Output map
+      leafletOutput("comfortMap", height = 600)
+    )
+  )
+)
+
+# Shiny Server
+server <- function(input, output, session) {
+  
+  # Reactive function to filter data based on the selected time
+  filtered_data <- reactive({
+    S_long %>% filter(time == input$time)
+  })
+  
+  # Render the selected time as text
+  output$selectedTime <- renderText({
+    paste("Selected Time: ", format(input$time, "%Y-%m-%d %H:%M:%S"))
+  })
+  
+  # Create a leaflet map that updates based on the selected time
+  output$comfortMap <- renderLeaflet({
+    leaflet() %>%
+      addTiles() %>%  # Add default tiles
+      setView(lng = mean(S_long$longitude), lat = mean(S_long$latitude), zoom = 12)
+  })
+  
+  # Observe the selected time and update the map accordingly
+  observe({
+    leafletProxy("comfortMap", data = filtered_data()) %>%
+      clearMarkers() %>%
+      clearControls() %>%
+      addCircleMarkers(
+        lng = ~longitude, lat = ~latitude,
+        color = ~unname(comfort_colors[as.character(ComfortLevel)]),
+        fillColor = ~unname(comfort_colors[as.character(ComfortLevel)]),
+        fillOpacity = 1,
+        radius = 8,
+        stroke = TRUE,
+        weight = 1,
+        opacity = 1,  
+        label = ~paste0("Station: ", Station, "<br>Comfort Level: ", ComfortLevel),
+        labelOptions = labelOptions(style = list("color" = "black"), direction = "auto")
+      ) %>%
+      addLegend(
+        position = "topright",
+        colors = unlist(comfort_colors),
+        labels = c("Cool (1)", "Hot (2)", "Neutral (3)"),
+        title = "Comfort Levels",
+        opacity = 0.7
+      )
+  })
+}
+
+# Run the Shiny App
+shinyApp(ui, server)
+
+# leaflet map with most prob comfort level --------------------------------
+
+# Most_prob_lev=station_summary%>%group_by(Station)%>%
+#   filter(Count==max(Count))
+# 
+# Most_prob_lev=merge(Most_prob_lev,data_stat_number2,by="Station")
+# 
+# Most_prob_lev <- Most_prob_lev %>%
+#   mutate(ComfortLevel = as.character(ComfortLevel))
+# 
