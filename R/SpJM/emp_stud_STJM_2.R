@@ -419,6 +419,8 @@ leaflet(data_stat_number) %>%
 #   ggplot(aes(x=t,y=airtemp_windspeed_corr,color=as.factor(m)))+
 #   geom_line()
 
+#save(data_stat_number,Y_3,Y_complete,file="Y_3.Rdata")
+
 source("Utils.R")
 D=distm(data_stat_number[,c("longitude","latitude")], 
         data_stat_number[,c("longitude","latitude")], 
@@ -484,6 +486,8 @@ summary(cozie_dist)
 
 # Radius for the neighbourhood
 R=max(apply(cozie_dist, 1, min ))
+
+#save(cozie_compare,loc_weath,file="cozie_compare.Rdata")
 
 # Which stations are in the neighbourhood of each feedback location
 neigh=cozie_dist<=R
@@ -847,13 +851,53 @@ server <- function(input, output, session) {
 # Run the Shiny App
 shinyApp(ui, server)
 
-# leaflet map with most prob comfort level --------------------------------
+# Comparison with UTCI --------------------------------
 
-# Most_prob_lev=station_summary%>%group_by(Station)%>%
-#   filter(Count==max(Count))
-# 
-# Most_prob_lev=merge(Most_prob_lev,data_stat_number2,by="Station")
-# 
-# Most_prob_lev <- Most_prob_lev %>%
-#   mutate(ComfortLevel = as.character(ComfortLevel))
-# 
+utci_sing=read.table("utci_202304_17-27.txt",header=T)
+
+#dalle 0 del 17 aprile alle 23 del 27 aprile
+start_utci=as.POSIXct("2023-04-17 01:00:00",tz="UTC")
+end_utci=as.POSIXct("2023-04-27 23:00:00",tz="UTC")
+
+# Construct the time vector
+time_utci=seq(from=start_utci,to=end_utci,by="hour")
+
+# Singapore time zone
+time_utci_8=format(time_utci, tz="Singapore",usetz=TRUE)
+time_utci_8=as.POSIXct(time_utci_8,format="%Y-%m-%d %H:%M:%S",tz="Singapore")
+data_utci=data.frame(time=time_utci_8,UTCI=utci_sing[,1]-273.15)
+
+data_av_temp=apply(data_air_temp[,-c(1,16)],1,mean,na.rm=T)
+data_av_temp=data.frame(time=data_air_temp$time,av_temp=data_av_temp)
+
+# Merge with temperature data
+data_utci_2=data_utci%>%
+  right_join(data_av_temp,by="time")
+
+# Plot
+ggplot(data_utci_2,aes(time))+
+  geom_line(aes(y=UTCI,color="UTCI"),size=1)+
+  geom_line(aes(y=av_temp,color="Av. Temperature"),size=1)+
+  theme_minimal()
+
+###
+
+data_utci_3=data_utci_2[,c("time","UTCI")]
+colnames(data_utci_3)=c("times","UTCI")
+
+avg_weath_2=avg_weath%>%
+  left_join(data_utci_3,by="times")
+
+UTCI_state_plot <- plot_base +
+  geom_line(data = avg_weath_2, aes(x = times, y = UTCI 
+                                  / 40
+  ),  
+  color = "red", size = 2, inherit.aes = FALSE,linetype=1) +
+  #geom_point(data = avg_weath, aes(x = times, y = wind_speed / 10),  # Scale wind speed for better visualization
+  # color = "blue", size = 2, inherit.aes = FALSE) +
+  scale_y_continuous(
+    name = "Proportion of Locations",
+    sec.axis = sec_axis(~ . * 40, name = "UTCI (°C)", 
+                        labels = scales::number_format(accuracy = 0.1))
+  )
+UTCI_state_plot
