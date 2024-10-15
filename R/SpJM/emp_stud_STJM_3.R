@@ -60,10 +60,12 @@ leaflet(data_stat_number) %>%
   ) %>%
   setView(lng = mean(data_stat_number$longitude), lat = mean(data_stat_number$latitude), zoom = 12)
 
+summary(Y_6)
+round(cor(Y_6[complete.cases(Y_6),c(3:6,17)]),2)
+library(ppcor)
+pcor(Y_6[complete.cases(Y_6), c(3:6,17)])
 
 # STJM fit ----------------------------------------------------------------
-
-
 
 source("Utils.R")
 D=distm(data_stat_number[,c("longitude","latitude")], 
@@ -174,17 +176,19 @@ avg_weath <- Y_res%>%
 
 # Create the initial plot object for the area plot
 plot_base <- ggplot(S_summary_complete, aes(x = time, y = Proportion, fill = as.factor(ComfortLevel))) +
-  geom_area(alpha = 0.6, size = .7, color = "black") +
+  geom_area(alpha = 0.6, size = 1, color = "black") +
   scale_fill_manual(values = c("lightblue", "lightgreen", "orange"), 
-                    name = "Comfort Level") +
+                    name = "Comfort Regime",
+                    labels=c("Cool","Neutral","Hot")) +
   labs(
     #title = "Temporal Evolution of Thermal Comfort Levels and Wind Speed",
-    x = "Date and Hour",
+   # x = "Date and Hour",
+    x=" ",
     y = "Proportion of Locations",
-    fill = "Comfort Level") +
+    fill = "Comfort Regime") +
   scale_x_datetime(date_breaks = "12 hours", date_labels = "%Y-%m-%d %H:%M") +
   theme_minimal() +
-  theme(text = element_text(size = 12),
+  theme(text = element_text(size = 16),
         axis.text.x = element_text(angle = 45, hjust = 1),
         legend.position = "top")
 # +
@@ -194,7 +198,7 @@ wind_state_plot <- plot_base +
   geom_line(data = avg_weath, aes(x = times, y = wind_speed 
                                   / 10
   ),  # Scale wind speed for better visualization
-  color = "red", size = 1, inherit.aes = FALSE,linetype=6) +
+  color = "red", size = 1.5, inherit.aes = FALSE,linetype=6) +
   #geom_point(data = avg_weath, aes(x = times, y = wind_speed / 10),  # Scale wind speed for better visualization
   # color = "blue", size = 2, inherit.aes = FALSE) +
   scale_y_continuous(
@@ -202,13 +206,18 @@ wind_state_plot <- plot_base +
     sec.axis = sec_axis(~ . * 10, name = "Average Wind Speed (m/s)", labels = scales::number_format(accuracy = 0.1))
   )
 
+
+png(width = 800, height = 600,filename="wind_state_plot.png")
 wind_state_plot
+dev.off()
+# 
+
 
 rainfall_state_plot <- plot_base +
   geom_line(data = avg_weath, aes(x = times, y = rainfall 
                                   #/ 10
   ),  
-  color = "red", size = 1, inherit.aes = FALSE,linetype=6) +
+  color = "red", size = 1.5, inherit.aes = FALSE,linetype=6) +
   #geom_point(data = avg_weath, aes(x = times, y = wind_speed / 10),  # Scale wind speed for better visualization
   # color = "blue", size = 2, inherit.aes = FALSE) +
   scale_y_continuous(
@@ -218,11 +227,16 @@ rainfall_state_plot <- plot_base +
   )
 rainfall_state_plot
 
+png(width = 800, height = 600,filename="rainfall_state_plot.png")
+rainfall_state_plot
+dev.off()
+
+
 temp_state_plot <- plot_base +
   geom_line(data = avg_weath, aes(x = times, y = air_temp 
                                   / 40
   ),  
-  color = "red", size = 1, inherit.aes = FALSE,linetype=6) +
+  color = "red", size = 1.5, inherit.aes = FALSE,linetype=6) +
   #geom_point(data = avg_weath, aes(x = times, y = wind_speed / 10),  # Scale wind speed for better visualization
   # color = "blue", size = 2, inherit.aes = FALSE) +
   scale_y_continuous(
@@ -232,25 +246,34 @@ temp_state_plot <- plot_base +
   )
 temp_state_plot
 
+png(width = 800, height = 600,filename="temp_state_plot.png")
+temp_state_plot
+dev.off()
+
 rh_state_plot <- plot_base +
   geom_line(data = avg_weath, aes(x = times, y = rh 
                                   / 100
   ),  #
-  color = "red", size = 1, inherit.aes = FALSE,linetype=6) +
+  color = "red", size = 1.5, inherit.aes = FALSE,linetype=6) +
   #geom_point(data = avg_weath, aes(x = times, y = wind_speed / 10),  # Scale wind speed for better visualization
   # color = "blue", size = 2, inherit.aes = FALSE) +
   scale_y_continuous(
     name = "Proportion of Locations",
-    sec.axis = sec_axis(~ . * 100, name = "Relative Humidity (%)", 
+    sec.axis = sec_axis(~ . * 100, name = "Average Rel Humidity (%)", 
                         labels = scales::number_format(accuracy = 0.1))
   )
 rh_state_plot
+
+png(width = 800, height = 600,filename="rh_state_plot.png")
+rh_state_plot
+dev.off()
+
 
 utci_state_plot <- plot_base +
   geom_line(data = avg_weath, aes(x = times, y = UTCI 
                                   / 40
   ),  #
-  color = "red", size = 1, inherit.aes = FALSE,linetype=6) +
+  color = "red", size = 1.5, inherit.aes = FALSE,linetype=6) +
   #geom_point(data = avg_weath, aes(x = times, y = wind_speed / 10),  # Scale wind speed for better visualization
   # color = "blue", size = 2, inherit.aes = FALSE) +
   scale_y_continuous(
@@ -258,7 +281,10 @@ utci_state_plot <- plot_base +
     sec.axis = sec_axis(~ . * 40, name = "UTCI (°C)", 
                         labels = scales::number_format(accuracy = 0.1))
   )
+#utci_state_plot
+png(width = 800, height = 600,filename="utci_state_plot.png")
 utci_state_plot
+dev.off()
 
 
 # hourly bar plot ---------------------------------------------------------
@@ -278,20 +304,24 @@ hourly_distribution <- S_summary %>%
 barplot_state=ggplot(hourly_distribution, aes(x = factor(Hour), 
                                               y = Proportion, 
                                               fill = as.factor(ComfortLevel))) +
-  geom_bar(stat = "identity", position = "fill", color = "black", size = 0.5) +  # Add solid black lines between bars
+  geom_bar(alpha=.6,stat = "identity", position = "fill", color = "black", size = .7) +  # Add solid black lines between bars
   scale_fill_manual(values = c("lightblue", "lightgreen", "orange"), 
-                    name = "Comfort Level") +
+                    name = "Comfort Regime",
+                    labels=c("Cool","Neutral","Hot")) +
   labs(
     #title = "Comfort Level Distribution by Hour",
-    x = "Hour of Day",
+    x = "Hour of the Day",
     y = "Proportion of Locations") +
   theme_minimal() +
-  theme(text = element_text(size = 12),
-        axis.text.x = element_text(size = 10),
-        axis.text.y = element_text(size = 10),
+  theme(text = element_text(size = 16),
+        # axis.text.x = element_text(size = 14),
+        # axis.text.y = element_text(size = 14),
         legend.position = "top")
 barplot_state
 
+png(width = 800, height = 600,filename="barplot_state.png")
+barplot_state
+dev.off()
 
 # station bar plot (better) -----------------------------------------------
 
@@ -305,19 +335,25 @@ proportion_data <- S_long %>%
   ungroup()
 
 # Create stacked bar plot
-ggplot(proportion_data, aes(x = Station, y = Proportion, fill = as.factor(ComfortLevel))) +
-  geom_bar(stat = "identity") +
+stat_bar_plot=ggplot(proportion_data, aes(x = Station, y = Proportion, fill = as.factor(ComfortLevel))) +
+  geom_bar(alpha=.6,stat = "identity" ,position = "fill", color = "black", size = 0.7) +
   scale_fill_manual(values = c("lightblue", "lightgreen", "orange"), 
-                    name = "Comfort Level",
+                    name = "Comfort Regime",
                     labels = c("Cool", "Neutral", "Hot")) +
   theme_minimal() +
-  labs(title = "Comfort Level Proportions for Each Station",
+  labs(
+    #title = "Comfort Level Proportions for Each Station",
        x = "Station",
-       y = "Proportion of Comfort Levels") +
-  theme(text = element_text(size = 12),
+       y = "Proportion of Comfort Regimes") +
+  theme(text = element_text(size = 16),
         axis.text.x = element_text(angle = 45, hjust = 1),
         legend.position = "top")
 
+
+
+png(width = 800, height = 600,filename="stat_bar_plot.png")
+stat_bar_plot
+dev.off()
 
 # Entropy -----------------------------------------------------------------
 
@@ -337,7 +373,7 @@ proportion_data_entropy <- S_long %>%
 
 # Create bar plot of entropy for each station
 ggplot(proportion_data_entropy, aes(x = Station, y = Entropy, fill = Station)) +
-  geom_bar(stat = "identity", color = "black") +
+  geom_bar(alpha=.6,stat = "identity", color = "black") +
   scale_fill_manual(values = rep("pink",M)) +
   theme_minimal() +
   labs(title = "Entropy of Comfort Levels for Each Station",
@@ -357,7 +393,7 @@ S_long <- melt(S_est_heat, id.vars = "t",
                variable.name = "Location", value.name = "ComfortLevel")
 
 ggplot(S_long, aes(x = Location, y = t, fill = as.factor(ComfortLevel))) +
-  geom_tile() +
+  geom_tile(alpha=.6,) +
   scale_fill_manual(values = c("lightblue", "lightgreen", "orange"), 
                     name = "Comfort Level"
                     # ,
@@ -455,7 +491,7 @@ server <- function(input, output, session) {
       addLegend(
         position = "topright",
         colors = unlist(comfort_colors),
-        labels = c("Cool (1)", "Neutral (2)", "Hot (3)"),
+        labels = c("Cool", "Neutral", "Hot"),
         title = "Comfort Levels",
         opacity = 0.7
       )
