@@ -500,3 +500,19 @@ server <- function(input, output, session) {
 
 # Run the Shiny App
 shinyApp(ui, server)
+
+
+
+# Box plot -------------------------------------------------------------
+
+library(ggplot2)
+
+# Assuming df is your dataframe containing the data
+ggplot(Y_res, aes(x = factor(m), y = air_temp, fill = factor(State))) +
+  geom_boxplot(show.legend = TRUE, outlier.shape = NA) +
+  #geom_jitter(aes(color = factor(State)), width = 0.2, size = 1.5, alpha = 0.7) +
+  scale_fill_manual(values = c("1" = "lightblue", "2" = "lightgreen", "3" = "orange")) +
+  #scale_color_manual(values = c("1" = "lightblue", "2" = "lightgreen", "3" = "orange")) +
+  labs(x = "Station", y = "Air Temperature (°C)", fill = "State", color = "State") +
+  theme_minimal() +
+  theme(legend.position = "top")
