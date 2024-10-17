@@ -7,6 +7,7 @@ library(geosphere)
 library(caret)
 library(leaflet)
 library(reshape2)
+library(scales)
 # Set Singapore time zone
 Sys.setenv(TZ="UTC")
 ##
@@ -41,7 +42,7 @@ Y_6=subset(Y_6,select=-time)
 
 # leaflet map singapore ---------------------------------------------------
 
-leaflet(data_stat_number) %>%
+leaflet(data_stat_number, options = leafletOptions(zoomControl = FALSE)) %>%
   addTiles() %>%  # Add default OpenStreetMap tiles
   addCircleMarkers(
     ~longitude, ~latitude,  # Specify longitude and latitude
@@ -58,12 +59,16 @@ leaflet(data_stat_number) %>%
     popup = ~paste("Station:", station), 
     labelOptions = labelOptions(noHide = TRUE, textsize = "12px", direction = "top", style = list("color" = "red"))
   ) %>%
-  setView(lng = mean(data_stat_number$longitude), lat = mean(data_stat_number$latitude), zoom = 12)
+  setView(lng = mean(data_stat_number$longitude), lat = mean(data_stat_number$latitude), zoom = 12) %>%
+  addScaleBar(position = "bottomleft", options = scaleBarOptions(imperial = FALSE))  # Add a scale bar in kilometers (metric)
 
 summary(Y_6)
 round(cor(Y_6[complete.cases(Y_6),c(3:6,17)]),2)
 library(ppcor)
 pcor(Y_6[complete.cases(Y_6), c(3:6,17)])
+Y_6%>%group_by(as.factor(m))%>%
+  select(air_temp,rh,rainfall,wind_speed)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)
 
 # STJM fit ----------------------------------------------------------------
 
@@ -392,22 +397,37 @@ S_est_heat$t=timesY
 S_long <- melt(S_est_heat, id.vars = "t", 
                variable.name = "Location", value.name = "ComfortLevel")
 
-ggplot(S_long, aes(x = Location, y = t, fill = as.factor(ComfortLevel))) +
-  geom_tile(alpha=.6,) +
+heatmap_stat_time <- ggplot(S_long, aes(x = t, y = Location, fill = as.factor(ComfortLevel))) +
+  geom_tile(alpha=.6) +
   scale_fill_manual(values = c("lightblue", "lightgreen", "orange"), 
-                    name = "Comfort Level"
-                    # ,
-                    # labels = c("Hot", "Neutral", "Cool")
-  ) +
+                    name = "Comfort Regime") +
+  scale_x_datetime(breaks = seq(as.POSIXct("2023-04-18 20:00:00"), 
+                                as.POSIXct("2023-04-26 07:00:00"), 
+                                by = "24 hours")
+                   ,
+                   labels = scales::date_format("%Y-%m-%d %H:%M")
+                   ) +
+  # Add vertical dotted lines at each break point
+  geom_vline(xintercept = seq(as.POSIXct("2023-04-18 12:00:00"), 
+                                         as.POSIXct("2023-04-26 07:00:00"), 
+                                         by = "24 hours"), 
+             color = "grey20", linetype = "dotted") +
   labs(
-    #title = "Heatmap",
-    x = "Spatial Location",
-    y = "Time (Hourly)") +
+    x = "Time",
+    y = "Station") +
   theme_minimal() +
-  theme(text = element_text(size = 12),
+  theme(text = element_text(size = 18),
         axis.text.y = element_text(angle = 45, hjust = 1),
         axis.text.x = element_text(angle = 45, hjust = 1),
         legend.position = "top")
+heatmap_stat_time
+
+
+png(width = 800, height = 600,filename="heatmap_stat_time.png")
+heatmap_stat_time
+dev.off()
+
+
 
 
 
@@ -502,17 +522,154 @@ server <- function(input, output, session) {
 shinyApp(ui, server)
 
 
+# Load svf and gvf --------------------------------------------------------
+
+# Load geo data
+load("geo_feat.Rdata")
+
+D_geo_weath=distm(loc_weath[,c("longitude","latitude")], 
+                  geo_feat[,c("longitude","latitude")], 
+                  fun = distGeo)/1000
+indx=apply(D_geo_weath, 1,which.min)
+
+# 21 is teh closest with no 0 entries for the indexes
+indx8=sort(D_geo_weath[8,])[21]
+i8=which(D_geo_weath[8,]==indx8)
+geo_feat[i8,]
+
+indx[8]=i8
+
+# Maximum distance between locations of SVF and GVF and weather station is less than 800 m
+max(diag(D_geo_weath[,indx]))
+
+data_geo_weath=geo_feat[indx,]
+data_geo_weath$station=loc_weath$id
+
+# Does the order of the stations match? YES!
+plot(data_geo_weath$longitude,data_geo_weath$latitude, xlab = "Long", 
+     ylab = "Lat", main = " ", pch = 19, col = as.numeric(data_geo_weath$station))
+points(loc_weath$longitude,loc_weath$latitude, col = as.numeric(loc_weath$id), pch = 2)
+
+
+data_SVF_GVF=merge(data_geo_weath,data_stat_number[,1:2], by= "station")
+data_SVF_GVF=select(data_SVF_GVF, -c(station))
+rownames(data_SVF_GVF)=data_geo_weath$m
+data_SVF_GVF[order(data_SVF_GVF$green_view_mean),]
+data_SVF_GVF[order(data_SVF_GVF$sky_view_mean),]
 
 # Box plot -------------------------------------------------------------
 
 library(ggplot2)
 
 # Assuming df is your dataframe containing the data
-ggplot(Y_res, aes(x = factor(m), y = air_temp, fill = factor(State))) +
+ggplot(Y_res, aes(x = factor(m, labels = paste0("S", 1:length(unique(m)))), y = air_temp, fill = factor(State))) +
   geom_boxplot(show.legend = TRUE, outlier.shape = NA) +
-  #geom_jitter(aes(color = factor(State)), width = 0.2, size = 1.5, alpha = 0.7) +
   scale_fill_manual(values = c("1" = "lightblue", "2" = "lightgreen", "3" = "orange")) +
-  #scale_color_manual(values = c("1" = "lightblue", "2" = "lightgreen", "3" = "orange")) +
   labs(x = "Station", y = "Air Temperature (°C)", fill = "State", color = "State") +
+  geom_vline(xintercept = seq(1.5, length(unique(Y_res$m)) - 0.5, by = 1), 
+             linetype = "dotted", color = "grey40") +  # Add grey dotted lines between stations
   theme_minimal() +
   theme(legend.position = "top")
+
+
+head(data_SVF_GVF)
+Y_res2=Y_res%>%
+  left_join(data_SVF_GVF, by = "m")%>%
+  mutate(SVF=round(sky_view_mean,2),GVF=round(green_view_mean,2))
+
+# Create the boxplot
+# Create the boxplot
+ggplot(Y_res2, aes(x = factor(m, labels = paste0("S", 1:length(unique(m)))), y = air_temp, fill = factor(State))) +
+  geom_boxplot(show.legend = TRUE, outlier.shape = NA) +
+  scale_fill_manual(values = c("1" = "lightblue", "2" = "lightgreen", "3" = "orange"),
+                    labels = c("1" = "Cool", "2" = "Neutral", "3" = "Hot")) +
+  
+  # Add SVF and GVF labels using annotate()
+  annotate("text", x = 1:length(unique(Y_res2$m)), y = max(Y_res2$air_temp,na.rm=T) + 1, 
+           label = paste0("SVF: ", round(data_SVF_GVF$sky_view_mean, 2), "\nGVF: ", round(data_SVF_GVF$green_view_mean, 2)),
+           size = 3, fontface = "bold", color = "black") +
+  
+  labs(x = "Station", y = "Air Temperature (°C)", fill = "State") +
+  
+  # Add dotted vertical lines between each station group
+  geom_vline(xintercept = seq(1.5, length(unique(Y_res$m)) - 0.5, by = 1), 
+             linetype = "dotted", color = "grey30") +  
+  theme_minimal() +
+  theme(legend.position = "top",
+        axis.text.x = element_text(angle = 45, hjust = 1)) +
+  coord_cartesian(clip = "off")  # Prevents the labels from being clipped
+
+ggplot(Y_res2, aes(x = factor(m, labels = paste0("S", 1:length(unique(m)))), y = rh, fill = factor(State))) +
+  geom_boxplot(show.legend = TRUE, outlier.shape = NA) +
+  scale_fill_manual(values = c("1" = "lightblue", "2" = "lightgreen", "3" = "orange"),
+                    labels = c("1" = "Cool", "2" = "Neutral", "3" = "Hot")) +
+  
+  # Add SVF and GVF labels using annotate()
+  annotate("text", x = 1:length(unique(Y_res2$m)), y = max(Y_res2$rh,na.rm=T) + 5, 
+           label = paste0("SVF: ", round(data_SVF_GVF$sky_view_mean, 2), "\nGVF: ", round(data_SVF_GVF$green_view_mean, 2)),
+           size = 3, fontface = "bold", color = "black") +
+  
+  labs(x = "Station", y = "Relative Humidity (%)", fill = "State") +
+  
+  # Add dotted vertical lines between each station group
+  geom_vline(xintercept = seq(1.5, length(unique(Y_res$m)) - 0.5, by = 1), 
+             linetype = "dotted", color = "grey30") +  
+  theme_minimal() +
+  theme(legend.position = "top",
+        axis.text.x = element_text(angle = 45, hjust = 1)) +
+  coord_cartesian(clip = "off")  # Prevents the labels from being clipped
+
+ggplot(Y_res2, aes(x = factor(m, labels = paste0("S", 1:length(unique(m)))), y = wind_speed, fill = factor(State))) +
+  geom_boxplot(show.legend = TRUE, outlier.shape = NA) +
+  scale_fill_manual(values = c("1" = "lightblue", "2" = "lightgreen", "3" = "orange"),
+                    labels = c("1" = "Cool", "2" = "Neutral", "3" = "Hot")) +
+  
+  # Add SVF and GVF labels using annotate()
+  annotate("text", x = 1:length(unique(Y_res2$m)), y = max(Y_res2$wind_speed,na.rm=T) + 5, 
+           label = paste0("SVF: ", round(data_SVF_GVF$sky_view_mean, 2), "\nGVF: ", 
+                          round(data_SVF_GVF$green_view_mean, 2)),
+           size = 3, fontface = "bold", color = "black") +
+  
+  labs(x = "Station", y = "Wind Speed (m/s)", fill = "State") +
+  
+  # Add dotted vertical lines between each station group
+  geom_vline(xintercept = seq(1.5, length(unique(Y_res$m)) - 0.5, by = 1), 
+             linetype = "dotted", color = "grey30") +  
+  theme_minimal() +
+  theme(legend.position = "top",
+        axis.text.x = element_text(angle = 45, hjust = 1)) +
+  coord_cartesian(clip = "off")  # Prevents the labels from being clipped
+
+
+S_long <- melt(S_est, id.vars = "time", variable.name = "Station", value.name = "ComfortLevel")
+
+# Calculate proportions for each Comfort Level per station
+proportion_data <- S_long %>%
+  group_by(Station, ComfortLevel) %>%
+  summarise(Proportion = n() / nrow(S_est)) %>%
+  ungroup()
+
+# Create stacked bar plot
+stat_bar_plot_svf_gvf=ggplot(proportion_data, aes(x = Station, y = Proportion, fill = as.factor(ComfortLevel))) +
+  geom_bar(alpha=.6,stat = "identity" ,position = "fill", color = "black", size = 0.7) +
+  scale_fill_manual(values = c("lightblue", "lightgreen", "orange"), 
+                    name = "Comfort Regime",
+                    labels = c("Cool", "Neutral", "Hot")) +
+  annotate("text", x = 1:length(unique(Y_res2$m)), y = 1.1, 
+           label = paste0("SVF: ", round(data_SVF_GVF$sky_view_mean, 2), "\nGVF: ", 
+                          round(data_SVF_GVF$green_view_mean, 2)),
+           size = 3, fontface = "bold", color = "black") +
+  theme_minimal() +
+  labs(
+    #title = "Comfort Level Proportions for Each Station",
+    x = "Station",
+    y = "Proportion of Comfort Regimes") +
+  theme(text = element_text(size = 16),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "top")
+
+
+
+png(width = 800, height = 600,filename="stat_bar_plot_svf_gvf.png")
+stat_bar_plot_svf_gvf
+dev.off()
