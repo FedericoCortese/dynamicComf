@@ -187,93 +187,135 @@ plot_base <- ggplot(S_summary_complete, aes(x = time, y = Proportion, fill = as.
                     labels=c("Cool","Neutral","Hot")) +
   labs(
     #title = "Temporal Evolution of Thermal Comfort Levels and Wind Speed",
-   # x = "Date and Hour",
+    # x = "Date and Hour",
     x=" ",
-    y = "Proportion of Locations",
+    y = "Prop of Locations",
+    fill = "Comfort Regime") +
+  scale_x_datetime(date_breaks = "12 hours", date_labels = "%Y-%m-%d %H:%M") +
+  theme_minimal() +
+  theme(text = element_text(size = 12),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "top")
+# + 
+
+temp_state_plot <- plot_base +
+  geom_line(data = avg_weath, aes(x = times, y = air_temp 
+                                  / 40
+  ),  
+  color = "red", size = 1.2, inherit.aes = FALSE,linetype=6) +
+  #geom_point(data = avg_weath, aes(x = times, y = wind_speed / 10),  # Scale wind speed for better visualization
+  # color = "blue", size = 2, inherit.aes = FALSE) +
+  scale_y_continuous(
+    name = "Prop of Locations",
+    sec.axis = sec_axis(~ . * 40, name = "Average Air Temp (°C)", 
+                        labels = scales::number_format(accuracy = 0.1))
+  )
+
+rh_state_plot <- plot_base +
+  geom_line(data = avg_weath, aes(x = times, y = rh 
+                                  / 100
+  ),  #
+  color = "red", size = 1.2, inherit.aes = FALSE,linetype=6) +
+  #geom_point(data = avg_weath, aes(x = times, y = wind_speed / 10),  # Scale wind speed for better visualization
+  # color = "blue", size = 2, inherit.aes = FALSE) +
+  scale_y_continuous(
+    name = "Prop of Locations",
+    sec.axis = sec_axis(~ . * 100, name = "Average Rel Humidity (%)", 
+                        labels = scales::number_format(accuracy = 0.1))
+  )
+
+
+temp_state_plot <- temp_state_plot + theme(axis.title.x = element_blank(),
+                                           axis.text.x = element_blank(),
+                                           axis.ticks.x = element_blank())
+
+rh_state_plot=rh_state_plot+ theme(axis.title.x = element_blank(),
+                                   axis.text.x = element_blank(),
+                                   axis.ticks.x = element_blank())
+
+# Combine the plots
+# combined_plot <- (temp_state_plot / rh_state_plot) + 
+#   plot_layout(guides = 'collect') & 
+#   theme(legend.position = "top")
+# 
+# # Display the plot
+# combined_plot
+# 
+# png(width = 800, height = 600,filename="temp_rh_state_plot.png")
+# combined_plot
+# dev.off()
+
+rainfall_state_plot <- plot_base +
+  geom_line(data = avg_weath, aes(x = times, y = rainfall 
+                                  #/ 10
+  ),  
+  color = "red", size = 1.2, inherit.aes = FALSE,linetype=6) +
+  #geom_point(data = avg_weath, aes(x = times, y = wind_speed / 10),  # Scale wind speed for better visualization
+  # color = "blue", size = 2, inherit.aes = FALSE) +
+  scale_y_continuous(
+    name = "Prop of Locations",
+    sec.axis = sec_axis(~ . * 1, name = "Average Rainfall (mm)", 
+                        labels = scales::number_format(accuracy = 0.1))
+  )
+rainfall_state_plot
+
+wind_state_plot <- plot_base +
+  geom_line(data = avg_weath, aes(x = times, y = wind_speed 
+                                  / 10
+  ),  # Scale wind speed for better visualization
+  color = "red", size = 1.2, inherit.aes = FALSE,linetype=6) +
+  #geom_point(data = avg_weath, aes(x = times, y = wind_speed / 10),  # Scale wind speed for better visualization
+  # color = "blue", size = 2, inherit.aes = FALSE) +
+  scale_y_continuous(
+    name = "Prop of Locations",
+    sec.axis = sec_axis(~ . * 10, name = "Average Wind Speed (m/s)", labels = scales::number_format(accuracy = 0.1))
+  )
+
+
+rainfall_state_plot <- rainfall_state_plot + theme(axis.title.x = element_blank(),
+                                                   axis.text.x = element_blank(),
+                                                   axis.ticks.x = element_blank())
+
+# Combine the plots
+# combined_plot_2 <- (rainfall_state_plot / wind_state_plot) + 
+#   plot_layout(guides = 'collect') & 
+#   theme(legend.position = "top")
+# 
+# # Display the plot
+# combined_plot_2
+# 
+# png(width = 800, height = 600,filename="rf_windspeed_state_plot.png")
+# combined_plot_2
+# dev.off()
+
+combined_plot_3 <- (temp_state_plot / rh_state_plot / rainfall_state_plot / wind_state_plot) +
+  plot_layout(guides = 'collect') &
+  theme(legend.position = "top")
+
+# Display the plot
+combined_plot_3
+
+png(width = 500, height = 900,filename="all_state_plot.png")
+combined_plot_3
+dev.off()
+
+# 
+plot_base <- ggplot(S_summary_complete, aes(x = time, y = Proportion, fill = as.factor(ComfortLevel))) +
+  geom_area(alpha = 0.6, size = 1, color = "black") +
+  scale_fill_manual(values = c("lightblue", "lightgreen", "orange"), 
+                    name = "Comfort Regime",
+                    labels=c("Cool","Neutral","Hot")) +
+  labs(
+    #title = "Temporal Evolution of Thermal Comfort Levels and Wind Speed",
+    # x = "Date and Hour",
+    x=" ",
+    y = "Prop of Locations",
     fill = "Comfort Regime") +
   scale_x_datetime(date_breaks = "12 hours", date_labels = "%Y-%m-%d %H:%M") +
   theme_minimal() +
   theme(text = element_text(size = 16),
         axis.text.x = element_text(angle = 45, hjust = 1),
         legend.position = "top")
-# +
-#   geom_vline(xintercept = x_breaks, color = "grey30", linetype = "dotted", size = 0.5)
-
-wind_state_plot <- plot_base +
-  geom_line(data = avg_weath, aes(x = times, y = wind_speed 
-                                  / 10
-  ),  # Scale wind speed for better visualization
-  color = "red", size = 1.5, inherit.aes = FALSE,linetype=6) +
-  #geom_point(data = avg_weath, aes(x = times, y = wind_speed / 10),  # Scale wind speed for better visualization
-  # color = "blue", size = 2, inherit.aes = FALSE) +
-  scale_y_continuous(
-    name = "Proportion of Locations",
-    sec.axis = sec_axis(~ . * 10, name = "Average Wind Speed (m/s)", labels = scales::number_format(accuracy = 0.1))
-  )
-
-
-png(width = 800, height = 600,filename="wind_state_plot.png")
-wind_state_plot
-dev.off()
-# 
-
-
-rainfall_state_plot <- plot_base +
-  geom_line(data = avg_weath, aes(x = times, y = rainfall 
-                                  #/ 10
-  ),  
-  color = "red", size = 1.5, inherit.aes = FALSE,linetype=6) +
-  #geom_point(data = avg_weath, aes(x = times, y = wind_speed / 10),  # Scale wind speed for better visualization
-  # color = "blue", size = 2, inherit.aes = FALSE) +
-  scale_y_continuous(
-    name = "Proportion of Locations",
-    sec.axis = sec_axis(~ . * 1, name = "Average Rainfall (mm)", 
-                        labels = scales::number_format(accuracy = 0.1))
-  )
-rainfall_state_plot
-
-png(width = 800, height = 600,filename="rainfall_state_plot.png")
-rainfall_state_plot
-dev.off()
-
-
-temp_state_plot <- plot_base +
-  geom_line(data = avg_weath, aes(x = times, y = air_temp 
-                                  / 40
-  ),  
-  color = "red", size = 1.5, inherit.aes = FALSE,linetype=6) +
-  #geom_point(data = avg_weath, aes(x = times, y = wind_speed / 10),  # Scale wind speed for better visualization
-  # color = "blue", size = 2, inherit.aes = FALSE) +
-  scale_y_continuous(
-    name = "Proportion of Locations",
-    sec.axis = sec_axis(~ . * 40, name = "Average Air Temp (°C)", 
-                        labels = scales::number_format(accuracy = 0.1))
-  )
-temp_state_plot
-
-png(width = 800, height = 600,filename="temp_state_plot.png")
-temp_state_plot
-dev.off()
-
-rh_state_plot <- plot_base +
-  geom_line(data = avg_weath, aes(x = times, y = rh 
-                                  / 100
-  ),  #
-  color = "red", size = 1.5, inherit.aes = FALSE,linetype=6) +
-  #geom_point(data = avg_weath, aes(x = times, y = wind_speed / 10),  # Scale wind speed for better visualization
-  # color = "blue", size = 2, inherit.aes = FALSE) +
-  scale_y_continuous(
-    name = "Proportion of Locations",
-    sec.axis = sec_axis(~ . * 100, name = "Average Rel Humidity (%)", 
-                        labels = scales::number_format(accuracy = 0.1))
-  )
-rh_state_plot
-
-png(width = 800, height = 600,filename="rh_state_plot.png")
-rh_state_plot
-dev.off()
-
-
 utci_state_plot <- plot_base +
   geom_line(data = avg_weath, aes(x = times, y = UTCI 
                                   / 40
@@ -282,11 +324,12 @@ utci_state_plot <- plot_base +
   #geom_point(data = avg_weath, aes(x = times, y = wind_speed / 10),  # Scale wind speed for better visualization
   # color = "blue", size = 2, inherit.aes = FALSE) +
   scale_y_continuous(
-    name = "Proportion of Locations",
+    name = "Prop of Locations",
     sec.axis = sec_axis(~ . * 40, name = "UTCI (°C)", 
                         labels = scales::number_format(accuracy = 0.1))
   )
-#utci_state_plot
+
+
 png(width = 800, height = 600,filename="utci_state_plot.png")
 utci_state_plot
 dev.off()
@@ -562,15 +605,76 @@ data_SVF_GVF[order(data_SVF_GVF$sky_view_mean),]
 library(ggplot2)
 
 # Assuming df is your dataframe containing the data
-ggplot(Y_res, aes(x = factor(m, labels = paste0("S", 1:length(unique(m)))), y = air_temp, fill = factor(State))) +
+bp_air=ggplot(Y_res, aes(x = factor(m, labels = paste0("S", 1:length(unique(m)))), y = air_temp, fill = factor(State))) +
   geom_boxplot(show.legend = TRUE, outlier.shape = NA) +
-  scale_fill_manual(values = c("1" = "lightblue", "2" = "lightgreen", "3" = "orange")) +
-  labs(x = "Station", y = "Air Temperature (°C)", fill = "State", color = "State") +
+  scale_fill_manual(values = c("1" = "lightblue", "2" = "lightgreen", "3" = "orange"),
+                    labels=c("Cool","Neutral","Hot")) +
+  labs(x = " ", y = "Air Temperature (°C)", fill = "Comfort Regime", color = "State") +
   geom_vline(xintercept = seq(1.5, length(unique(Y_res$m)) - 0.5, by = 1), 
              linetype = "dotted", color = "grey40") +  # Add grey dotted lines between stations
   theme_minimal() +
-  theme(legend.position = "top")
+  theme(text = element_text(size = 13),
+        # axis.text.y = element_text(angle = 45, hjust = 1),
+        # axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "top")
 
+bp_rh=ggplot(Y_res, aes(x = factor(m, labels = paste0("S", 1:length(unique(m)))), 
+                  y = rh, fill = factor(State))) +
+  geom_boxplot(show.legend = TRUE, outlier.shape = NA) +
+  scale_fill_manual(values = c("1" = "lightblue", "2" = "lightgreen", "3" = "orange"),
+                    labels=c("Cool","Neutral","Hot")) +
+  labs(x = " ", y = "Rel Humidity (%)", fill = "Comfort Regime", color = "State") +
+  geom_vline(xintercept = seq(1.5, length(unique(Y_res$m)) - 0.5, by = 1), 
+             linetype = "dotted", color = "grey40") +  # Add grey dotted lines between stations
+  theme_minimal() +
+  theme(text = element_text(size = 13),
+        # axis.text.y = element_text(angle = 45, hjust = 1),
+        # axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "top")
+
+bp_rf=ggplot(Y_res, aes(x = factor(m, labels = paste0("S", 1:length(unique(m)))), 
+                  y = rainfall, fill = factor(State))) +
+  geom_boxplot(show.legend = TRUE, outlier.shape = NA) +
+  scale_fill_manual(values = c("1" = "lightblue", "2" = "lightgreen", "3" = "orange"),
+                    labels=c("Cool","Neutral","Hot")) +
+  labs(x = " ", y = "Rainfall (mm)", fill = "Comfort Regime", color = "State") +
+  geom_vline(xintercept = seq(1.5, length(unique(Y_res$m)) - 0.5, by = 1), 
+             linetype = "dotted", color = "grey40") +  # Add grey dotted lines between stations
+  theme_minimal() +
+  theme(text = element_text(size = 13),
+        # axis.text.y = element_text(angle = 45, hjust = 1),
+        # axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "top")
+
+bp_ws=ggplot(Y_res, aes(x = factor(m, labels = paste0("S", 1:length(unique(m)))), 
+                  y = wind_speed, fill = factor(State))) +
+  geom_boxplot(show.legend = TRUE, outlier.shape = NA) +
+  scale_fill_manual(values = c("1" = "lightblue", "2" = "lightgreen", "3" = "orange"),
+                    labels=c("Cool","Neutral","Hot")) +
+  labs(x = "Station", y = "Wind Speed (m/s)", fill = "Comfort Regime", color = "State") +
+  geom_vline(xintercept = seq(1.5, length(unique(Y_res$m)) - 0.5, by = 1), 
+             linetype = "dotted", color = "grey40") +  # Add grey dotted lines between stations
+  theme_minimal() +
+  theme(text = element_text(size = 13),
+        # axis.text.y = element_text(angle = 45, hjust = 1),
+        # axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "top")
+
+library(gridExtra)
+library(ggpubr)
+png(width = 900, height = 500,filename="bp_air_rh.png")
+ggarrange(bp_air, bp_rh, ncol = 1, nrow = 2,common.legend = T)
+dev.off()
+
+png(width = 900, height = 500,filename="bp_rf_ws.png")
+ggarrange(bp_rf, bp_ws, ncol = 1, nrow = 2,common.legend = T)
+dev.off()
+
+png(width = 500, height = 900,filename="bp_all.png")
+ggarrange(bp_air, bp_rh,bp_rf, bp_ws, ncol = 1, nrow = 4,common.legend = T)
+dev.off()
+
+ggarrange(bp_rf, bp_ws, ncol = 1, nrow = 2,common.legend = T)
 
 head(data_SVF_GVF)
 Y_res2=Y_res%>%
