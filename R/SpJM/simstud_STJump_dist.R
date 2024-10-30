@@ -68,10 +68,43 @@ BAC_gap20=as.vector(unlist(lapply(STJsim_pg,BAC)))
 res_BAC_gap20=data.frame(hp,BAC=BAC_gap20)
 res_BAC_gap20_av=res_BAC_gap20%>%group_by(M,TT,lambda,gamma)%>%summarise(avBAC=mean(BAC,na.rm=T),
                                                                        sdBAC=sd(BAC,na.rm=T))
+
+custom_labeller <- labeller(
+  TT = function(value) paste("T =", value),
+  M = function(value) paste("M =", value)
+)
+ggplot(res_BAC_gap20_av[res_BAC_gap20_av$gamma <= 0.14 & res_BAC_gap20_av$lambda <= 0.25, ], 
+       aes(x = lambda, y = avBAC, color = factor(gamma))) +
+  geom_line(size = 0.5) +
+  geom_point(size = 1.5) +
+  labs(
+    x = expression(lambda),
+    y = "Average BAC",
+    color = expression(gamma)
+  ) +
+  facet_grid(TT ~ M, labeller = custom_labeller) +
+  theme_minimal()
+ggplot(res_BAC_gap20_av
+       [res_BAC_gap20_av$gamma <= 0.25 & res_BAC_gap20_av$lambda <= 0.14, ]
+       , 
+       aes(x = gamma, y = avBAC, color = factor(lambda))) +
+  geom_line(size = 0.5) +
+  geom_point(size = 1.5) +
+  labs(
+    x = expression(gamma),
+    y = "Average BAC",
+    color = expression(lambda)
+  ) +
+  facet_grid(TT ~ M, labeller = custom_labeller) +
+  theme_minimal()
+
+
 res_BAC_gap20_max=res_BAC_gap20_av%>%group_by(M,TT)%>%summarise(maxBAC=max(avBAC),
                                                               sd_maxBAC=sdBAC[which.max(avBAC)],
                                                               lambdaBAC=lambda[which.max(avBAC)],
                                                               gammaBAC=gamma[which.max(avBAC)])
+
+
 
 
 # # Extract unique combinations of T and M
@@ -184,6 +217,36 @@ BAC_NA5=as.vector(unlist(lapply(STJsim_NA5,BAC)))
 res_BAC_NA5=data.frame(hp,BAC=BAC_NA5)
 res_BAC_NA5_av=res_BAC_NA5%>%group_by(M,TT,lambda,gamma)%>%summarise(avBAC=mean(BAC,na.rm=T),
                                                                      sdBAC=sd(BAC,na.rm=T))
+
+custom_labeller <- labeller(
+  TT = function(value) paste("T =", value),
+  M = function(value) paste("M =", value)
+)
+ggplot(res_BAC_NA5_av[res_BAC_NA5_av$gamma <= 0.14 & res_BAC_NA5_av$lambda <= 0.25, ], 
+       aes(x = lambda, y = avBAC, color = factor(gamma))) +
+  geom_line(size = 0.5) +
+  geom_point(size = 1.5) +
+  labs(
+    x = expression(lambda),
+    y = "Average BAC",
+    color = expression(gamma)
+  ) +
+  facet_grid(TT ~ M, labeller = custom_labeller) +
+  theme_minimal()
+ggplot(res_BAC_NA5_av
+       [res_BAC_NA5_av$gamma <= 0.25 & res_BAC_NA5_av$lambda <= 0.14, ]
+       , 
+       aes(x = gamma, y = avBAC, color = factor(lambda))) +
+  geom_line(size = 0.5) +
+  geom_point(size = 1.5) +
+  labs(
+    x = expression(gamma),
+    y = "Average BAC",
+    color = expression(lambda)
+  ) +
+  facet_grid(TT ~ M, labeller = custom_labeller) +
+  theme_minimal()
+
 res_BAC_NA5_max=res_BAC_NA5_av%>%group_by(M,TT)%>%summarise(maxBAC=max(avBAC),
                                                             sd_maxBAC=sdBAC[which.max(avBAC)],
                                                             lambdaBAC=lambda[which.max(avBAC)],
@@ -233,6 +296,36 @@ BAC_NA20=as.vector(unlist(lapply(STJsim_NA,BAC)))
 res_BAC_NA20=data.frame(hp,BAC=BAC_NA20)
 res_BAC_NA20_av=res_BAC_NA20%>%group_by(M,TT,lambda,gamma)%>%summarise(avBAC=mean(BAC,na.rm=T),
                                                                      sdBAC=sd(BAC,na.rm=T))
+
+custom_labeller <- labeller(
+  TT = function(value) paste("T =", value),
+  M = function(value) paste("M =", value)
+)
+ggplot(res_BAC_NA20_av[res_BAC_NA20_av$gamma <= 0.14 & res_BAC_NA20_av$lambda <= 0.25, ], 
+       aes(x = lambda, y = avBAC, color = factor(gamma))) +
+  geom_line(size = 0.5) +
+  geom_point(size = 1.5) +
+  labs(
+    x = expression(lambda),
+    y = "Average BAC",
+    color = expression(gamma)
+  ) +
+  facet_grid(TT ~ M, labeller = custom_labeller) +
+  theme_minimal()
+ggplot(res_BAC_NA20_av
+       [res_BAC_NA20_av$gamma <= 0.25 & res_BAC_NA20_av$lambda <= 0.14, ]
+       , 
+       aes(x = gamma, y = avBAC, color = factor(lambda))) +
+  geom_line(size = 0.5) +
+  geom_point(size = 1.5) +
+  labs(
+    x = expression(gamma),
+    y = "Average BAC",
+    color = expression(lambda)
+  ) +
+  facet_grid(TT ~ M, labeller = custom_labeller) +
+  theme_minimal()
+
 res_BAC_NA20_max=res_BAC_NA20_av%>%group_by(M,TT)%>%summarise(maxBAC=max(avBAC),
                                                             sd_maxBAC=sdBAC[which.max(avBAC)],
                                                             lambdaBAC=lambda[which.max(avBAC)],
@@ -298,6 +391,36 @@ BAC_gap20_P10=as.vector(unlist(lapply(STJsim_pg_P10,BAC)))
 res_BAC_gap20_P10=data.frame(hp,BAC=BAC_gap20_P10)
 res_BAC_gap20_av_P10=res_BAC_gap20_P10%>%group_by(M,TT,lambda,gamma)%>%summarise(avBAC=mean(BAC,na.rm=T),
                                                                          sdBAC=sd(BAC,na.rm=T))
+
+custom_labeller <- labeller(
+  TT = function(value) paste("T =", value),
+  M = function(value) paste("M =", value)
+)
+ggplot(res_BAC_gap20_av_P10[res_BAC_gap20_av_P10$gamma <= 0.14 & res_BAC_gap20_av_P10$lambda <= 0.25, ], 
+       aes(x = lambda, y = avBAC, color = factor(gamma))) +
+  geom_line(size = 0.5) +
+  geom_point(size = 1.5) +
+  labs(
+    x = expression(lambda),
+    y = "Average BAC",
+    color = expression(gamma)
+  ) +
+  facet_grid(TT ~ M, labeller = custom_labeller) +
+  theme_minimal()
+ggplot(res_BAC_gap20_av_P10
+       [res_BAC_gap20_av_P10$gamma <= 0.25 & res_BAC_gap20_av_P10$lambda <= 0.14, ]
+       , 
+       aes(x = gamma, y = avBAC, color = factor(lambda))) +
+  geom_line(size = 0.5) +
+  geom_point(size = 1.5) +
+  labs(
+    x = expression(gamma),
+    y = "Average BAC",
+    color = expression(lambda)
+  ) +
+  facet_grid(TT ~ M, labeller = custom_labeller) +
+  theme_minimal()
+
 res_BAC_gap20_max_P10=res_BAC_gap20_av_P10%>%group_by(M,TT)%>%summarise(maxBAC=max(avBAC),
                                                                 sd_maxBAC=sdBAC[which.max(avBAC)],
                                                                 lambdaBAC=lambda[which.max(avBAC)],
@@ -337,6 +460,36 @@ BAC_NA5_P10=as.vector(unlist(lapply(STJsim_NA5_P10,BAC)))
 res_BAC_NA5_P10=data.frame(hp,BAC=BAC_NA5_P10)
 res_BAC_NA5_av_P10=res_BAC_NA5_P10%>%group_by(M,TT,lambda,gamma)%>%summarise(avBAC=mean(BAC,na.rm=T),
                                                                                  sdBAC=sd(BAC,na.rm=T))
+
+custom_labeller <- labeller(
+  TT = function(value) paste("T =", value),
+  M = function(value) paste("M =", value)
+)
+ggplot(res_BAC_NA5_av_P10[res_BAC_NA5_av_P10$gamma <= 0.14 & res_BAC_NA5_av_P10$lambda <= 0.25, ], 
+       aes(x = lambda, y = avBAC, color = factor(gamma))) +
+  geom_line(size = 0.5) +
+  geom_point(size = 1.5) +
+  labs(
+    x = expression(lambda),
+    y = "Average BAC",
+    color = expression(gamma)
+  ) +
+  facet_grid(TT ~ M, labeller = custom_labeller) +
+  theme_minimal()
+ggplot(res_BAC_NA5_av_P10
+       [res_BAC_NA5_av_P10$gamma <= 0.25 & res_BAC_NA5_av_P10$lambda <= 0.14, ]
+       , 
+       aes(x = gamma, y = avBAC, color = factor(lambda))) +
+  geom_line(size = 0.5) +
+  geom_point(size = 1.5) +
+  labs(
+    x = expression(gamma),
+    y = "Average BAC",
+    color = expression(lambda)
+  ) +
+  facet_grid(TT ~ M, labeller = custom_labeller) +
+  theme_minimal()
+
 res_BAC_NA5_max_P10=res_BAC_NA5_av_P10%>%group_by(M,TT)%>%summarise(maxBAC=max(avBAC),
                                                                         sd_maxBAC=sdBAC[which.max(avBAC)],
                                                                         lambdaBAC=lambda[which.max(avBAC)],
@@ -374,6 +527,36 @@ BAC_NA20_P10=as.vector(unlist(lapply(STJsim_NA20_P10,BAC)))
 res_BAC_NA20_P10=data.frame(hp,BAC=BAC_NA20_P10)
 res_BAC_NA20_av_P10=res_BAC_NA20_P10%>%group_by(M,TT,lambda,gamma)%>%summarise(avBAC=mean(BAC,na.rm=T),
                                                                              sdBAC=sd(BAC,na.rm=T))
+
+custom_labeller <- labeller(
+  TT = function(value) paste("T =", value),
+  M = function(value) paste("M =", value)
+)
+ggplot(res_BAC_NA20_av_P10[res_BAC_NA20_av_P10$gamma <= 0.14 & res_BAC_NA20_av_P10$lambda <= 0.25, ], 
+       aes(x = lambda, y = avBAC, color = factor(gamma))) +
+  geom_line(size = 0.5) +
+  geom_point(size = 1.5) +
+  labs(
+    x = expression(lambda),
+    y = "Average BAC",
+    color = expression(gamma)
+  ) +
+  facet_grid(TT ~ M, labeller = custom_labeller) +
+  theme_minimal()
+ggplot(res_BAC_NA20_av_P10
+       [res_BAC_NA20_av_P10$gamma <= 0.25 & res_BAC_NA20_av_P10$lambda <= 0.14, ]
+       , 
+       aes(x = gamma, y = avBAC, color = factor(lambda))) +
+  geom_line(size = 0.5) +
+  geom_point(size = 1.5) +
+  labs(
+    x = expression(gamma),
+    y = "Average BAC",
+    color = expression(lambda)
+  ) +
+  facet_grid(TT ~ M, labeller = custom_labeller) +
+  theme_minimal()
+
 res_BAC_NA20_max_P10=res_BAC_NA20_av_P10%>%group_by(M,TT)%>%summarise(maxBAC=max(avBAC),
                                                                     sd_maxBAC=sdBAC[which.max(avBAC)],
                                                                     lambdaBAC=lambda[which.max(avBAC)],

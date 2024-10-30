@@ -9,7 +9,7 @@ library(leaflet)
 library(reshape2)
 library(scales)
 # Set Singapore time zone
-Sys.setenv(TZ="UTC")
+Sys.setenv(TZ="GMT+08")
 ##
 utci_sing=read.table("utci_202304_17-27.txt",header=T)
 
@@ -478,7 +478,7 @@ dev.off()
 
 data_stat_number2=data_stat_number[,-1]
 data_stat_number2$Station=paste("S",data_stat_number2$m)
-
+Sys.setenv(TZ="GMT+8")
 S_long <- S_est %>%
   pivot_longer(cols = starts_with("S"), names_to = "Station", values_to = "ComfortLevel")
 
@@ -487,7 +487,8 @@ S_long <- S_long %>%
   left_join(data_stat_number2, by = "Station")
 
 # Define a color palette for the comfort levels
-comfort_colors <- list("1" = "lightblue", "2" = "lightgreen", "3" = "orange")
+comfort_colors <- list("1" = "blue", "2" = "green", "3" = "red")
+
 
 # Shiny UI
 ui <- fluidPage(
@@ -502,7 +503,10 @@ ui <- fluidPage(
                   value = min(S_long$time), 
                   timeFormat = "%Y-%m-%d %H:%M:%S", 
                   step = 3600, 
-                  animate = animationOptions(interval = 1000, loop = TRUE))
+                  animate = animationOptions(interval = 1000, loop = TRUE)
+                  # ,
+                  # timezone = "GMT+8"
+                  )
     ),
     mainPanel(
       # Display the selected time as text above the map
@@ -524,7 +528,10 @@ server <- function(input, output, session) {
   
   # Render the selected time as text
   output$selectedTime <- renderText({
-    paste("Selected Time: ", format(input$time, "%Y-%m-%d %H:%M:%S"))
+    paste("Selected Time: ", format(input$time, "%Y-%m-%d %H:%M:%S"
+                                    ,tz = "GMT+3"
+                                    )
+          )
   })
   
   # Create a leaflet map that updates based on the selected time
