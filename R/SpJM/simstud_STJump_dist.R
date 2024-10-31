@@ -73,30 +73,51 @@ custom_labeller <- labeller(
   TT = function(value) paste("T =", value),
   M = function(value) paste("M =", value)
 )
-ggplot(res_BAC_gap20_av[res_BAC_gap20_av$gamma <= 0.14 & res_BAC_gap20_av$lambda <= 0.25, ], 
-       aes(x = lambda, y = avBAC, color = factor(gamma))) +
-  geom_line(size = 0.5) +
-  geom_point(size = 1.5) +
+p_p20_gap20_lambda <- ggplot(res_BAC_gap20_av[res_BAC_gap20_av$gamma <= 0.14 & 
+                                                    res_BAC_gap20_av$lambda <= 0.20, ], 
+                             aes(x = lambda, y = avBAC, color = factor(gamma))) +
+  geom_line(size = 0.7) +
+  geom_point(size = 2) +
   labs(
     x = expression(lambda),
     y = "Average BAC",
     color = expression(gamma)
   ) +
   facet_grid(TT ~ M, labeller = custom_labeller) +
-  theme_minimal()
-ggplot(res_BAC_gap20_av
-       [res_BAC_gap20_av$gamma <= 0.25 & res_BAC_gap20_av$lambda <= 0.14, ]
-       , 
-       aes(x = gamma, y = avBAC, color = factor(lambda))) +
-  geom_line(size = 0.5) +
-  geom_point(size = 1.5) +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(face = "bold"),
+    text = element_text(size = 14),
+    panel.border = element_rect(color = "grey", fill = NA, size = 0.5)  # Grey border around each subplot
+  )
+
+
+#png(width = 700, height = 700,filename="p_p10_gap20_lambda.png")
+p_p20_gap20_lambda
+#dev.off()
+
+
+p_p20_gap20_gamma=ggplot(res_BAC_gap20_av
+                         [res_BAC_gap20_av$gamma <= 0.20 & res_BAC_gap20_av$lambda <= 0.14, ]
+                         , 
+                         aes(x = gamma, y = avBAC, color = factor(lambda))) +
+  geom_line(size = 0.7) +
+  geom_point(size = 2) +
   labs(
     x = expression(gamma),
     y = "Average BAC",
     color = expression(lambda)
   ) +
   facet_grid(TT ~ M, labeller = custom_labeller) +
-  theme_minimal()
+  theme_minimal()+
+  theme(
+    strip.text = element_text(face = "bold"),
+    text = element_text(size = 14),
+    panel.border = element_rect(color = "grey", fill = NA, size = 0.5)  # Grey border around each subplot
+  )
+
+#jpeg(width = 700, height = 400,filename="p_p10_gap20_gamma.jpeg",quality=100)
+p_p20_gap20_gamma
 
 
 res_BAC_gap20_max=res_BAC_gap20_av%>%group_by(M,TT)%>%summarise(maxBAC=max(avBAC),
@@ -222,30 +243,51 @@ custom_labeller <- labeller(
   TT = function(value) paste("T =", value),
   M = function(value) paste("M =", value)
 )
-ggplot(res_BAC_NA5_av[res_BAC_NA5_av$gamma <= 0.14 & res_BAC_NA5_av$lambda <= 0.25, ], 
-       aes(x = lambda, y = avBAC, color = factor(gamma))) +
-  geom_line(size = 0.5) +
-  geom_point(size = 1.5) +
+p_p20_NA5_lambda <- ggplot(res_BAC_NA5_av[res_BAC_NA5_av$gamma <= 0.14 & 
+                                                res_BAC_NA5_av$lambda <= 0.20, ], 
+                           aes(x = lambda, y = avBAC, color = factor(gamma))) +
+  geom_line(size = 0.7) +
+  geom_point(size = 2) +
   labs(
     x = expression(lambda),
     y = "Average BAC",
     color = expression(gamma)
   ) +
   facet_grid(TT ~ M, labeller = custom_labeller) +
-  theme_minimal()
-ggplot(res_BAC_NA5_av
-       [res_BAC_NA5_av$gamma <= 0.25 & res_BAC_NA5_av$lambda <= 0.14, ]
-       , 
-       aes(x = gamma, y = avBAC, color = factor(lambda))) +
-  geom_line(size = 0.5) +
-  geom_point(size = 1.5) +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(face = "bold"),
+    text = element_text(size = 14),
+    panel.border = element_rect(color = "grey", fill = NA, size = 0.5)  # Grey border around each subplot
+  )
+
+
+#png(width = 700, height = 700,filename="p_p10_gap20_lambda.png")
+p_p20_NA5_lambda
+#dev.off()
+
+
+p_p20_NA5_gamma=ggplot(res_BAC_NA5_av
+                       [res_BAC_NA5_av$gamma <= 0.20 & res_BAC_NA5_av$lambda <= 0.14, ]
+                       , 
+                       aes(x = gamma, y = avBAC, color = factor(lambda))) +
+  geom_line(size = 0.7) +
+  geom_point(size = 2) +
   labs(
     x = expression(gamma),
     y = "Average BAC",
     color = expression(lambda)
   ) +
   facet_grid(TT ~ M, labeller = custom_labeller) +
-  theme_minimal()
+  theme_minimal()+
+  theme(
+    strip.text = element_text(face = "bold"),
+    text = element_text(size = 14),
+    panel.border = element_rect(color = "grey", fill = NA, size = 0.5)  # Grey border around each subplot
+  )
+
+#jpeg(width = 700, height = 400,filename="p_p10_gap20_gamma.jpeg",quality=100)
+p_p20_NA5_gamma
 
 res_BAC_NA5_max=res_BAC_NA5_av%>%group_by(M,TT)%>%summarise(maxBAC=max(avBAC),
                                                             sd_maxBAC=sdBAC[which.max(avBAC)],
@@ -301,30 +343,51 @@ custom_labeller <- labeller(
   TT = function(value) paste("T =", value),
   M = function(value) paste("M =", value)
 )
-ggplot(res_BAC_NA20_av[res_BAC_NA20_av$gamma <= 0.14 & res_BAC_NA20_av$lambda <= 0.25, ], 
-       aes(x = lambda, y = avBAC, color = factor(gamma))) +
-  geom_line(size = 0.5) +
-  geom_point(size = 1.5) +
+p_p20_NA20_lambda <- ggplot(res_BAC_NA20_av[res_BAC_NA20_av$gamma <= 0.14 & 
+                                                  res_BAC_NA20_av$lambda <= 0.20, ], 
+                            aes(x = lambda, y = avBAC, color = factor(gamma))) +
+  geom_line(size = 0.7) +
+  geom_point(size = 2) +
   labs(
     x = expression(lambda),
     y = "Average BAC",
     color = expression(gamma)
   ) +
   facet_grid(TT ~ M, labeller = custom_labeller) +
-  theme_minimal()
-ggplot(res_BAC_NA20_av
-       [res_BAC_NA20_av$gamma <= 0.25 & res_BAC_NA20_av$lambda <= 0.14, ]
-       , 
-       aes(x = gamma, y = avBAC, color = factor(lambda))) +
-  geom_line(size = 0.5) +
-  geom_point(size = 1.5) +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(face = "bold"),
+    text = element_text(size = 14),
+    panel.border = element_rect(color = "grey", fill = NA, size = 0.5)  # Grey border around each subplot
+  )
+
+
+#png(width = 700, height = 700,filename="p_p10_gap20_lambda.png")
+p_p20_NA20_lambda
+#dev.off()
+
+
+p_p20_NA20_gamma=ggplot(res_BAC_NA20_av[res_BAC_NA20_av$gamma <= 0.20 & 
+                                              res_BAC_NA20_av$lambda <= 0.14, ]
+                        , 
+                        aes(x = gamma, y = avBAC, color = factor(lambda))) +
+  geom_line(size = 0.7) +
+  geom_point(size = 2) +
   labs(
     x = expression(gamma),
     y = "Average BAC",
     color = expression(lambda)
   ) +
   facet_grid(TT ~ M, labeller = custom_labeller) +
-  theme_minimal()
+  theme_minimal()+
+  theme(
+    strip.text = element_text(face = "bold"),
+    text = element_text(size = 14),
+    panel.border = element_rect(color = "grey", fill = NA, size = 0.5)  # Grey border around each subplot
+  )
+
+#jpeg(width = 700, height = 400,filename="p_p10_gap20_gamma.jpeg",quality=100)
+p_p20_NA20_gamma
 
 res_BAC_NA20_max=res_BAC_NA20_av%>%group_by(M,TT)%>%summarise(maxBAC=max(avBAC),
                                                             sd_maxBAC=sdBAC[which.max(avBAC)],
@@ -359,7 +422,10 @@ hp=expand.grid(lambda=lambda,gamma=gamma,seed=seed,M=M,TT=TT)
 P=10
 Pcat=5
 
-# 20% gaps
+
+# 20% gaps ----------------------------------------------------------------
+
+
 pNAs=0
 pg=.2
 
@@ -396,30 +462,52 @@ custom_labeller <- labeller(
   TT = function(value) paste("T =", value),
   M = function(value) paste("M =", value)
 )
-ggplot(res_BAC_gap20_av_P10[res_BAC_gap20_av_P10$gamma <= 0.14 & res_BAC_gap20_av_P10$lambda <= 0.25, ], 
-       aes(x = lambda, y = avBAC, color = factor(gamma))) +
-  geom_line(size = 0.5) +
-  geom_point(size = 1.5) +
+p_p10_gap20_lambda <- ggplot(res_BAC_gap20_av_P10[res_BAC_gap20_av_P10$gamma <= 0.14 & 
+                                             res_BAC_gap20_av_P10$lambda <= 0.20, ], 
+                      aes(x = lambda, y = avBAC, color = factor(gamma))) +
+  geom_line(size = 0.7) +
+  geom_point(size = 2) +
   labs(
     x = expression(lambda),
     y = "Average BAC",
     color = expression(gamma)
   ) +
   facet_grid(TT ~ M, labeller = custom_labeller) +
-  theme_minimal()
-ggplot(res_BAC_gap20_av_P10
-       [res_BAC_gap20_av_P10$gamma <= 0.25 & res_BAC_gap20_av_P10$lambda <= 0.14, ]
+  theme_minimal() +
+  theme(
+    strip.text = element_text(face = "bold"),
+    text = element_text(size = 14),
+    panel.border = element_rect(color = "grey", fill = NA, size = 0.5)  # Grey border around each subplot
+  )
+
+
+#png(width = 700, height = 700,filename="p_p10_gap20_lambda.png")
+p_p10_gap20_lambda
+#dev.off()
+
+
+p_p10_gap20_gamma=ggplot(res_BAC_gap20_av_P10
+       [res_BAC_gap20_av_P10$gamma <= 0.20 & res_BAC_gap20_av_P10$lambda <= 0.14, ]
        , 
        aes(x = gamma, y = avBAC, color = factor(lambda))) +
-  geom_line(size = 0.5) +
-  geom_point(size = 1.5) +
+  geom_line(size = 0.7) +
+  geom_point(size = 2) +
   labs(
     x = expression(gamma),
     y = "Average BAC",
     color = expression(lambda)
   ) +
   facet_grid(TT ~ M, labeller = custom_labeller) +
-  theme_minimal()
+  theme_minimal()+
+  theme(
+    strip.text = element_text(face = "bold"),
+    text = element_text(size = 14),
+    panel.border = element_rect(color = "grey", fill = NA, size = 0.5)  # Grey border around each subplot
+  )
+
+#jpeg(width = 700, height = 400,filename="p_p10_gap20_gamma.jpeg",quality=100)
+p_p10_gap20_gamma
+#dev.off()
 
 res_BAC_gap20_max_P10=res_BAC_gap20_av_P10%>%group_by(M,TT)%>%summarise(maxBAC=max(avBAC),
                                                                 sd_maxBAC=sdBAC[which.max(avBAC)],
@@ -428,7 +516,10 @@ res_BAC_gap20_max_P10=res_BAC_gap20_av_P10%>%group_by(M,TT)%>%summarise(maxBAC=m
 
 
 
-# 5% NA
+
+# 5% NA -------------------------------------------------------------------
+
+
 pNAs=0.05
 pg=0
 
@@ -465,37 +556,61 @@ custom_labeller <- labeller(
   TT = function(value) paste("T =", value),
   M = function(value) paste("M =", value)
 )
-ggplot(res_BAC_NA5_av_P10[res_BAC_NA5_av_P10$gamma <= 0.14 & res_BAC_NA5_av_P10$lambda <= 0.25, ], 
-       aes(x = lambda, y = avBAC, color = factor(gamma))) +
-  geom_line(size = 0.5) +
-  geom_point(size = 1.5) +
+p_p10_NA5_lambda <- ggplot(res_BAC_NA5_av_P10[res_BAC_NA5_av_P10$gamma <= 0.14 & 
+                                                  res_BAC_NA5_av_P10$lambda <= 0.20, ], 
+                             aes(x = lambda, y = avBAC, color = factor(gamma))) +
+  geom_line(size = 0.7) +
+  geom_point(size = 2) +
   labs(
     x = expression(lambda),
     y = "Average BAC",
     color = expression(gamma)
   ) +
   facet_grid(TT ~ M, labeller = custom_labeller) +
-  theme_minimal()
-ggplot(res_BAC_NA5_av_P10
-       [res_BAC_NA5_av_P10$gamma <= 0.25 & res_BAC_NA5_av_P10$lambda <= 0.14, ]
-       , 
-       aes(x = gamma, y = avBAC, color = factor(lambda))) +
-  geom_line(size = 0.5) +
-  geom_point(size = 1.5) +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(face = "bold"),
+    text = element_text(size = 14),
+    panel.border = element_rect(color = "grey", fill = NA, size = 0.5)  # Grey border around each subplot
+  )
+
+
+#png(width = 700, height = 700,filename="p_p10_gap20_lambda.png")
+p_p10_NA5_lambda
+#dev.off()
+
+
+p_p10_NA5_gamma=ggplot(res_BAC_NA5_av_P10
+                         [res_BAC_NA5_av_P10$gamma <= 0.20 & res_BAC_NA5_av_P10$lambda <= 0.14, ]
+                         , 
+                         aes(x = gamma, y = avBAC, color = factor(lambda))) +
+  geom_line(size = 0.7) +
+  geom_point(size = 2) +
   labs(
     x = expression(gamma),
     y = "Average BAC",
     color = expression(lambda)
   ) +
   facet_grid(TT ~ M, labeller = custom_labeller) +
-  theme_minimal()
+  theme_minimal()+
+  theme(
+    strip.text = element_text(face = "bold"),
+    text = element_text(size = 14),
+    panel.border = element_rect(color = "grey", fill = NA, size = 0.5)  # Grey border around each subplot
+  )
+
+#jpeg(width = 700, height = 400,filename="p_p10_gap20_gamma.jpeg",quality=100)
+p_p10_NA5_gamma
+#dev.off()
 
 res_BAC_NA5_max_P10=res_BAC_NA5_av_P10%>%group_by(M,TT)%>%summarise(maxBAC=max(avBAC),
                                                                         sd_maxBAC=sdBAC[which.max(avBAC)],
                                                                         lambdaBAC=lambda[which.max(avBAC)],
                                                                         gammaBAC=gamma[which.max(avBAC)])
 
-#20% NA
+
+# 20% NA ------------------------------------------------------------------
+
 pNAs=0.2
 pg=0
 
@@ -532,30 +647,52 @@ custom_labeller <- labeller(
   TT = function(value) paste("T =", value),
   M = function(value) paste("M =", value)
 )
-ggplot(res_BAC_NA20_av_P10[res_BAC_NA20_av_P10$gamma <= 0.14 & res_BAC_NA20_av_P10$lambda <= 0.25, ], 
-       aes(x = lambda, y = avBAC, color = factor(gamma))) +
-  geom_line(size = 0.5) +
-  geom_point(size = 1.5) +
+p_p10_NA20_lambda <- ggplot(res_BAC_NA20_av_P10[res_BAC_NA20_av_P10$gamma <= 0.14 & 
+                                                  res_BAC_NA20_av_P10$lambda <= 0.20, ], 
+                           aes(x = lambda, y = avBAC, color = factor(gamma))) +
+  geom_line(size = 0.7) +
+  geom_point(size = 2) +
   labs(
     x = expression(lambda),
     y = "Average BAC",
     color = expression(gamma)
   ) +
   facet_grid(TT ~ M, labeller = custom_labeller) +
-  theme_minimal()
-ggplot(res_BAC_NA20_av_P10
-       [res_BAC_NA20_av_P10$gamma <= 0.25 & res_BAC_NA20_av_P10$lambda <= 0.14, ]
-       , 
-       aes(x = gamma, y = avBAC, color = factor(lambda))) +
-  geom_line(size = 0.5) +
-  geom_point(size = 1.5) +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(face = "bold"),
+    text = element_text(size = 14),
+    panel.border = element_rect(color = "grey", fill = NA, size = 0.5)  # Grey border around each subplot
+  )
+
+
+#png(width = 700, height = 700,filename="p_p10_gap20_lambda.png")
+p_p10_NA20_lambda
+#dev.off()
+
+
+p_p10_NA20_gamma=ggplot(res_BAC_NA20_av_P10[res_BAC_NA20_av_P10$gamma <= 0.20 & 
+                                              res_BAC_NA20_av_P10$lambda <= 0.14, ]
+                       , 
+                       aes(x = gamma, y = avBAC, color = factor(lambda))) +
+  geom_line(size = 0.7) +
+  geom_point(size = 2) +
   labs(
     x = expression(gamma),
     y = "Average BAC",
     color = expression(lambda)
   ) +
   facet_grid(TT ~ M, labeller = custom_labeller) +
-  theme_minimal()
+  theme_minimal()+
+  theme(
+    strip.text = element_text(face = "bold"),
+    text = element_text(size = 14),
+    panel.border = element_rect(color = "grey", fill = NA, size = 0.5)  # Grey border around each subplot
+  )
+
+#jpeg(width = 700, height = 400,filename="p_p10_gap20_gamma.jpeg",quality=100)
+p_p10_NA20_gamma
+#dev.off()
 
 res_BAC_NA20_max_P10=res_BAC_NA20_av_P10%>%group_by(M,TT)%>%summarise(maxBAC=max(avBAC),
                                                                     sd_maxBAC=sdBAC[which.max(avBAC)],
