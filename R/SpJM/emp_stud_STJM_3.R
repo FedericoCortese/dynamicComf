@@ -478,7 +478,7 @@ dev.off()
 
 data_stat_number2=data_stat_number[,-1]
 data_stat_number2$Station=paste("S",data_stat_number2$m)
-Sys.setenv(TZ="GMT+8")
+Sys.setenv(TZ="GMT")
 S_long <- S_est %>%
   pivot_longer(cols = starts_with("S"), names_to = "Station", values_to = "ComfortLevel")
 
@@ -486,11 +486,14 @@ S_long <- S_est %>%
 S_long <- S_long %>%
   left_join(data_stat_number2, by = "Station")
 
+S_long$time=as.POSIXct(S_long$time,tz="GMT")+hours(8)
+
 # Define a color palette for the comfort levels
 comfort_colors <- list("1" = "blue", "2" = "green", "3" = "red")
 
 
 # Shiny UI
+library(htmlwidgets)
 ui <- fluidPage(
   titlePanel("Dynamic Comfort Level Map"),
   
@@ -504,8 +507,8 @@ ui <- fluidPage(
                   timeFormat = "%Y-%m-%d %H:%M:%S", 
                   step = 3600, 
                   animate = animationOptions(interval = 1000, loop = TRUE)
-                  # ,
-                  # timezone = "GMT+8"
+                  ,
+                  timezone = "GMT"
                   )
     ),
     mainPanel(
@@ -529,7 +532,7 @@ server <- function(input, output, session) {
   # Render the selected time as text
   output$selectedTime <- renderText({
     paste("Selected Time: ", format(input$time, "%Y-%m-%d %H:%M:%S"
-                                    ,tz = "GMT+3"
+                                    ,tz = "GMT"
                                     )
           )
   })
@@ -569,8 +572,17 @@ server <- function(input, output, session) {
 }
 
 # Run the Shiny App
-shinyApp(ui, server)
+app <- shinyApp(ui, server)
 
+saveWidget(app, "Comfort_Map_Only.html", selfcontained = TRUE)
+
+htmltools::save_html(app, file = "Dynamic_Comfort_Level_Map.html")
+
+install.packages("webshot2")
+webshot2::install_phantomjs() 
+runApp("~/app")
+webshot2::webshot("http://127.0.0.1:7649", "Dynamic_Comfort_Level_Map.png", 
+                  vwidth = 1200, vheight = 800)
 
 # Load svf and gvf --------------------------------------------------------
 
