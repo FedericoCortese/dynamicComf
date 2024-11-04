@@ -574,15 +574,7 @@ server <- function(input, output, session) {
 # Run the Shiny App
 app <- shinyApp(ui, server)
 
-saveWidget(app, "Comfort_Map_Only.html", selfcontained = TRUE)
-
-htmltools::save_html(app, file = "Dynamic_Comfort_Level_Map.html")
-
-install.packages("webshot2")
-webshot2::install_phantomjs() 
-runApp("~/app")
-webshot2::webshot("http://127.0.0.1:7649", "Dynamic_Comfort_Level_Map.png", 
-                  vwidth = 1200, vheight = 800)
+app
 
 # Load svf and gvf --------------------------------------------------------
 
