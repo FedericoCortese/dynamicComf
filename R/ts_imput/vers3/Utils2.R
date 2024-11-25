@@ -32,27 +32,34 @@ library(forecast)
 
 # Summary ------------------------------------------------------------------
 
-weather_summ=function(data,wdn){
+weather_summ=function(x,window="15 min",sd=F){
   
   # This function computes the av. mean and standard deviation of the weather data
   
   # Arguments:
   # data is a data frame with time in the first column and weather data in the other columns
-  # wdn is a character specifying the window for the summary
+  # window is a character specifying the window for the summary
+  # sd is a boolean indicating whether to compute the standard deviation (default is FALSE)
   
   # Value:
-  # A list with two data frames: the first with the mean and the second with the standard deviation
+  # A list with three data frames: mean_x, sd_x (if sd=TRUE), and n_x, corresponding to the mean, standard deviation, and number of observations
   
   
-  mean_x=data %>% 
-    group_by(time=floor_date(time,wdn))%>%
-    summarise_if(is.numeric, mean, na.rm = TRUE) 
   
-  sd_x=data %>% 
-    group_by(time=floor_date(time,wdn))%>%
-    summarise_if(is.numeric, sd, na.rm = TRUE) 
+  mean_x = x %>% group_by(time = floor_date(time,window))%>%
+    summarise_if(is.numeric, mean, na.rm = TRUE)
   
-  return(list(mean_x,sd_x))
+  n_x = x %>% group_by(time = floor_date(time,window))%>%
+    summarise(across(.cols=names(x)[-1],.fns= ~sum(!is.na(.x))))
+  
+  if(sd){
+    sd_x=x %>% group_by(time=floor_date(time,window))%>%
+      summarise_if(is.numeric, sd, na.rm = TRUE)
+    return(list(mean_x=mean_x,sd_x=sd_x))
+  }
+  else{
+    return(list(mean_x=mean_x,n_x=n_x))
+  }
 }
 
 
