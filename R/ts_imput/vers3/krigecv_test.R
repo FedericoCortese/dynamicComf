@@ -96,7 +96,8 @@ plot(vl, plot.numbers=T, model=vlm, main=paste(wname," ", nsub, " 15-min interva
 
 k.lump.cv = vector("list",freq)
 for(i in 1:freq){
-  k.lump.cv[[i]] = krige.cv(values ~ 1,spdf[!is.na(spdf$values) & spdf$ti==(nsub-i+1),],model=vlm)
+  k.lump.cv[[i]] = krige.cv(values ~ 1,spdf[!is.na(spdf$values) & 
+                                              spdf$ti==(nsub-i+1),],model=vlm)
 }
 
 # questo comando crea un data frame impilando i data frame
