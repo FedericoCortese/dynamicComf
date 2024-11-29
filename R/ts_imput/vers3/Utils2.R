@@ -71,7 +71,7 @@ CV_lump.kr=function(id_stat,data,locations){
   
   test=data[,c(1,id_stat)]
   # indexes on which I have to predict
-  ttindex=which(is.na(test[,id_stat]))
+  ttindex=which(is.na(test[,2]))
   nsubs = length(ttindex)
   subs=1:nsubs
   
@@ -91,7 +91,7 @@ CV_lump.kr=function(id_stat,data,locations){
     coordinates(locations_wd) = ~ longitude + latitude
     locations_wd = locations_wd[match(names(train)[-1], locations_wd$id),]
     proj4string(locations_wd) = "+proj=longlat +datum=WGS84"
-    row.names(locations_wd) = locations_wd$id
+    #row.names(locations_wd) = locations_wd$id
     # creo oggetto ST
     space = list(value = names(train_sub)[-1])
     train_ST = stConstruct (train_sub[,-1], 
@@ -462,9 +462,11 @@ HoltWint.df=function(data,period=24){
 
 # Kriging Cross-Validation -----------------------------------------------------------------
 
-cvobj_STFDF=function(dat,locations,stat_col){
+cvobj_STFDF=function(dat,locations,stat_col,relevant_times){
   
   # This function creates a STFDF object from a data frame "dat" and excludes the station with index "stat_col"
+  
+  dat=dat[relevant_times,]
   
   locations<- locations[,c("id","longitude","latitude")]
   loc_to_pred=locations[locations$id %in% colnames(dat)[stat_col],]
@@ -489,6 +491,9 @@ cvobj_STFDF=function(dat,locations,stat_col){
   
   #tdat=t(dat[,-1])
   #dat_stfdf<- STFDF(stats, dat$time, data.frame(dat = as.vector(tdat)))
+  #dat_stfdf<- STFDF(stats, dat$time, dat_long[,-1])
+  
+  # temporal prediction only on times where I have NAs
   dat_stfdf<- STFDF(stats, dat$time, dat_long[,-1])
   
   return(list(loc_to_pred=loc_to_pred,
@@ -625,9 +630,9 @@ compute_errors=function(pred,
 }
 
 # CV (to be performed in parallel)
-CV_STkr=function(stat_ind,dat,locations,ordinary=T,plot=F){
+CV_STkr=function(stat_ind,dat,locations,ordinary=T,plot=F,relevant_times){
   colnames(locations)=c("id","longitude","latitude")
-  step1=cvobj_STFDF(dat,locations,stat_ind) 
+  step1=cvobj_STFDF(dat,locations,stat_ind,relevant_times) 
   # It automatically excludes stat_ind
   stat_id=step1$stat_id
   step2=STkriging(step1$dat_stfdf,
@@ -652,6 +657,7 @@ CV_STkr=function(stat_ind,dat,locations,ordinary=T,plot=F){
       #step1=step1,
       #step2=step2,
       pred_x=step2,
+      relevant_times=relevant_times,
       #pred_x=step2$stkgr@data$var1.pred,
       RMSE=step3$rmse,
       #MAE=step3$mae,
@@ -666,7 +672,8 @@ CV_STkr=function(stat_ind,dat,locations,ordinary=T,plot=F){
       #step2=step2,
       pred_x=step2,
       #pred_x=step2$stkgr@data$var1.pred,
-      RMSE=step3$rmse
+      RMSE=step3$rmse,
+      relevant_times=relevant_times
       # ,
       # MAE=step3$mae
       ))
@@ -682,16 +689,18 @@ distance3D <- function (point1, point2) {
 }
 
 # 
-get_orig_series=function(x,kgrST.res,locations2,target,loess=T){
+get_orig_series=function(x_trend_seas,kgrST.res,locations2,target,loess=T,
+                         relevant_times){
   
   # This function recovers the original series from the trend, seasonal, and residuals components
   
   # Arguments:
-  # x is an object obtained with function LOESS.df or HoltWint.df
+  # x_trend_seas is an object obtained with function LOESS.df or HoltWint.df
   # kgrST.res is the result of the spatio-temporal kriging, using function CV_STkr above
   # locations2 is a data frame with columns "id", "longitude", and "latitude"
   # target is a character specifying the station to predict
   # loess is a boolean indicating whether to use LOESS decomposition (default is TRUE)
+  # relevant_times is a vector with the relevant indexes (rows for which we made predictions)
   
   # Value:
   # A vector with the original series (trens, seasonal, level components plus residuals from kriging)
@@ -710,8 +719,11 @@ get_orig_series=function(x,kgrST.res,locations2,target,loess=T){
   wstats[which(is.na(wstats))]=0
   wstats=wstats/sum(wstats,na.rm = T)
   
-  trend.w=apply(x$trend[,-1],1,function(y) sum(y*wstats))
-  seas.w=apply(x$season[,-1],1,function(y) sum(y*wstats))
+  trend.w=apply(x_trend_seas$trend[,-1],1,function(y) sum(y*wstats))
+  seas.w=apply(x_trend_seas$season[,-1],1,function(y) sum(y*wstats))
+  
+  trend.w=trend.w[relevant_times]
+  seas.w=seas.w[relevant_times]
   
   if(loess){
     # result=trend.w+seas.w+kgr.ST.res
@@ -726,9 +738,12 @@ get_orig_series=function(x,kgrST.res,locations2,target,loess=T){
 }
 
 
-df_recover=function(x,x_trend_seas=NULL,loess=T,locations2,time,residuals=T){
+df_recover=function(x,x_trend_seas=NULL,loess=T,locations2,residuals=T){
   
-  df=NULL
+  colnames(locations2)[1:4]=c("id","longitude","latitude","height")
+  TT=dim(x_trend_seas$trend)[1]
+  
+  df=matrix(0,nrow=TT,ncol=nrow(locations2))
   if(residuals){
     if(!is.null(x_trend_seas)){
       for(i in 1:length(x)){
@@ -737,11 +752,12 @@ df_recover=function(x,x_trend_seas=NULL,loess=T,locations2,time,residuals=T){
           x[[i]]$pred_x,
           locations2,
           target=x[[i]]$stat_id,
-          loess=loess)
-        df=cbind(df,temp$result)
-        colnames(df)[i]=temp$target
+          loess=loess,
+          relevant_times=x[[i]]$relevant_times)
+        df[x[[i]]$relevant_times,i]=temp$result
       }
-      df=data.frame(time,df)
+      df=data.frame(time=x_trend_seas$trend$time,df)
+      colnames(df)[-1]=locations2$id
     }
     else{
       stop("x_trend_seas must be provided")

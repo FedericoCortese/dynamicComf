@@ -73,35 +73,35 @@ for(i in 2:ncol(dat_air_winter)){
   air_20_winter[na_st:(na_st+na_len[3]),i]=NA
 }
 
-windows()
-par(mfrow=c(6,6),mar=c(2,2,6,2))
-for(i in 2:ncol(air_5_winter)){
-  plot(x=air_5_winter$time,y=as.vector(unlist(air_5_winter[,i])),type="l",col="black",
-       xlab=" ",ylab=" ",
-       main=colnames(air_5_winter[,i]))
- # title(main=colnames(air_5_winter)[i])
-}
-mtext("Air temperatures - 5% NAs", side = 3, line = - 2, outer = TRUE)
-
-windows()
-par(mfrow=c(6,6),mar=c(2,2,6,2))
-for(i in 2:ncol(air_10_winter)){
-  plot(x=air_10_winter$time,y=as.vector(unlist(air_10_winter[,i])),type="l",col="black",
-       xlab=" ",ylab=" ",
-       main=colnames(air_5_winter[,i]))
-  # title(main=colnames(air_5_winter)[i])
-}
-mtext("Air temperatures - 10% NAs", side = 3, line = - 2, outer = TRUE)
-
-windows()
-par(mfrow=c(6,6),mar=c(2,2,6,2))
-for(i in 2:ncol(air_20_winter)){
-  plot(x=air_20_winter$time,y=as.vector(unlist(air_20_winter[,i])),type="l",col="black",
-       xlab=" ",ylab=" ",
-       main=colnames(air_20_winter[,i]))
-  # title(main=colnames(air_5_winter)[i])
-}
-mtext("Air temperatures - 20% NAs", side = 3, line = - 2, outer = TRUE)
+# windows()
+# par(mfrow=c(6,6),mar=c(2,2,6,2))
+# for(i in 2:ncol(air_5_winter)){
+#   plot(x=air_5_winter$time,y=as.vector(unlist(air_5_winter[,i])),type="l",col="black",
+#        xlab=" ",ylab=" ",
+#        main=colnames(air_5_winter[,i]))
+#  # title(main=colnames(air_5_winter)[i])
+# }
+# mtext("Air temperatures - 5% NAs", side = 3, line = - 2, outer = TRUE)
+# 
+# windows()
+# par(mfrow=c(6,6),mar=c(2,2,6,2))
+# for(i in 2:ncol(air_10_winter)){
+#   plot(x=air_10_winter$time,y=as.vector(unlist(air_10_winter[,i])),type="l",col="black",
+#        xlab=" ",ylab=" ",
+#        main=colnames(air_5_winter[,i]))
+#   # title(main=colnames(air_5_winter)[i])
+# }
+# mtext("Air temperatures - 10% NAs", side = 3, line = - 2, outer = TRUE)
+# 
+# windows()
+# par(mfrow=c(6,6),mar=c(2,2,6,2))
+# for(i in 2:ncol(air_20_winter)){
+#   plot(x=air_20_winter$time,y=as.vector(unlist(air_20_winter[,i])),type="l",col="black",
+#        xlab=" ",ylab=" ",
+#        main=colnames(air_20_winter[,i]))
+#   # title(main=colnames(air_5_winter)[i])
+# }
+# mtext("Air temperatures - 20% NAs", side = 3, line = - 2, outer = TRUE)
 
 # Imputation --------------------------------------------------------------
 
@@ -134,16 +134,16 @@ air_10_winter_naive=air_10_winter_naive$naive
 air_20_winter_naive=MA_imp(air_20_winter)
 air_20_winter_naive=air_20_winter_naive$naive
 
-windows()
-par(mfrow=c(6,6),mar=c(2,2,6,2))
-for(i in 2:ncol(air_5_winter_sarima)){
-  plot(x=air_5_winter$time,y=as.vector(unlist(air_5_winter_naive[,i])),type="l",col="red",
-       xlab=" ",ylab=" ",
-       main=colnames(air_5_winter[,i]))
-  lines(x=air_5_winter$time,y=as.vector(unlist(air_5_winter[,i])),col="black")
-  # title(main=colnames(air_5_winter)[i])
-}
-mtext("Air temperatures - 5% NAs", side = 3, line = - 2, outer = TRUE)
+# windows()
+# par(mfrow=c(6,6),mar=c(2,2,6,2))
+# for(i in 2:ncol(air_5_winter_sarima)){
+#   plot(x=air_5_winter$time,y=as.vector(unlist(air_5_winter_naive[,i])),type="l",col="red",
+#        xlab=" ",ylab=" ",
+#        main=colnames(air_5_winter[,i]))
+#   lines(x=air_5_winter$time,y=as.vector(unlist(air_5_winter[,i])),col="black")
+#   # title(main=colnames(air_5_winter)[i])
+# }
+# mtext("Air temperatures - 5% NAs", side = 3, line = - 2, outer = TRUE)
 
 # Linear Regression
 
@@ -194,8 +194,12 @@ start = Sys.time()
 krig_air_5_winter_sarima <- parallel::mclapply(indx,
                                          function(x)CV_STkr(x,
                                                             air_5_winter_loess_sarima$residuals,
-                                                            locations3),
+                                                            locations3,
+                                                            relevant_times=which(is.na(air_5_winter[,x]))),
                                          mc.cores = parallel::detectCores()-1)
+end = Sys.time()
+end-start
+
 krig_air_10_winter_sarima <- parallel::mclapply(indx,
                                                function(x)CV_STkr(x,
                                                                   air_10_winter_loess_sarima$residuals,
@@ -249,46 +253,51 @@ elapsed=end-start
 
 # Recover trend and seas --------------------------------------------------
 
-time_winter=air_short$time[-(1:24)]
+# air_5_winter_recover=air_5_winter
+# air_5_winter_recover[is.na(air_5_winter_recover)]=0
 
 # X-SARIMA
-air_5_sarima_recover=df_recover(krig_air_5_winter_sarima,air_5_winter_loess_sarima,
-                                      loess=T,locations3,time_winter)
-air_10_sarima_recover=df_recover(krig_air_10_winter_sarima,air_10_winter_loess_sarima,
-                                      loess=T,locations3,time_winter)
-air_20_sarima_recover=df_recover(krig_air_20_winter_sarima,air_20_winter_loess_sarima,
-                                      loess=T,locations3,time_winter)
+air_5_sarima_winter_recover=df_recover(krig_air_5_winter_sarima,
+                                air_5_winter_loess_sarima, 
+                                loess=T,
+                                locations3)
+
+# air_5_sarima_winter_recover_2=air_5_sarima_winter_recover[,-1]+air_5_winter_recover[,-1]
+
+air_10_sarima_winter_recover=df_recover(krig_air_10_winter_sarima,
+                                       air_10_winter_loess_sarima, 
+                                       loess=T,
+                                       locations3)
 
 # NAIVE
-air_5_naive_recover=df_recover(krig_air_5_winter_naive,air_5_winter_loess_naive,
-                                loess=T,locations3,time_winter)
-air_10_sarima_recover=df_recover(krig_air_10_winter_naive,air_10_winter_loess_naive,
-                                 loess=T,locations3,time_winter)
-air_20_sarima_recover=df_recover(krig_air_20_winter_naive,air_20_winter_loess_naive,
-                                 loess=T,locations3,time_winter)
+
+
 
 # Lin Regression
-air_5_lr_recover=df_recover(krig_air_5_winter_lr,air_5_winter_loess_lr,
-                            loess=T,locations3,time_winter)
-air_10_lr_recover=df_recover(krig_air_10_winter_lr,air_10_winter_loess_lr,
-                             loess=T,locations3,time_winter)
-air_20_lr_recover=df_recover(krig_air_20_winter_lr,air_20_winter_loess_lr,
-                             loess=T,locations3,time_winter)
+
 
 
 # Lumped Kriging ----------------------------------------------------------
 
+indx=2:(n_stations+1)
+locations4=locations3
+colnames(locations4)[1:3]=c("id","longitude","latitude")
 
 start_lump=Sys.time()
 
 krig_air_5_winter_lump <- parallel::mclapply(indx,
-                                function(x)CV_lump.kr(x,air_5_winter,locations3),
+                                function(x)CV_lump.kr(x,air_5_winter,locations4),
                                 mc.cores = parallel::detectCores()-1)
+end_lump=Sys.time()
+end_lump-start_lump
+
 krig_air_10_winter_lump <- parallel::mclapply(indx,
-                                             function(x)CV_lump.kr(x,air_10_winter,locations3),
+                                             function(x)CV_lump.kr(x,air_10_winter,
+                                                                   locations4),
                                              mc.cores = parallel::detectCores()-1)
 krig_air_20_winter_lump <- parallel::mclapply(indx,
-                                             function(x)CV_lump.kr(x,air_20_winter,locations3),
+                                             function(x)CV_lump.kr(x,air_20_winter,
+                                                                   locations4),
                                              mc.cores = parallel::detectCores()-1)
 
 end_lump=Sys.time()
