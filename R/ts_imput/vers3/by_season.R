@@ -253,29 +253,62 @@ elapsed=end-start
 
 # Recover trend and seas --------------------------------------------------
 
-# air_5_winter_recover=air_5_winter
-# air_5_winter_recover[is.na(air_5_winter_recover)]=0
-
 # X-SARIMA
 air_5_sarima_winter_recover=df_recover(krig_air_5_winter_sarima,
                                 air_5_winter_loess_sarima, 
                                 loess=T,
                                 locations3)
 
-# air_5_sarima_winter_recover_2=air_5_sarima_winter_recover[,-1]+air_5_winter_recover[,-1]
-
 air_10_sarima_winter_recover=df_recover(krig_air_10_winter_sarima,
                                        air_10_winter_loess_sarima, 
                                        loess=T,
                                        locations3)
 
+air_20_sarima_winter_recover=df_recover(krig_air_20_winter_sarima,
+                                       air_20_winter_loess_sarima, 
+                                       loess=T,
+                                       locations3)
+
 # NAIVE
 
+air_5_naive_winter_recover=df_recover(krig_air_5_winter_naive,
+                                      air_5_winter_loess_naive, 
+                                      loess=T,
+                                      locations3)
 
+air_10_naive_winter_recover=df_recover(krig_air_10_winter_naive,
+                                       air_10_winter_loess_naive, 
+                                       loess=T,
+                                       locations3)
+
+air_20_naive_winter_recover=df_recover(krig_air_20_winter_naive,
+                                       air_20_winter_loess_naive, 
+                                       loess=T,
+                                       locations3)
 
 # Lin Regression
 
+air_5_lr_winter_recover=df_recover(krig_air_5_winter_lr,
+                                   air_5_winter_loess_lr, 
+                                   loess=T,
+                                   locations3)
 
+air_10_lr_winter_recover=df_recover(krig_air_10_winter_lr,
+                                    air_10_winter_loess_lr, 
+                                    loess=T,
+                                    locations3)
+
+air_20_lr_winter_recover=df_recover(krig_air_20_winter_lr,
+                                    air_20_winter_loess_lr, 
+                                    loess=T,
+                                    locations3)
+
+## Recover original dimension df (maybe later)
+# air_5_winter_recover=air_5_winter
+# air_5_winter_recover[is.na(air_5_winter_recover)]=0
+# air_5_sarima_winter_recover_2=air_5_sarima_winter_recover[,-1]+air_5_winter_recover[,-1]
+# air_5_sarima_winter_recover_2=data.frame(time=air_5_winter$time,
+#                                          air_5_sarima_winter_recover_2)
 
 # Lumped Kriging ----------------------------------------------------------
 
