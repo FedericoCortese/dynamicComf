@@ -63,6 +63,92 @@ weather_summ=function(x,window="15 min",sd=F){
 }
 
 
+# Lumped Kriging ----------------------------------------------------------
+
+CV_lump.kr=function(id_stat,data,locations){
+  
+  start=Sys.time()
+  
+  test=data[,c(1,id_stat)]
+  # indexes on which I have to predict
+  ttindex=which(is.na(test[,id_stat]))
+  nsubs = length(ttindex)
+  subs=1:nsubs
+  
+  train=data[,-id_stat]
+  
+  y = matrix(NA,length(ttindex),2)
+  for(ind in unique(ttindex)){
+    #print(ind)
+    # finestra mobile appena possibile
+    if(ind>nsubs) subs = (ind-nsubs+1):ind
+    # riduzione al sottoinsieme
+    train_sub = train[subs,]
+    #n_summ_sub = n_summ[subs,]
+    
+    
+    locations_wd = locations
+    coordinates(locations_wd) = ~ longitude + latitude
+    locations_wd = locations_wd[match(names(train)[-1], locations_wd$id),]
+    proj4string(locations_wd) = "+proj=longlat +datum=WGS84"
+    row.names(locations_wd) = locations_wd$id
+    # creo oggetto ST
+    space = list(value = names(train_sub)[-1])
+    train_ST = stConstruct (train_sub[,-1], 
+                            space, 
+                            train_sub$time, 
+                            SpatialObj= locations_wd)
+    
+    spdf.lst <- lapply(1:nsubs,
+                       function(i) {
+                         x = train_ST[,i]
+                         x$ti = i # ti = time index
+                         x$id = train_ST@sp$id
+                         return(x)}
+    )
+    
+    spdf <- do.call(rbind, spdf.lst)
+    # summary(spdf) # Object of class SpatialPointsDataFrame
+    
+    if(ind==ttindex[1] & ind<=nsubs){
+      # cutoff basato su esame di dists = spDists(locations_wd,longlat=T)
+      # e visualizzazione di alcuni variogrammi
+      vl <- variogram(values ~ ti, spdf[!is.na(spdf$values),], cutoff=25, dX=0)
+      isill = quantile(vl$gamma,0.95)
+      ihrange = vl$dist[match(T,vl$gamma>=isill)]
+      vlm <- fit.variogram(vl, model=vgm(isill, "Exp", ihrange/3),fit.method=6) # non assegnando nugget nel modello viene stimato zero
+      # plot(vl, plot.numbers=T, model=vlm, main=paste(wname, " ", nsub, " 15-min intervals lumped: ", len, "days"))
+    }
+    if(ind>nsubs){ # devo rifare la stima quando la finestra inizia a muoversi
+      vl <- variogram(values ~ ti, spdf[!is.na(spdf$values),], cutoff=25, dX=0)
+      isill = quantile(vl$gamma,0.95)
+      ihrange = vl$dist[match(T,vl$gamma>=isill)]
+      vlm <- fit.variogram(vl, model=vgm(isill, "Exp", ihrange/3),fit.method=6) # non assegnando nugget nel modello viene stimato zero
+    }
+    
+    # Leave-one(station)-out
+    slocs=locations[which(locations$id==colnames(data)[id_stat]),c("latitude","longitude")]
+    slocs <- SpatialPoints(slocs,
+                           proj4string=CRS(proj4string(spdf)))
+    
+    # kriging
+    if(ind <=nsubs) 
+      k.lump = krige(values ~ 1,spdf[!is.na(spdf$values) & spdf$ti==ind,], newdata=slocs,model=vlm)
+    else
+      k.lump = krige(values ~ 1,
+                     spdf[!is.na(spdf$values) & spdf$ti==nsubs,], 
+                     newdata=slocs,model=vlm)
+    
+    y[which(ttindex==ind),] = as.matrix(k.lump@data)
+  }
+  end=Sys.time()
+  elapsed=end-start
+  
+  return(list(y=y,
+              elapsed=elapsed,
+              id_stat=id_stat,
+              stat=colnames(data)[id_stat]))
+}
 
 # Imputation --------------------------------------------------------------
 
