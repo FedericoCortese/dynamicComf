@@ -1,5 +1,6 @@
 # Set time zone
 Sys.setenv(TZ='UTC')
+source("Utils2.R")
 
 # Only 2023 ---------------------------------------------------------------
 load("prov_genova_tempANDrh.RData")
@@ -19,7 +20,6 @@ save(dat_air_2023,dat_rh_2023,locations3,file="dat_2023.RData")
 # Load 2023 ---------------------------------------------------------------
 
 load("dat_2023.RData")
-source("Utils2.R")
 
 summary(dat_air_2023)
 
@@ -365,11 +365,31 @@ end_lump-start_lump
 
 save(krig_air_5_winter_lump,file="krig_air_5_winter_lump.RData")
 
+air_5_lump_winter=data.frame(time=dat_air_winter$time)
+for(i in 1:length(krig_air_5_winter_lump)){
+  pred=krig_air_5_winter_lump[[i]]$y[,1]
+  #vars=krig_air_5_winter_lump[[i]]$y[,2]
+  temp_times=dat_air_winter$time[which(is.na(air_5_winter[,(i+1)]))]
+  temp=data.frame(temp_times,pred)
+  colnames(temp)=c("time",krig_air_5_winter_lump[[i]]$stat)
+  air_5_lump_winter=merge(air_5_lump_winter,temp,by="time",all.x=TRUE)
+}
+
 krig_air_10_winter_lump <- parallel::mclapply(indx,
                                              function(x)CV_lump.kr(x,air_10_winter,
                                                                    locations4),
                                              mc.cores = parallel::detectCores()-1)
 save(krig_air_10_winter_lump,file="krig_air_10_winter_lump.RData")
+
+air_10_lump_winter=data.frame(time=dat_air_winter$time)
+for(i in 1:length(krig_air_10_winter_lump)){
+  pred=krig_air_10_winter_lump[[i]]$y[,1]
+  #vars=krig_air_10_winter_lump[[i]]$y[,2]
+  temp_times=dat_air_winter$time[which(is.na(air_10_winter[,(i+1)]))]
+  temp=data.frame(temp_times,pred)
+  colnames(temp)=c("time",krig_air_10_winter_lump[[i]]$stat)
+  air_10_lump_winter=merge(air_10_lump_winter,temp,by="time",all.x=TRUE)
+}
 
 krig_air_20_winter_lump <- parallel::mclapply(indx,
                                              function(x)CV_lump.kr(x,air_20_winter,
@@ -377,8 +397,22 @@ krig_air_20_winter_lump <- parallel::mclapply(indx,
                                              mc.cores = parallel::detectCores()-1)
 save(krig_air_20_winter_lump,file="krig_air_20_winter_lump.RData")
 
+air_20_lump_winter=data.frame(time=dat_air_winter$time)
+for(i in 1:length(krig_air_20_winter_lump)){
+  pred=krig_air_20_winter_lump[[i]]$y[,1]
+  #vars=krig_air_20_winter_lump[[i]]$y[,2]
+  temp_times=dat_air_winter$time[which(is.na(air_20_winter[,(i+1)]))]
+  temp=data.frame(temp_times,pred)
+  colnames(temp)=c("time",krig_air_20_winter_lump[[i]]$stat)
+  air_20_lump_winter=merge(air_20_lump_winter,temp,by="time",all.x=TRUE)
+}
 
 end_lump=Sys.time()
+
+
+# RMSE --------------------------------------------------------------------
+
+
 
 # II Spring II ------------------------------------------------------------------
 
