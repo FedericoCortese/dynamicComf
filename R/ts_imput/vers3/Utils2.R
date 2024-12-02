@@ -603,7 +603,15 @@ STkriging<-function(dat,
   en=Sys.time()
   elapsed=en-st
   
-  return(stkgr@data$var1.pred)
+
+  return(
+    list(pred=stkgr@data$var1.pred,
+         var=stkgr@data$var1.var)
+  )
+  
+  # return(
+  #   stkgr@data$var1.pred
+  #        )
   
   # return(list(stkgr=stkgr,
   #             elapsed=elapsed))
@@ -630,7 +638,9 @@ compute_errors=function(pred,
 }
 
 # CV (to be performed in parallel)
-CV_STkr=function(stat_ind,dat,locations,ordinary=T,plot=F,relevant_times){
+CV_STkr=function(stat_ind,dat,locations,ordinary=T,
+                 #plot=F,
+                 relevant_times){
   colnames(locations)=c("id","longitude","latitude")
   step1=cvobj_STFDF(dat,locations,stat_ind,relevant_times) 
   # It automatically excludes stat_ind
@@ -639,45 +649,45 @@ CV_STkr=function(stat_ind,dat,locations,ordinary=T,plot=F,relevant_times){
                   #vgm.model,
                   step1$loc_to_pred,
                   ordinary = ordinary)
-  step3=compute_errors(step2,step1)
+  #step3=compute_errors(step2,step1)
   
-  if(plot){
-    df=data.frame(time=dat$time,
-                  result=step2,
-                  #$stkgr@data$var1.pred,
-                  true=step1$dat_orig[,step1$stat_id])
-    P=ggplot(df)+
-      geom_line(aes(x=time,y=result,col="blue"))+
-      geom_line(aes(x=time,y=true,col="red"))+
-      theme_bw()+labs(x='Time',y='Temperature')+
-      scale_colour_manual(name = ' ', 
-                          values =c('blue'='blue','red'='red'), labels = c('Fitted','True'))
+  # if(plot){
+  #   df=data.frame(time=dat$time,
+  #                 result=step2,
+  #                 #$stkgr@data$var1.pred,
+  #                 true=step1$dat_orig[,step1$stat_id])
+  #   P=ggplot(df)+
+  #     geom_line(aes(x=time,y=result,col="blue"))+
+  #     geom_line(aes(x=time,y=true,col="red"))+
+  #     theme_bw()+labs(x='Time',y='Temperature')+
+  #     scale_colour_manual(name = ' ', 
+  #                         values =c('blue'='blue','red'='red'), labels = c('Fitted','True'))
+  #   return(list(
+  #     stat_id=stat_id,
+  #     #step1=step1,
+  #     #step2=step2,
+  #     pred_x=step2,
+  #     relevant_times=relevant_times,
+  #     #pred_x=step2$stkgr@data$var1.pred,
+  #     RMSE=step3$rmse,
+  #     #MAE=step3$mae,
+  #     plot=P
+  #     ))
+  # }
+  
+  #else{
     return(list(
       stat_id=stat_id,
-      #step1=step1,
-      #step2=step2,
-      pred_x=step2,
-      relevant_times=relevant_times,
-      #pred_x=step2$stkgr@data$var1.pred,
-      RMSE=step3$rmse,
-      #MAE=step3$mae,
-      plot=P
-      ))
-  }
-  
-  else{
-    return(list(
-      stat_id=stat_id,
-      #step1=step1,
-      #step2=step2,
-      pred_x=step2,
-      #pred_x=step2$stkgr@data$var1.pred,
-      RMSE=step3$rmse,
+      #pred_x=step2,
+      #
+      var_x=step2$var,
+      pred_x=step2$pred,
+      #
+      # Togliere questo RMSE, lo calcolo dopo a parte
+      #RMSE=step3$rmse,
       relevant_times=relevant_times
-      # ,
-      # MAE=step3$mae
       ))
-  }
+  #}
   
 }
 
@@ -743,7 +753,7 @@ df_recover=function(x,x_trend_seas=NULL,loess=T,locations2,residuals=T){
   colnames(locations2)[1:4]=c("id","longitude","latitude","height")
   TT=dim(x_trend_seas$trend)[1]
   
-  df=matrix(0,nrow=TT,ncol=nrow(locations2))
+  df=matrix(NA,nrow=TT,ncol=nrow(locations2))
   if(residuals){
     if(!is.null(x_trend_seas)){
       for(i in 1:length(x)){

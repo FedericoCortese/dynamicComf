@@ -195,49 +195,62 @@ krig_air_5_winter_sarima <- parallel::mclapply(indx,
                                          function(x)CV_STkr(x,
                                                             air_5_winter_loess_sarima$residuals,
                                                             locations3,
-                                                            relevant_times=which(is.na(air_5_winter[,x]))),
+                                                            relevant_times=which(is.na(air_5_winter[,x]))
+                                                            )
+                                         ,
                                          mc.cores = parallel::detectCores()-1)
 # end = Sys.time()
 # end-start
 
 save(krig_air_5_winter_sarima,file="krig_air_5_winter_sarima.RData")
-rm(krig_air_5_winter_sarima)
+#rm(krig_air_5_winter_sarima)
 
 krig_air_10_winter_sarima <- parallel::mclapply(indx,
                                                function(x)CV_STkr(x,
                                                                   air_10_winter_loess_sarima$residuals,
-                                                                  locations3),
+                                                                  locations3,
+                                                                  relevant_times=which(is.na(air_10_winter[,x]))
+                                                                  ),
                                                mc.cores = parallel::detectCores()-1)
 save(krig_air_10_winter_sarima,file="krig_air_10_winter_sarima.RData")
-rm(krig_air_10_winter_sarima)
+#rm(krig_air_10_winter_sarima)
 
 krig_air_20_winter_sarima <- parallel::mclapply(indx,
                                                 function(x)CV_STkr(x,
                                                                    air_20_winter_loess_sarima$residuals,
-                                                                   locations3),
+                                                                   locations3
+                                                                   ,
+                                                                   relevant_times=which(is.na(air_20_winter[,x]))
+                                                                   ),
                                                 mc.cores = parallel::detectCores()-1)
 save(krig_air_20_winter_sarima,file="krig_air_20_winter_sarima.RData")
-rm(krig_air_20_winter_sarima)
+#rm(krig_air_20_winter_sarima)
 # NAIVE
 
 krig_air_5_winter_naive <- parallel::mclapply(indx,
                                                function(x)CV_STkr(x,
                                                                   air_5_winter_loess_naive$residuals,
-                                                                  locations3),
+                                                                  locations3,
+                                                                  relevant_times=which(is.na(air_5_winter[,x]))
+                                                                  ),
                                                mc.cores = parallel::detectCores()-1)
 save(krig_air_5_winter_naive,file="krig_air_5_winter_naive.RData")
 
 krig_air_10_winter_naive <- parallel::mclapply(indx,
                                               function(x)CV_STkr(x,
                                                                  air_10_winter_loess_naive$residuals,
-                                                                 locations3),
+                                                                 locations3,
+                                                                 relevant_times=which(is.na(air_10_winter[,x]))
+                                                                 ),
                                               mc.cores = parallel::detectCores()-1)
 save(krig_air_10_winter_naive,file="krig_air_10_winter_naive.RData")
 
 krig_air_20_winter_naive <- parallel::mclapply(indx,
                                               function(x)CV_STkr(x,
                                                                  air_20_winter_loess_naive$residuals,
-                                                                 locations3),
+                                                                 locations3,
+                                                                 relevant_times=which(is.na(air_20_winter[,x]))
+                                                                 ),
                                               mc.cores = parallel::detectCores()-1)
 
 save(krig_air_20_winter_naive,file="krig_air_20_winter_naive.RData")
@@ -247,14 +260,18 @@ save(krig_air_20_winter_naive,file="krig_air_20_winter_naive.RData")
 krig_air_5_winter_lr <- parallel::mclapply(indx,
                                               function(x)CV_STkr(x,
                                                                  air_5_winter_loess_lr$residuals,
-                                                                 locations3),
+                                                                 locations3,
+                                                                 relevant_times=which(is.na(air_5_winter[,x]))
+                                                                 ),
                                               mc.cores = parallel::detectCores()-1)
 
 save(krig_air_5_winter_lr,file="krig_air_5_winter_lr.RData")
 krig_air_10_winter_lr <- parallel::mclapply(indx,
                                            function(x)CV_STkr(x,
                                                               air_10_winter_loess_lr$residuals,
-                                                              locations3),
+                                                              locations3,
+                                                              relevant_times=which(is.na(air_10_winter[,x]))
+                                                              ),
                                            mc.cores = parallel::detectCores()-1)
 
 save(krig_air_10_winter_lr,file="krig_air_10_winter_lr.RData")
@@ -262,7 +279,9 @@ save(krig_air_10_winter_lr,file="krig_air_10_winter_lr.RData")
 krig_air_20_winter_lr <- parallel::mclapply(indx,
                                            function(x)CV_STkr(x,
                                                               air_20_winter_loess_lr$residuals,
-                                                              locations3),
+                                                              locations3,
+                                                              relevant_times=which(is.na(air_20_winter[,x]))
+                                                              ),
                                            mc.cores = parallel::detectCores()-1)
 
 save(krig_air_20_winter_lr,file="krig_air_20_winter_lr.RData")
