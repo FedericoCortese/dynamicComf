@@ -188,7 +188,7 @@ air_20_winter_loess_lr=LOESS.df(air_20_winter_lr)
 
 indx=2:(n_stations+1)
 
-start = Sys.time()
+#start = Sys.time()
 
 # X-SARIMA
 krig_air_5_winter_sarima <- parallel::mclapply(indx,
@@ -197,10 +197,11 @@ krig_air_5_winter_sarima <- parallel::mclapply(indx,
                                                             locations3,
                                                             relevant_times=which(is.na(air_5_winter[,x]))),
                                          mc.cores = parallel::detectCores()-1)
-end = Sys.time()
-end-start
+# end = Sys.time()
+# end-start
 
 save(krig_air_5_winter_sarima,file="krig_air_5_winter_sarima.RData")
+rm(krig_air_5_winter_sarima)
 
 krig_air_10_winter_sarima <- parallel::mclapply(indx,
                                                function(x)CV_STkr(x,
@@ -208,6 +209,7 @@ krig_air_10_winter_sarima <- parallel::mclapply(indx,
                                                                   locations3),
                                                mc.cores = parallel::detectCores()-1)
 save(krig_air_10_winter_sarima,file="krig_air_10_winter_sarima.RData")
+rm(krig_air_10_winter_sarima)
 
 krig_air_20_winter_sarima <- parallel::mclapply(indx,
                                                 function(x)CV_STkr(x,
@@ -215,6 +217,7 @@ krig_air_20_winter_sarima <- parallel::mclapply(indx,
                                                                    locations3),
                                                 mc.cores = parallel::detectCores()-1)
 save(krig_air_20_winter_sarima,file="krig_air_20_winter_sarima.RData")
+rm(krig_air_20_winter_sarima)
 # NAIVE
 
 krig_air_5_winter_naive <- parallel::mclapply(indx,
