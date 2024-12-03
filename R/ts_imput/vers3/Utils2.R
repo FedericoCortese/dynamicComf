@@ -861,5 +861,75 @@ rmse_st=function(reconstr,true,miss){
 }
 
 
-# Kriging Predictions -----------------------------------------------------
 
+# Plot Results ------------------------------------------------------------
+
+library(ggplot2)
+library(ggpubr)
+
+generate_plots <- function(data_true, data_NA, data_pred, s = 0.8, ncol = 6,
+                           x_lab_size=10,
+                           title = "Plot Grid") {
+  # Validate inputs
+  if (!all(dim(data_true) == dim(data_NA)) || !all(dim(data_true) == dim(data_pred))) {
+    stop("All input data frames must have the same dimensions.")
+  }
+  
+  # Ensure the 'time' column exists in data_NA
+  if (!"time" %in% colnames(data_NA)) {
+    stop("'data_NA' must contain a 'time' column.")
+  }
+  
+  # Create a list to store individual plots
+  plot_list <- list()
+  
+  # Loop through each column in data_NA (excluding the first one if it's 'time')
+  for (i in 2:ncol(data_NA)) {
+    # Prepare the data frame for the current column
+    temp_dat <- data.frame(
+      time = data_NA$time[which(is.na(data_NA[, i]))],
+      true = data_true[which(is.na(data_NA[, i])), i],
+      pred = data_pred[which(is.na(data_NA[, i])), i]
+    )
+    
+    # Create the plot using ggplot2
+    p <- ggplot(temp_dat, aes(x = time)) +
+      geom_line(aes(y = true, color = "True"), linewidth = s) +  # Add legend label for "True"
+      geom_line(aes(y = pred, color = "Prediction"), linewidth = s) +  # Add legend label for "Prediction"
+      scale_color_manual(
+        values = c("True" = "black", "Prediction" = "red"), # Define colors for legend
+        name = NULL # Optional: remove the legend title
+      ) +
+      labs(title = colnames(data_NA)[i], x = NULL, y = NULL) +
+      theme_minimal() +
+      theme(
+        plot.title = element_text(hjust = 0.5, size = 10),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        axis.text.x = element_text(size = x_lab_size),
+        legend.position = "bottom" # Position legend at the bottom for extraction
+      )
+    
+    # Add the plot to the list
+    plot_list[[i - 1]] <- p
+  }
+  
+  # Create the ggarrange object
+  P <- ggarrange(
+    plotlist = plot_list,
+    ncol = ncol, 
+    nrow = ceiling(length(plot_list) / ncol),
+    common.legend = TRUE, 
+    legend = "bottom"
+  )
+  
+  # Annotate the figure with a title
+  P_with_title <- annotate_figure(
+    P,
+    top = text_grob(title, size = 14, face = "bold", hjust = 0.5)
+  )
+  
+  # Forza il rendering manualmente
+  #grid::grid.newpage() # Crea una nuova pagina grafica
+  grid::grid.draw(P_with_title) # Disegna il grafico completo
+}
