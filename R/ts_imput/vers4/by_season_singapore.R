@@ -195,7 +195,7 @@ krig_air_5_winter_sarima_full <- parallel::mclapply(indx,
 krig_air_10_winter_sarima <- parallel::mclapply(indx,
                                                function(x)CV_STkr(x,
                                                                   air_10_winter_loess_sarima$residuals,
-                                                                  locations3,
+                                                                  locations4,
                                                                   relevant_times=which(is.na(air_10_winter[,x]))
                                                                   ),
                                                mc.cores = parallel::detectCores()-1)
@@ -212,7 +212,7 @@ krig_air_10_winter_sarima_full=parallel::mclapply(indx,
 krig_air_20_winter_sarima <- parallel::mclapply(indx,
                                                 function(x)CV_STkr(x,
                                                                    air_20_winter_loess_sarima$residuals,
-                                                                   locations3
+                                                                   locations4
                                                                    ,
                                                                    relevant_times=which(is.na(air_20_winter[,x]))
                                                                    ),
@@ -231,7 +231,7 @@ krig_air_20_winter_sarima_full=parallel::mclapply(indx,
 krig_air_5_winter_naive <- parallel::mclapply(indx,
                                                function(x)CV_STkr(x,
                                                                   air_5_winter_loess_naive$residuals,
-                                                                  locations3,
+                                                                  locations4,
                                                                   relevant_times=which(is.na(air_5_winter[,x]))
                                                                   ),
                                                mc.cores = parallel::detectCores()-1)
@@ -247,7 +247,7 @@ krig_air_5_winter_naive_full=parallel::mclapply(indx,
 krig_air_10_winter_naive <- parallel::mclapply(indx,
                                               function(x)CV_STkr(x,
                                                                  air_10_winter_loess_naive$residuals,
-                                                                 locations3,
+                                                                 locations4,
                                                                  relevant_times=which(is.na(air_10_winter[,x]))
                                                                  ),
                                               mc.cores = parallel::detectCores()-1)
@@ -263,7 +263,7 @@ krig_air_10_winter_naive_full=parallel::mclapply(indx,
 krig_air_20_winter_naive <- parallel::mclapply(indx,
                                               function(x)CV_STkr(x,
                                                                  air_20_winter_loess_naive$residuals,
-                                                                 locations3,
+                                                                 locations4,
                                                                  relevant_times=which(is.na(air_20_winter[,x]))
                                                                  ),
                                               mc.cores = parallel::detectCores()-1)
@@ -281,7 +281,7 @@ krig_air_20_winter_naive_full=parallel::mclapply(indx,
 krig_air_5_winter_lr <- parallel::mclapply(indx,
                                               function(x)CV_STkr(x,
                                                                  air_5_winter_loess_lr$residuals,
-                                                                 locations3,
+                                                                 locations4,
                                                                  relevant_times=which(is.na(air_5_winter[,x]))
                                                                  ),
                                               mc.cores = parallel::detectCores()-1)
@@ -297,7 +297,7 @@ krig_air_5_winter_lr_full=parallel::mclapply(indx,
 krig_air_10_winter_lr <- parallel::mclapply(indx,
                                            function(x)CV_STkr(x,
                                                               air_10_winter_loess_lr$residuals,
-                                                              locations3,
+                                                              locations4,
                                                               relevant_times=which(is.na(air_10_winter[,x]))
                                                               ),
                                            mc.cores = parallel::detectCores()-1)
@@ -313,7 +313,7 @@ krig_air_10_winter_lr_full=parallel::mclapply(indx,
 krig_air_20_winter_lr <- parallel::mclapply(indx,
                                            function(x)CV_STkr(x,
                                                               air_20_winter_loess_lr$residuals,
-                                                              locations3,
+                                                              locations4,
                                                               relevant_times=which(is.na(air_20_winter[,x]))
                                                               ),
                                            mc.cores = parallel::detectCores()-1)
@@ -336,51 +336,51 @@ elapsed=end-start
 air_5_sarima_winter_recover=df_recover(krig_air_5_winter_sarima,
                                 air_5_winter_loess_sarima, 
                                 loess=T,
-                                locations3)
+                                locations4)
 
 air_10_sarima_winter_recover=df_recover(krig_air_10_winter_sarima,
                                        air_10_winter_loess_sarima, 
                                        loess=T,
-                                       locations3)
+                                       locations4)
 
 air_20_sarima_winter_recover=df_recover(krig_air_20_winter_sarima,
                                        air_20_winter_loess_sarima, 
                                        loess=T,
-                                       locations3)
+                                       locations4)
 
 # NAIVE
 
 air_5_naive_winter_recover=df_recover(krig_air_5_winter_naive,
                                       air_5_winter_loess_naive, 
                                       loess=T,
-                                      locations3)
+                                      locations4)
 
 air_10_naive_winter_recover=df_recover(krig_air_10_winter_naive,
                                        air_10_winter_loess_naive, 
                                        loess=T,
-                                       locations3)
+                                       locations4)
 
 air_20_naive_winter_recover=df_recover(krig_air_20_winter_naive,
                                        air_20_winter_loess_naive, 
                                        loess=T,
-                                       locations3)
+                                       locations4)
 
 # Lin Regression
 
 air_5_lr_winter_recover=df_recover(krig_air_5_winter_lr,
                                    air_5_winter_loess_lr, 
                                    loess=T,
-                                   locations3)
+                                   locations4)
 
 air_10_lr_winter_recover=df_recover(krig_air_10_winter_lr,
                                     air_10_winter_loess_lr, 
                                     loess=T,
-                                    locations3)
+                                    locations4)
 
 air_20_lr_winter_recover=df_recover(krig_air_20_winter_lr,
                                     air_20_winter_loess_lr, 
                                     loess=T,
-                                    locations3)
+                                    locations4)
 
 ## Recover original dimension df (maybe later)
 # air_5_winter_recover=air_5_winter
@@ -392,7 +392,7 @@ air_20_lr_winter_recover=df_recover(krig_air_20_winter_lr,
 # Lumped Kriging ----------------------------------------------------------
 
 indx=2:(n_stations+1)
-locations4=locations3
+#locations4=locations3
 colnames(locations4)[1:3]=c("id","longitude","latitude")
 
 start_lump=Sys.time()
