@@ -332,55 +332,58 @@ elapsed=end-start
 
 # Recover trend and seas --------------------------------------------------
 
+locations5=locations4[locations4$id%in%colnames(dat_air_winter),]
+locations5=locations5[,c("id","longitude","latitude")]
+
 # X-SARIMA
 air_5_sarima_winter_recover=df_recover(krig_air_5_winter_sarima,
                                 air_5_winter_loess_sarima, 
                                 loess=T,
-                                locations4)
+                                locations2=locations5)
 
 air_10_sarima_winter_recover=df_recover(krig_air_10_winter_sarima,
                                        air_10_winter_loess_sarima, 
                                        loess=T,
-                                       locations4)
+                                       locations5)
 
 air_20_sarima_winter_recover=df_recover(krig_air_20_winter_sarima,
                                        air_20_winter_loess_sarima, 
                                        loess=T,
-                                       locations4)
+                                       locations5)
 
 # NAIVE
 
 air_5_naive_winter_recover=df_recover(krig_air_5_winter_naive,
                                       air_5_winter_loess_naive, 
                                       loess=T,
-                                      locations4)
+                                      locations5)
 
 air_10_naive_winter_recover=df_recover(krig_air_10_winter_naive,
                                        air_10_winter_loess_naive, 
                                        loess=T,
-                                       locations4)
+                                       locations5)
 
 air_20_naive_winter_recover=df_recover(krig_air_20_winter_naive,
                                        air_20_winter_loess_naive, 
                                        loess=T,
-                                       locations4)
+                                       locations5)
 
 # Lin Regression
 
 air_5_lr_winter_recover=df_recover(krig_air_5_winter_lr,
                                    air_5_winter_loess_lr, 
                                    loess=T,
-                                   locations4)
+                                   locations5)
 
 air_10_lr_winter_recover=df_recover(krig_air_10_winter_lr,
                                     air_10_winter_loess_lr, 
                                     loess=T,
-                                    locations4)
+                                    locations5)
 
 air_20_lr_winter_recover=df_recover(krig_air_20_winter_lr,
                                     air_20_winter_loess_lr, 
                                     loess=T,
-                                    locations4)
+                                    locations5)
 
 ## Recover original dimension df (maybe later)
 # air_5_winter_recover=air_5_winter
@@ -393,7 +396,7 @@ air_20_lr_winter_recover=df_recover(krig_air_20_winter_lr,
 
 indx=2:(n_stations+1)
 #locations4=locations3
-colnames(locations4)[1:3]=c("id","longitude","latitude")
+locations4=locations4[,c("id","longitude","latitude")]
 
 start_lump=Sys.time()
 

@@ -715,13 +715,13 @@ get_orig_series=function(x_trend_seas,kgrST.res,locations2,target,loess=T,
   # Value:
   # A vector with the original series (trens, seasonal, level components plus residuals from kriging)
   
-  colnames(locations2)[1:4]=c("id","longitude","latitude","height")
-  
+  #colnames(locations2)[1:4]=c("id","longitude","latitude","height")
+  #colnames(locations2)[1:3]=c("id","latitude","longitude")
   # Compute weights
-  # dstats=distm(x=locations2[which(locations2$id==target),2:3],
-  #              y=locations2[,2:3], fun = distHaversine)/1000
-  dstats=matrix(unlist(apply(locations2[which(locations2$id==target),2:4],1,
-                      function(x) distance3D(locations2[,2:4],x)))/1000,nrow=1)
+  dstats=distm(x=locations2[which(locations2$id==target),2:3],
+               y=locations2[,2:3], fun = distGeo)/1000
+  # dstats=matrix(unlist(apply(locations2[which(locations2$id==target),2:4],1,
+  #                     function(x) distance3D(locations2[,2:4],x)))/1000,nrow=1)
   colnames(dstats)=locations2$id
   #rownames(dstats)=target
   dstats[which(dstats==0)]=NA
@@ -750,7 +750,8 @@ get_orig_series=function(x_trend_seas,kgrST.res,locations2,target,loess=T,
 
 df_recover=function(x,x_trend_seas=NULL,loess=T,locations2,residuals=T){
   
-  colnames(locations2)[1:4]=c("id","longitude","latitude","height")
+  #colnames(locations2)[1:4]=c("id","longitude","latitude","height")
+  #colnames(locations2)[1:3]=c("id","longitude","latitude")
   TT=dim(x_trend_seas$trend)[1]
   
   df=matrix(NA,nrow=TT,ncol=nrow(locations2))
