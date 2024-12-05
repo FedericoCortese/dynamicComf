@@ -454,7 +454,6 @@ end_lump=Sys.time()
 
 # Line plots --------------------------------------------------------------
 
-source("Utils2.R")
 
 # 5%
 # X-SARIMA
@@ -462,7 +461,8 @@ pdf("5NAs-X-SARIMA_winter.pdf", width = 11.69, height = 8.27) # A4 landscape dim
 generate_plots(data_true = dat_air_winter, 
                data_NA = air_5_winter, 
                data_pred = air_5_sarima_winter_recover,
-               x_lab_size=6,
+               ncol=4,
+               x_lab_size=8,
                title="5% NAs - SARIMA")
 dev.off()
 
@@ -473,7 +473,8 @@ pdf("5NAs-NAIVE_winter.pdf", width = 11.69, height = 8.27) # A4 landscape dimens
 generate_plots(data_true = dat_air_winter, 
                data_NA = air_5_winter, 
                data_pred = air_5_naive_winter_recover,
-               x_lab_size=6,
+               ncol=4,
+               x_lab_size=8,
                title="5% NAs - NAIVE")
 dev.off()
 
@@ -482,7 +483,8 @@ pdf("5NAs-LR_winter.pdf", width = 11.69, height = 8.27) # A4 landscape dimension
 generate_plots(data_true = dat_air_winter, 
                data_NA = air_5_winter, 
                data_pred = air_5_lr_winter_recover,
-               x_lab_size=6,
+               ncol=4,
+               x_lab_size=8,
                title="5% NAs - LR")
 dev.off()
 
@@ -491,7 +493,8 @@ pdf("5NAs-LUMP_winter.pdf", width = 11.69, height = 8.27) # A4 landscape dimensi
 generate_plots(data_true = dat_air_winter, 
                data_NA = air_5_winter, 
                data_pred = air_5_lump_winter,
-               x_lab_size=6,
+               ncol=4,
+               x_lab_size=8,
                title="5% NAs - LUMP")
 dev.off()
 
@@ -501,7 +504,8 @@ pdf("10NAs-X-SARIMA_winter.pdf", width = 11.69, height = 8.27) # A4 landscape di
 generate_plots(data_true = dat_air_winter, 
                data_NA = air_10_winter, 
                data_pred = air_10_sarima_winter_recover,
-               x_lab_size=6,
+               ncol=4,
+               x_lab_size=8,
                title="10% NAs - SARIMA")
 dev.off()
 
@@ -510,7 +514,8 @@ pdf("10NAs-NAIVE_winter.pdf", width = 11.69, height = 8.27) # A4 landscape dimen
 generate_plots(data_true = dat_air_winter, 
                data_NA = air_10_winter, 
                data_pred = air_10_naive_winter_recover,
-               x_lab_size=6,
+               ncol=4,
+               x_lab_size=8,
                title="10% NAs - NAIVE")
 dev.off()
 
@@ -519,7 +524,8 @@ pdf("10NAs-LR_winter.pdf", width = 11.69, height = 8.27) # A4 landscape dimensio
 generate_plots(data_true = dat_air_winter, 
                data_NA = air_10_winter, 
                data_pred = air_10_lr_winter_recover,
-               x_lab_size=6,
+               ncol=4,
+               x_lab_size=8,
                title="10% NAs - LR")
 dev.off()
 
@@ -528,7 +534,8 @@ pdf("10NAs-LUMP_winter.pdf", width = 11.69, height = 8.27) # A4 landscape dimens
 generate_plots(data_true = dat_air_winter, 
                data_NA = air_10_winter, 
                data_pred = air_10_lump_winter,
-               x_lab_size=6,
+               ncol=4,
+               x_lab_size=8,
                title="10% NAs - LUMP")
 dev.off()
 
@@ -539,7 +546,8 @@ pdf("20NAs-X-SARIMA_winter.pdf", width = 11.69, height = 8.27) # A4 landscape di
 generate_plots(data_true = dat_air_winter, 
                data_NA = air_20_winter, 
                data_pred = air_20_sarima_winter_recover,
-               x_lab_size=6,
+               ncol=4,
+               x_lab_size=8,
                title="20% NAs - SARIMA")
 dev.off()
 
@@ -548,7 +556,8 @@ pdf("20NAs-NAIVE_winter.pdf", width = 11.69, height = 8.27) # A4 landscape dimen
 generate_plots(data_true = dat_air_winter, 
                data_NA = air_20_winter, 
                data_pred = air_20_naive_winter_recover,
-               x_lab_size=6,
+               ncol=4,
+               x_lab_size=8,
                title="20% NAs - NAIVE")
 dev.off()
 
@@ -557,7 +566,8 @@ pdf("20NAs-LR_winter.pdf", width = 11.69, height = 8.27) # A4 landscape dimensio
 generate_plots(data_true = dat_air_winter, 
                data_NA = air_20_winter, 
                data_pred = air_20_lr_winter_recover,
-               x_lab_size=6,
+               ncol=4,
+               x_lab_size=8,
                title="20% NAs - LR")
 dev.off()
 
@@ -566,84 +576,11 @@ pdf("20NAs-LUMP_winter.pdf", width = 11.69, height = 8.27) # A4 landscape dimens
 generate_plots(data_true = dat_air_winter, 
                data_NA = air_20_winter, 
                data_pred = air_20_lump_winter,
-               x_lab_size=6,
+               ncol=4,
+               x_lab_size=8,
                title="20% NAs - LUMP")
 dev.off()
 
-
-
-# Map of Liguria ----------------------------------------------------------
-
-library(ggplot2)
-library(rnaturalearth)
-library(rnaturalearthdata)
-
-# Get the map of Italy
-italy <- ne_countries(scale = "medium", returnclass = "sf") %>%
-  dplyr::filter(admin == "Italy")
-
-# Determine bounds for the region of interest
-long_min <- min(locations3$Longitude) - 0.1
-long_max <- max(locations3$Longitude) + 0.1
-lat_min <- min(locations3$Latitude) - 0.1
-lat_max <- max(locations3$Latitude) + 0.1
-
-# Plot with zoomed-in bounds
-ggplot(data = italy) +
-  geom_sf(fill = "gray90", color = "black") +
-  geom_point(data = locations3, aes(x = Longitude, y = Latitude), color = "blue", size = 3) +
-  geom_text(data = locations3, aes(x = Longitude, y = Latitude, label = `NOME STAZIONE`),
-            hjust = 1.2, vjust = 0.5, size = 1.7) +
-  coord_sf(xlim = c(long_min, long_max), ylim = c(lat_min, lat_max), expand = FALSE) + # Zoom to bounds
-  labs(title = "Map of locations3 (Zoomed)", x = "Longitude", y = "Latitude") +
-  theme_minimal()
-
-# Map RMSE by method or NA% 
-plot_by_NA <- ggplot(data = italy) +
-  geom_sf(fill = "gray90", color = "black") + # Background map of Italy
-  geom_point(data = RMSE_air_full, aes(x = longitude, y = latitude, color = RMSE), 
-             size = 3, alpha = 0.7) +
-  scale_color_gradient(low = "green", high = "red", name = "RMSE") +
-  facet_wrap(~NAs, labeller = labeller(NAs = label_both)) +
-  coord_sf(xlim = c(long_min, long_max), ylim = c(lat_min, lat_max), expand = FALSE) + # Zoom to Liguria
-  labs(
-    #title = "Station Map Grouped by NA% (Color by RMSE)",
-    x = "Longitude",
-    y = "Latitude"
-  ) +
-  theme_minimal() +
-  theme(
-    panel.border = element_rect(color = "black", fill = NA, size = 0.5), # Frame for subplots
-    strip.text = element_text(face = "bold") # Bold text for facet labels
-  )
-
-# Plot grouped by Method with color representing RMSE
-plot_by_method <- ggplot(data = italy) +
-  geom_sf(fill = "gray90", color = "black") + # Background map of Italy
-  geom_point(data = RMSE_air_full, aes(x = longitude, y = latitude, color = RMSE), 
-             size = 3, alpha = 0.7) +
-  scale_color_gradient(low = "green", high = "red", name = "RMSE") +
-  facet_wrap(~method, labeller = labeller(method = label_both)) +
-  coord_sf(xlim = c(long_min, long_max), ylim = c(lat_min, lat_max), expand = FALSE) + # Zoom to Liguria
-  labs(
-    #title = "Station Map Grouped by Method (Color by RMSE)",
-    x = "Longitude",
-    y = "Latitude"
-  ) +
-  theme_minimal() +
-  theme(
-    panel.border = element_rect(color = "black", fill = NA, size = 0.5), # Frame for subplots
-    strip.text = element_text(face = "bold") # Bold text for facet labels
-  )
-
-# Print the plots
-pdf("RMSE_by_NA_winter.pdf", width = 11.69, height = 8.27) # A4 landscape dimensions in inches
-plot_by_NA
-dev.off()
-
-pdf("RMSE_by_method_winter.pdf", width = 11.69, height = 8.27) # A4 landscape dimensions in inches
-plot_by_method
-dev.off()
 
 # RMSE --------------------------------------------------------------------
 
@@ -726,9 +663,9 @@ RMSE_air_20=data.frame(method=rep(c("LUMP","SARIMA","NAIVE","LR"),each=n_station
 
 RMSE_air=rbind(RMSE_air_5,RMSE_air_10,RMSE_air_20)
 
-locations4=locations3[,1:3]
-colnames(locations4)=c("station","longitude","latitude")
-RMSE_air_full=merge(RMSE_air,locations4,by="station")
+locations6=locations5[,1:3]
+colnames(locations5)=c("station","longitude","latitude")
+RMSE_air_full=merge(RMSE_air,locations5,by="station")
 
 # Boxplots by method
 
@@ -752,5 +689,76 @@ ggarrange(bxplt_5,bxplt_10,bxplt_20,ncol=3,common.legend = T)
 dev.off()
 
 
+# Map of Singapore ----------------------------------------------------------
 
+library(ggplot2)
+library(rnaturalearth)
+library(rnaturalearthdata)
+
+# Get the map of Italy
+sing <- ne_countries(scale = "medium", returnclass = "sf") %>%
+  dplyr::filter(admin == "Singapore")
+
+# Determine bounds for the region of interest
+long_min <- min(locations5$longitude) - 0.1
+long_max <- max(locations5$longitude) + 0.1
+lat_min <- min(locations5$latitude) - 0.1
+lat_max <- max(locations5$latitude) + 0.1
+
+# Plot with zoomed-in bounds
+ggplot(data = sing) +
+  geom_sf(fill = "gray90", color = "black") +
+  geom_point(data = locations5, aes(x = longitude, y = latitude), color = "blue", size = 3) +
+  geom_text(data = locations5, aes(x = longitude, y = latitude, label = id),
+            hjust = 1.5, vjust = 0.5, size = 2.3) +
+  coord_sf(xlim = c(long_min, long_max), ylim = c(lat_min, lat_max), expand = FALSE) + # Zoom to bounds
+  labs(title = "Map of locations3 (Zoomed)", x = "longitude", y = "latitude") +
+  theme_minimal()
+
+# Map RMSE by method or NA% 
+plot_by_NA <- ggplot(data = sing) +
+  geom_sf(fill = "gray90", color = "black") + # Background map of Italy
+  geom_point(data = RMSE_air_full, aes(x = longitude, y = latitude, color = RMSE), 
+             size = 3, alpha = 0.7) +
+  scale_color_gradient(low = "green", high = "red", name = "RMSE") +
+  facet_wrap(~NAs, labeller = labeller(NAs = label_both)) +
+  coord_sf(xlim = c(long_min, long_max), ylim = c(lat_min, lat_max), expand = FALSE) + # Zoom to Liguria
+  labs(
+    #title = "Station Map Grouped by NA% (Color by RMSE)",
+    x = "Longitude",
+    y = "Latitude"
+  ) +
+  theme_minimal() +
+  theme(
+    panel.border = element_rect(color = "black", fill = NA, size = 0.5), # Frame for subplots
+    strip.text = element_text(face = "bold") # Bold text for facet labels
+  )
+
+# Plot grouped by Method with color representing RMSE
+plot_by_method <- ggplot(data = sing) +
+  geom_sf(fill = "gray90", color = "black") + # Background map of Italy
+  geom_point(data = RMSE_air_full, aes(x = longitude, y = latitude, color = RMSE), 
+             size = 3, alpha = 0.7) +
+  scale_color_gradient(low = "green", high = "red", name = "RMSE") +
+  facet_wrap(~method, labeller = labeller(method = label_both)) +
+  coord_sf(xlim = c(long_min, long_max), ylim = c(lat_min, lat_max), expand = FALSE) + # Zoom to Liguria
+  labs(
+    #title = "Station Map Grouped by Method (Color by RMSE)",
+    x = "Longitude",
+    y = "Latitude"
+  ) +
+  theme_minimal() +
+  theme(
+    panel.border = element_rect(color = "black", fill = NA, size = 0.5), # Frame for subplots
+    strip.text = element_text(face = "bold") # Bold text for facet labels
+  )
+
+# Print the plots
+pdf("RMSE_by_NA_winter.pdf", width = 11.69, height = 8.27) # A4 landscape dimensions in inches
+plot_by_NA
+dev.off()
+
+pdf("RMSE_by_method_winter.pdf", width = 11.69, height = 8.27) # A4 landscape dimensions in inches
+plot_by_method
+dev.off()
 
