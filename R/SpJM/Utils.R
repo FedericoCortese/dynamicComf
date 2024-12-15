@@ -799,7 +799,7 @@ initialize_states <- function(Y, K) {
 
 jump_mixed <- function(Y, n_states, jump_penalty=1e-5, 
                        initial_states=NULL,
-                       max_iter=10, n_init=10, tol=NULL, verbose=FALSE
+                       max_iter=10, n_init=10, tol=1e-5, verbose=FALSE
                        # , 
                        # method="gower"
 ) {
@@ -973,7 +973,7 @@ jump_mixed <- function(Y, n_states, jump_penalty=1e-5,
 
 jump_mixed2 <- function(Y, n_states, jump_penalty=1e-5, 
                   initial_states=NULL,
-                  max_iter=10, n_init=10, tol=NULL, verbose=FALSE,
+                  max_iter=10, n_init=10, tol=1e-5, verbose=FALSE,
                   timeflag=T
                   ) {
   # Updated version of function jump_mixed (work in progress)
