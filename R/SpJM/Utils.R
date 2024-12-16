@@ -3652,8 +3652,12 @@ cluster_purity=function(labels,clusters){
   # Value:
   # Overall cluster purity
   
+  cp <- function(labels) {
+    max(table(labels)) / length(labels)
+  }
+  
   # Compute purity for each cluster
-  cluster_purities <- tapply(labels, clusters, cluster_purity)
+  cluster_purities <- tapply(labels, clusters, cp)
   
   # Compute overall purity (weighted by cluster size)
   overall_purity <- sum(sapply(unique(clusters), function(c) {
