@@ -1926,7 +1926,7 @@ simstud_JMmixed_missmec=function(seed,lambda,TT,P,
   
   imput.err=gower_dist(est$Y,simDat$SimData.complete)
   ARI=adj.rand.index(est$best_s,simDat$mchain)
-  clust_pur=clust_purity(simDat$mchain,est$best_s)
+  clust_pur=cluster_purity(simDat$mchain,est$best_s)
   # Return
   return(list(
     imput.err=imput.err,
@@ -3641,7 +3641,7 @@ BAC=function(obj,levs=3){
   return(confusionMatrix(A,B)$overall[1])
 }
 
-clust_purity=function(labels,clusters){
+cluster_purity=function(labels,clusters){
   
   # Compute weighted overall purity
   
