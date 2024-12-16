@@ -210,3 +210,7 @@ save(mixedJM_MNAR.miss10,
      elapsed_MNAR,
      file="mixedJM_MNAR.Rdata")
 
+
+# Convergence analysis ----------------------------------------------------
+
+
