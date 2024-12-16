@@ -1731,23 +1731,23 @@ sim_data_mixed_missmec=function(seed=123,
   
   if(typeNA==0|typeNA==1|typeNA==2){
     
-    SimData.NA <- switch(typeNA,
-                         "0" = {
-                           delete_MCAR(SimData, p = pNAs)
-                         },
-                         "1" = {
-                           vect <- 1:ncol(SimData)
-                           col_mis <- vect[vect %% 2 != 0]
-                           cols_ctrl <- vect[vect %% 2 == 0]
-                           delete_MAR_censoring(SimData, 
-                                                p = 2 * pNAs, 
-                                                cols_mis = col_mis, 
-                                                cols_ctrl = cols_ctrl)
-                         },
-                         "2" = {
-                           vect <- 1:ncol(SimData)  # Ensure 'vect' is defined here
-                           delete_MNAR_censoring(SimData, p = 0.2, cols_mis = 1:ncol(SimData))
-                         }
+    switch(typeNA,
+           "0" = {
+             SimData.NA=delete_MCAR(SimData, p = pNAs)
+           },
+           "1" = {
+             vect <- 1:ncol(SimData)
+             col_mis <- vect[vect %% 2 != 0]
+             cols_ctrl <- vect[vect %% 2 == 0]
+             SimData.NA=delete_MAR_censoring(SimData, 
+                                             p = 2 * pNAs, 
+                                             cols_mis = col_mis, 
+                                             cols_ctrl = cols_ctrl)
+           },
+           "2" = {
+             vect <- 1:ncol(SimData)  # Ensure 'vect' is defined here
+             SimData.NA=delete_MNAR_censoring(SimData, p = 0.2, cols_mis = 1:ncol(SimData))
+           }
     )
     
   }
