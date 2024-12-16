@@ -400,281 +400,281 @@ rm(mixedJM_no.miss_specluster,elapsed_no.miss_specluster)
 # Imputation performance comparison ---------------------------------------
 
 # k Nearest Neighbors
-pNAs=0.1
-start_rand.miss10_knn=Sys.time()
-cl<-makeCluster(parallel::detectCores()-1,type="SOCK")
-parallel::clusterExport(cl,ls())
-parallel::clusterEvalQ(cl,{library(RcppHMM)
-  library(reticulate)
-  library(multiUS)
-  library(pdfCluster)
-  library(boot)
-  library(xtable)
-  library(dplyr)
-  library(cluster)
-  library(gower)
-  library(StatMatch)})
-mixedJM_rand.miss10_knn <- clusterApply(cl,
-                                    1:nrow(hp_comp),
-                                    function(x)
-                                      simstud_kNN(
-                                        seed=hp_comp[x,]$seed,
-                                        TT=hp_comp[x,]$TT,
-                                        P=hp_comp[x,]$P,
-                                        Ktrue=3,mu=1,
-                                        phi=.8,rho=0,
-                                        Pcat=NULL,pers=.95,
-                                        pNAs=pNAs,typeNA=0)
-                                    
-)
-stopCluster(cl)
-
-end_rand.miss10_knn=Sys.time()
-elapsed_rand.miss10_knn=end_rand.miss10_knn-start_rand.miss10_knn
-save(mixedJM_rand.miss10_knn,elapsed_rand.miss10_knn,file="mixedJM_rand_miss10_knn.Rdata")
-rm(mixedJM_rand.miss10_knn,elapsed_rand.miss10_knn)
-
-pNAs=0.2
-start_rand.miss20_knn=Sys.time()
-cl<-makeCluster(parallel::detectCores()-1,type="SOCK")
-parallel::clusterExport(cl,ls())
-parallel::clusterEvalQ(cl,{library(RcppHMM)
-  library(reticulate)
-  library(multiUS)
-  library(pdfCluster)
-  library(boot)
-  library(xtable)
-  library(dplyr)
-  library(cluster)
-  library(gower)
-  library(StatMatch)})
-mixedJM_rand.miss20_knn <- clusterApply(cl,
-                                        1:nrow(hp_comp),
-                                        function(x)
-                                          simstud_kNN(
-                                            seed=hp_comp[x,]$seed,
-                                            TT=hp_comp[x,]$TT,
-                                            P=hp_comp[x,]$P,
-                                            Ktrue=3,mu=1,
-                                            phi=.8,rho=0,
-                                            Pcat=NULL,pers=.95,
-                                            pNAs=pNAs,typeNA=0)
-                                        
-)
-stopCluster(cl)
-
-end_rand.miss20_knn=Sys.time()
-elapsed_rand.miss20_knn=end_rand.miss20_knn-start_rand.miss20_knn
-save(mixedJM_rand.miss20_knn,elapsed_rand.miss20_knn,file="mixedJM_rand_miss20_knn.Rdata")
-rm(mixedJM_rand.miss20_knn,elapsed_rand.miss20_knn)
-
-pNAs=0.1
-start_cont.miss10_knn=Sys.time()
-cl<-makeCluster(parallel::detectCores()-1,type="SOCK")
-parallel::clusterExport(cl,ls())
-parallel::clusterEvalQ(cl,{library(RcppHMM)
-  library(reticulate)
-  library(multiUS)
-  library(pdfCluster)
-  library(boot)
-  library(xtable)
-  library(dplyr)
-  library(cluster)
-  library(gower)
-  library(StatMatch)})
-mixedJM_cont.miss10_knn <- clusterApply(cl,
-                                        1:nrow(hp_comp),
-                                        function(x)
-                                          simstud_kNN(
-                                            seed=hp_comp[x,]$seed,
-                                            TT=hp_comp[x,]$TT,
-                                            P=hp_comp[x,]$P,
-                                            Ktrue=3,mu=1,
-                                            phi=.8,rho=0,
-                                            Pcat=NULL,pers=.95,
-                                            pNAs=pNAs,typeNA=1)
-                                        
-)
-stopCluster(cl)
-
-end_cont.miss10_knn=Sys.time()
-elapsed_cont.miss10_knn=end_cont.miss10_knn-start_cont.miss10_knn
-save(mixedJM_cont.miss10_knn,elapsed_cont.miss10_knn,file="mixedJM_cont_miss10_knn.Rdata")
-rm(mixedJM_cont.miss10_knn,elapsed_cont.miss10_knn)
-
-pNAs=0.2
-start_cont.miss20_knn=Sys.time()
-cl<-makeCluster(parallel::detectCores()-1,type="SOCK")
-parallel::clusterExport(cl,ls())
-parallel::clusterEvalQ(cl,{library(RcppHMM)
-  library(reticulate)
-  library(multiUS)
-  library(pdfCluster)
-  library(boot)
-  library(xtable)
-  library(dplyr)
-  library(cluster)
-  library(gower)
-  library(StatMatch)})
-mixedJM_cont.miss20_knn <- clusterApply(cl,
-                                        1:nrow(hp_comp),
-                                        function(x)
-                                          simstud_kNN(
-                                            seed=hp_comp[x,]$seed,
-                                            TT=hp_comp[x,]$TT,
-                                            P=hp_comp[x,]$P,
-                                            Ktrue=3,mu=1,
-                                            phi=.8,rho=0,
-                                            Pcat=NULL,pers=.95,
-                                            pNAs=pNAs,typeNA=1)
-                                        
-)
-stopCluster(cl)
-
-end_cont.miss20_knn=Sys.time()
-elapsed_cont.miss20_knn=end_cont.miss20_knn-start_cont.miss20_knn
-save(mixedJM_cont.miss20_knn,elapsed_cont.miss20_knn,file="mixedJM_cont_miss20_knn.Rdata")
-rm(mixedJM_cont.miss20_knn,elapsed_cont.miss20_knn)
-
-
-# Random Forest
-pNAs=0.1
-start_rand.miss10_rf=Sys.time()
-cl<-makeCluster(parallel::detectCores()-1,type="SOCK")
-parallel::clusterExport(cl,ls())
-parallel::clusterEvalQ(cl,{library(RcppHMM)
-  library(reticulate)
-  library(missForest)
-  library(pdfCluster)
-  library(boot)
-  library(xtable)
-  library(dplyr)
-  library(cluster)
-  library(gower)
-  library(StatMatch)})
-mixedJM_rand.miss10_rf <- clusterApply(cl,
-                                       1:nrow(hp_comp),
-                                       function(x)
-                                         simstud_RF(
-                                           seed=hp_comp[x,]$seed,
-                                           TT=hp_comp[x,]$TT,
-                                           P=hp_comp[x,]$P,
-                                           Ktrue=3,mu=1,
-                                           phi=.8,rho=0,
-                                           Pcat=NULL,pers=.95,
-                                           pNAs=pNAs,typeNA=0)
-                                       
-)
-stopCluster(cl)
-
-end_rand.miss10_rf=Sys.time()
-elapsed_rand.miss10_rf=end_rand.miss10_rf-start_rand.miss10_rf
-save(mixedJM_rand.miss10_rf,elapsed_rand.miss10_rf,file="mixedJM_rand_miss10_rf.Rdata")
-rm(mixedJM_rand.miss10_rf,elapsed_rand.miss10_rf)
-
-pNAs=0.2
-start_rand.miss20_rf=Sys.time()
-cl<-makeCluster(parallel::detectCores()-1,type="SOCK")
-parallel::clusterExport(cl,ls())
-parallel::clusterEvalQ(cl,{library(RcppHMM)
-  library(reticulate)
-  library(missForest)
-  library(pdfCluster)
-  library(boot)
-  library(xtable)
-  library(dplyr)
-  library(cluster)
-  library(gower)
-  library(StatMatch)})
-mixedJM_rand.miss20_rf <- clusterApply(cl,
-                                       1:nrow(hp_comp),
-                                       function(x)
-                                         simstud_RF(
-                                           seed=hp_comp[x,]$seed,
-                                           TT=hp_comp[x,]$TT,
-                                           P=hp_comp[x,]$P,
-                                           Ktrue=3,mu=1,
-                                           phi=.8,rho=0,
-                                           Pcat=NULL,pers=.95,
-                                           pNAs=pNAs,typeNA=0)
-                                       
-)
-stopCluster(cl)
-
-end_rand.miss20_rf=Sys.time()
-elapsed_rand.miss20_rf=end_rand.miss20_rf-start_rand.miss20_rf
-save(mixedJM_rand.miss20_rf,elapsed_rand.miss20_rf,file="mixedJM_rand_miss20_rf.Rdata")
-rm(mixedJM_rand.miss20_rf,elapsed_rand.miss20_rf)
-
-pNAs=0.1
-start_cont.miss10_rf=Sys.time()
-cl<-makeCluster(parallel::detectCores()-1,type="SOCK")
-parallel::clusterExport(cl,ls())
-parallel::clusterEvalQ(cl,{library(RcppHMM)
-  library(reticulate)
-  library(missForest)
-  library(pdfCluster)
-  library(boot)
-  library(xtable)
-  library(dplyr)
-  library(cluster)
-  library(gower)
-  library(StatMatch)})
-mixedJM_cont.miss10_rf <- clusterApply(cl,
-                                       1:nrow(hp_comp),
-                                       function(x)
-                                         simstud_RF(
-                                           seed=hp_comp[x,]$seed,
-                                           TT=hp_comp[x,]$TT,
-                                           P=hp_comp[x,]$P,
-                                           Ktrue=3,mu=1,
-                                           phi=.8,rho=0,
-                                           Pcat=NULL,pers=.95,
-                                           pNAs=pNAs,typeNA=1)
-                                       
-)
-stopCluster(cl)
-
-end_cont.miss10_rf=Sys.time()
-elapsed_cont.miss10_rf=end_cont.miss10_rf-start_cont.miss10_rf
-save(mixedJM_cont.miss10_rf,elapsed_cont.miss10_rf,file="mixedJM_cont_miss10_rf.Rdata")
-rm(mixedJM_cont.miss10_rf,elapsed_cont.miss10_rf)
-
-pNAs=0.2
-start_cont.miss20_rf=Sys.time()
-cl<-makeCluster(parallel::detectCores()-1,type="SOCK")
-parallel::clusterExport(cl,ls())
-parallel::clusterEvalQ(cl,{library(RcppHMM)
-  library(reticulate)
-  library(missForest)
-  library(pdfCluster)
-  library(boot)
-  library(xtable)
-  library(dplyr)
-  library(cluster)
-  library(gower)
-  library(StatMatch)})
-mixedJM_cont.miss20_rf <- clusterApply(cl,
-                                       1:nrow(hp_comp),
-                                       function(x)
-                                         simstud_RF(
-                                           seed=hp_comp[x,]$seed,
-                                           TT=hp_comp[x,]$TT,
-                                           P=hp_comp[x,]$P,
-                                           Ktrue=3,mu=1,
-                                           phi=.8,rho=0,
-                                           Pcat=NULL,pers=.95,
-                                           pNAs=pNAs,typeNA=1)
-                                       
-)
-stopCluster(cl)
-
-end_cont.miss20_rf=Sys.time()
-elapsed_cont.miss20_rf=end_cont.miss20_rf-start_cont.miss20_rf
-save(mixedJM_cont.miss20_rf,elapsed_cont.miss20_rf,file="mixedJM_cont_miss20_rf.Rdata")
-rm(mixedJM_cont.miss20_rf,elapsed_cont.miss20_rf)
-
-
+# pNAs=0.1
+# start_rand.miss10_knn=Sys.time()
+# cl<-makeCluster(parallel::detectCores()-1,type="SOCK")
+# parallel::clusterExport(cl,ls())
+# parallel::clusterEvalQ(cl,{library(RcppHMM)
+#   library(reticulate)
+#   library(multiUS)
+#   library(pdfCluster)
+#   library(boot)
+#   library(xtable)
+#   library(dplyr)
+#   library(cluster)
+#   library(gower)
+#   library(StatMatch)})
+# mixedJM_rand.miss10_knn <- clusterApply(cl,
+#                                     1:nrow(hp_comp),
+#                                     function(x)
+#                                       simstud_kNN(
+#                                         seed=hp_comp[x,]$seed,
+#                                         TT=hp_comp[x,]$TT,
+#                                         P=hp_comp[x,]$P,
+#                                         Ktrue=3,mu=1,
+#                                         phi=.8,rho=0,
+#                                         Pcat=NULL,pers=.95,
+#                                         pNAs=pNAs,typeNA=0)
+#                                     
+# )
+# stopCluster(cl)
+# 
+# end_rand.miss10_knn=Sys.time()
+# elapsed_rand.miss10_knn=end_rand.miss10_knn-start_rand.miss10_knn
+# save(mixedJM_rand.miss10_knn,elapsed_rand.miss10_knn,file="mixedJM_rand_miss10_knn.Rdata")
+# rm(mixedJM_rand.miss10_knn,elapsed_rand.miss10_knn)
+# 
+# pNAs=0.2
+# start_rand.miss20_knn=Sys.time()
+# cl<-makeCluster(parallel::detectCores()-1,type="SOCK")
+# parallel::clusterExport(cl,ls())
+# parallel::clusterEvalQ(cl,{library(RcppHMM)
+#   library(reticulate)
+#   library(multiUS)
+#   library(pdfCluster)
+#   library(boot)
+#   library(xtable)
+#   library(dplyr)
+#   library(cluster)
+#   library(gower)
+#   library(StatMatch)})
+# mixedJM_rand.miss20_knn <- clusterApply(cl,
+#                                         1:nrow(hp_comp),
+#                                         function(x)
+#                                           simstud_kNN(
+#                                             seed=hp_comp[x,]$seed,
+#                                             TT=hp_comp[x,]$TT,
+#                                             P=hp_comp[x,]$P,
+#                                             Ktrue=3,mu=1,
+#                                             phi=.8,rho=0,
+#                                             Pcat=NULL,pers=.95,
+#                                             pNAs=pNAs,typeNA=0)
+#                                         
+# )
+# stopCluster(cl)
+# 
+# end_rand.miss20_knn=Sys.time()
+# elapsed_rand.miss20_knn=end_rand.miss20_knn-start_rand.miss20_knn
+# save(mixedJM_rand.miss20_knn,elapsed_rand.miss20_knn,file="mixedJM_rand_miss20_knn.Rdata")
+# rm(mixedJM_rand.miss20_knn,elapsed_rand.miss20_knn)
+# 
+# pNAs=0.1
+# start_cont.miss10_knn=Sys.time()
+# cl<-makeCluster(parallel::detectCores()-1,type="SOCK")
+# parallel::clusterExport(cl,ls())
+# parallel::clusterEvalQ(cl,{library(RcppHMM)
+#   library(reticulate)
+#   library(multiUS)
+#   library(pdfCluster)
+#   library(boot)
+#   library(xtable)
+#   library(dplyr)
+#   library(cluster)
+#   library(gower)
+#   library(StatMatch)})
+# mixedJM_cont.miss10_knn <- clusterApply(cl,
+#                                         1:nrow(hp_comp),
+#                                         function(x)
+#                                           simstud_kNN(
+#                                             seed=hp_comp[x,]$seed,
+#                                             TT=hp_comp[x,]$TT,
+#                                             P=hp_comp[x,]$P,
+#                                             Ktrue=3,mu=1,
+#                                             phi=.8,rho=0,
+#                                             Pcat=NULL,pers=.95,
+#                                             pNAs=pNAs,typeNA=1)
+#                                         
+# )
+# stopCluster(cl)
+# 
+# end_cont.miss10_knn=Sys.time()
+# elapsed_cont.miss10_knn=end_cont.miss10_knn-start_cont.miss10_knn
+# save(mixedJM_cont.miss10_knn,elapsed_cont.miss10_knn,file="mixedJM_cont_miss10_knn.Rdata")
+# rm(mixedJM_cont.miss10_knn,elapsed_cont.miss10_knn)
+# 
+# pNAs=0.2
+# start_cont.miss20_knn=Sys.time()
+# cl<-makeCluster(parallel::detectCores()-1,type="SOCK")
+# parallel::clusterExport(cl,ls())
+# parallel::clusterEvalQ(cl,{library(RcppHMM)
+#   library(reticulate)
+#   library(multiUS)
+#   library(pdfCluster)
+#   library(boot)
+#   library(xtable)
+#   library(dplyr)
+#   library(cluster)
+#   library(gower)
+#   library(StatMatch)})
+# mixedJM_cont.miss20_knn <- clusterApply(cl,
+#                                         1:nrow(hp_comp),
+#                                         function(x)
+#                                           simstud_kNN(
+#                                             seed=hp_comp[x,]$seed,
+#                                             TT=hp_comp[x,]$TT,
+#                                             P=hp_comp[x,]$P,
+#                                             Ktrue=3,mu=1,
+#                                             phi=.8,rho=0,
+#                                             Pcat=NULL,pers=.95,
+#                                             pNAs=pNAs,typeNA=1)
+#                                         
+# )
+# stopCluster(cl)
+# 
+# end_cont.miss20_knn=Sys.time()
+# elapsed_cont.miss20_knn=end_cont.miss20_knn-start_cont.miss20_knn
+# save(mixedJM_cont.miss20_knn,elapsed_cont.miss20_knn,file="mixedJM_cont_miss20_knn.Rdata")
+# rm(mixedJM_cont.miss20_knn,elapsed_cont.miss20_knn)
+# 
+# 
+# # Random Forest
+# pNAs=0.1
+# start_rand.miss10_rf=Sys.time()
+# cl<-makeCluster(parallel::detectCores()-1,type="SOCK")
+# parallel::clusterExport(cl,ls())
+# parallel::clusterEvalQ(cl,{library(RcppHMM)
+#   library(reticulate)
+#   library(missForest)
+#   library(pdfCluster)
+#   library(boot)
+#   library(xtable)
+#   library(dplyr)
+#   library(cluster)
+#   library(gower)
+#   library(StatMatch)})
+# mixedJM_rand.miss10_rf <- clusterApply(cl,
+#                                        1:nrow(hp_comp),
+#                                        function(x)
+#                                          simstud_RF(
+#                                            seed=hp_comp[x,]$seed,
+#                                            TT=hp_comp[x,]$TT,
+#                                            P=hp_comp[x,]$P,
+#                                            Ktrue=3,mu=1,
+#                                            phi=.8,rho=0,
+#                                            Pcat=NULL,pers=.95,
+#                                            pNAs=pNAs,typeNA=0)
+#                                        
+# )
+# stopCluster(cl)
+# 
+# end_rand.miss10_rf=Sys.time()
+# elapsed_rand.miss10_rf=end_rand.miss10_rf-start_rand.miss10_rf
+# save(mixedJM_rand.miss10_rf,elapsed_rand.miss10_rf,file="mixedJM_rand_miss10_rf.Rdata")
+# rm(mixedJM_rand.miss10_rf,elapsed_rand.miss10_rf)
+# 
+# pNAs=0.2
+# start_rand.miss20_rf=Sys.time()
+# cl<-makeCluster(parallel::detectCores()-1,type="SOCK")
+# parallel::clusterExport(cl,ls())
+# parallel::clusterEvalQ(cl,{library(RcppHMM)
+#   library(reticulate)
+#   library(missForest)
+#   library(pdfCluster)
+#   library(boot)
+#   library(xtable)
+#   library(dplyr)
+#   library(cluster)
+#   library(gower)
+#   library(StatMatch)})
+# mixedJM_rand.miss20_rf <- clusterApply(cl,
+#                                        1:nrow(hp_comp),
+#                                        function(x)
+#                                          simstud_RF(
+#                                            seed=hp_comp[x,]$seed,
+#                                            TT=hp_comp[x,]$TT,
+#                                            P=hp_comp[x,]$P,
+#                                            Ktrue=3,mu=1,
+#                                            phi=.8,rho=0,
+#                                            Pcat=NULL,pers=.95,
+#                                            pNAs=pNAs,typeNA=0)
+#                                        
+# )
+# stopCluster(cl)
+# 
+# end_rand.miss20_rf=Sys.time()
+# elapsed_rand.miss20_rf=end_rand.miss20_rf-start_rand.miss20_rf
+# save(mixedJM_rand.miss20_rf,elapsed_rand.miss20_rf,file="mixedJM_rand_miss20_rf.Rdata")
+# rm(mixedJM_rand.miss20_rf,elapsed_rand.miss20_rf)
+# 
+# pNAs=0.1
+# start_cont.miss10_rf=Sys.time()
+# cl<-makeCluster(parallel::detectCores()-1,type="SOCK")
+# parallel::clusterExport(cl,ls())
+# parallel::clusterEvalQ(cl,{library(RcppHMM)
+#   library(reticulate)
+#   library(missForest)
+#   library(pdfCluster)
+#   library(boot)
+#   library(xtable)
+#   library(dplyr)
+#   library(cluster)
+#   library(gower)
+#   library(StatMatch)})
+# mixedJM_cont.miss10_rf <- clusterApply(cl,
+#                                        1:nrow(hp_comp),
+#                                        function(x)
+#                                          simstud_RF(
+#                                            seed=hp_comp[x,]$seed,
+#                                            TT=hp_comp[x,]$TT,
+#                                            P=hp_comp[x,]$P,
+#                                            Ktrue=3,mu=1,
+#                                            phi=.8,rho=0,
+#                                            Pcat=NULL,pers=.95,
+#                                            pNAs=pNAs,typeNA=1)
+#                                        
+# )
+# stopCluster(cl)
+# 
+# end_cont.miss10_rf=Sys.time()
+# elapsed_cont.miss10_rf=end_cont.miss10_rf-start_cont.miss10_rf
+# save(mixedJM_cont.miss10_rf,elapsed_cont.miss10_rf,file="mixedJM_cont_miss10_rf.Rdata")
+# rm(mixedJM_cont.miss10_rf,elapsed_cont.miss10_rf)
+# 
+# pNAs=0.2
+# start_cont.miss20_rf=Sys.time()
+# cl<-makeCluster(parallel::detectCores()-1,type="SOCK")
+# parallel::clusterExport(cl,ls())
+# parallel::clusterEvalQ(cl,{library(RcppHMM)
+#   library(reticulate)
+#   library(missForest)
+#   library(pdfCluster)
+#   library(boot)
+#   library(xtable)
+#   library(dplyr)
+#   library(cluster)
+#   library(gower)
+#   library(StatMatch)})
+# mixedJM_cont.miss20_rf <- clusterApply(cl,
+#                                        1:nrow(hp_comp),
+#                                        function(x)
+#                                          simstud_RF(
+#                                            seed=hp_comp[x,]$seed,
+#                                            TT=hp_comp[x,]$TT,
+#                                            P=hp_comp[x,]$P,
+#                                            Ktrue=3,mu=1,
+#                                            phi=.8,rho=0,
+#                                            Pcat=NULL,pers=.95,
+#                                            pNAs=pNAs,typeNA=1)
+#                                        
+# )
+# stopCluster(cl)
+# 
+# end_cont.miss20_rf=Sys.time()
+# elapsed_cont.miss20_rf=end_cont.miss20_rf-start_cont.miss20_rf
+# save(mixedJM_cont.miss20_rf,elapsed_cont.miss20_rf,file="mixedJM_cont_miss20_rf.Rdata")
+# rm(mixedJM_cont.miss20_rf,elapsed_cont.miss20_rf)
+# 
+# 
 
 
 # Evaluation --------------------------------------------------------------

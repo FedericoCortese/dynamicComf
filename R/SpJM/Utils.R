@@ -799,10 +799,7 @@ initialize_states <- function(Y, K) {
 
 jump_mixed <- function(Y, n_states, jump_penalty=1e-5, 
                        initial_states=NULL,
-                       max_iter=10, n_init=10, tol=1e-5, verbose=FALSE
-                       # , 
-                       # method="gower"
-) {
+                       max_iter=10, n_init=10, tol=1e-5, verbose=FALSE) {
   # Fit jump model using framework of Bemporad et al. (2018)
   
   # Arguments:
@@ -841,7 +838,8 @@ jump_mixed <- function(Y, n_states, jump_penalty=1e-5,
   n_cont=n_features-n_cat
   
   # Initialize mu 
-  mu <- colMeans(Ycont,na.rm = T)
+  # mu <- colMeans(Ycont,na.rm = T)
+  mu <- apply(Ycont, 2, median, na.rm = TRUE)
   
   # Initialize modes
   mo <- apply(Ycat,2,Mode)
@@ -854,7 +852,7 @@ jump_mixed <- function(Y, n_states, jump_penalty=1e-5,
   
   
   Ytil=Y
-  # Impute missing values with mean of observed states
+  # Impute missing values with median of observed states
   for(i in 1:n_cont){
     Ycont[,i]=ifelse(Mcont[,i],mu[i],Ycont[,i])
   }
@@ -885,9 +883,10 @@ jump_mixed <- function(Y, n_states, jump_penalty=1e-5,
     for (it in 1:max_iter) {
       
       for (i in unique(s)) {
-        # Fit model by updating mean of observed states
+        # Fit model by updating prototypes of observed states
         #if(sum(s==i)>1){
-        mu[i,] <- colMeans(Ycont[s==i,])
+        #mu[i,] <- colMeans(Ycont[s==i,])
+        mu[i,] <- apply(Ycont[s==i,], 2, median, na.rm = TRUE)
         mo[i,]=apply(Ycat[s==i,],2,Mode)
         # }
         # else{
@@ -965,10 +964,21 @@ jump_mixed <- function(Y, n_states, jump_penalty=1e-5,
     s=initialize_states(Y,n_states)
   }
   
+  colnames(mumo)=colnames(Y)
+  
+  target1=sum(loss_by_state[cbind(1:nrow(loss_by_state), best_s[1:nrow(loss_by_state)])])
+  
+  n_jumps=sum(best_s[1:(n_obs-1)]!=best_s[2:n_obs])
+  
+  target2=target1+jump_penalty*n_jumps
+  # Add target function value
+  
   return(list(best_s=best_s,
               Y=Y,
               Y.orig=Ytil,
-              condMM=mumo))
+              condMM=mumo,
+              target1=target1,
+              target2=target2))
 }
 
 jump_mixed2 <- function(Y, n_states, jump_penalty=1e-5, 
@@ -1643,6 +1653,120 @@ sim_data_mixed2=function(seed=123,
   
 }
 
+sim_data_mixed_missmec=function(seed=123,
+                                TT,
+                                P,
+                                Ktrue=3,
+                                mu=1,
+                                phi=.8,
+                                rho=0,
+                                Pcat=NULL,
+                                pers=.95,
+                                pNAs=0,
+                                typeNA=3){
+  
+  # Function to simulate mixed data with fixed parameters for the data generating process
+  
+  # Arguments:
+  # seed: seed for the random number generator
+  # TT: number of observations
+  # P: number of features
+  # Ktrue: number of states
+  # mu: mean value for the continuous variables
+  # phi: conditional probability for the categorical outcome k in state k
+  # rho: correlation for the variables
+  # Pcat: number of categorical variables
+  # pers: self-transition probability
+  # pNAs: percentage of missing values
+  # typeNA is the type of missing values (0: MCAR, 1: MAR, 2: MNAR, all other values will turn into no missing imputation)
+  
+  # value:
+  # SimData: matrix of simulated data
+  
+  MU=mu
+  mu=c(-mu,0,mu)
+  
+  if(is.null(Pcat)){
+    Pcat=floor(P/2)
+  }
+  
+  # Markov chain simulation
+  x <- numeric(TT)
+  Q <- matrix(rep((1-pers)/(Ktrue-1),Ktrue*Ktrue), 
+              ncol = Ktrue,
+              byrow = TRUE)
+  diag(Q)=rep(pers,Ktrue)
+  init <- rep(1/Ktrue,Ktrue)
+  set.seed(seed)
+  x[1] <- sample(1:Ktrue, 1, prob = init)
+  for(i in 2:TT){
+    x[i] <- sample(1:Ktrue, 1, prob = Q[x[i - 1], ])
+  }
+  
+  # Continuous variables simulation
+  Sigma <- matrix(rho,ncol=P,nrow=P)
+  diag(Sigma)=1
+  
+  Sim = matrix(0, TT, P * Ktrue)
+  SimData = matrix(0, TT, P)
+  
+  set.seed(seed)
+  for(k in 1:Ktrue){
+    u = MASS::mvrnorm(TT,rep(mu[k],P),Sigma)
+    Sim[, (P * k - P + 1):(k * P)] = u
+  }
+  
+  for (i in 1:TT) {
+    k = x[i]
+    SimData[i, ] = Sim[i, (P * k - P + 1):(P * k)]
+    #SimDataCat[i, ] = SimCat[i, (Pcat * k - Pcat + 1):(Pcat * k)]
+  }
+  
+  if(Pcat!=0){
+    SimData[,1:Pcat]=apply(SimData[,1:Pcat],2,get_cat,mc=x,mu=MU,phi=phi)
+    SimData=as.data.frame(SimData)
+    SimData[,1:Pcat]=SimData[,1:Pcat]%>%mutate_all(as.factor)
+  }
+  
+  if(typeNA==0|typeNA==1|typeNA==2){
+    
+    SimData.NA <- switch(typeNA,
+                         "0" = {
+                           delete_MCAR(SimData, p = pNAs)
+                         },
+                         "1" = {
+                           vect <- 1:ncol(SimData)
+                           col_mis <- vect[vect %% 2 != 0]
+                           cols_ctrl <- vect[vect %% 2 == 0]
+                           delete_MAR_censoring(SimData, 
+                                                p = 2 * pNAs, 
+                                                cols_mis = col_mis, 
+                                                cols_ctrl = cols_ctrl)
+                         },
+                         "2" = {
+                           vect <- 1:ncol(SimData)  # Ensure 'vect' is defined here
+                           delete_MNAR_censoring(SimData, p = 0.2, cols_mis = 1:ncol(SimData))
+                         }
+    )
+    
+  }
+  else{
+    SimData.NA=SimData
+  }
+  
+  return(list(
+    SimData.NA=SimData.NA,
+    SimData.complete=SimData,
+    mchain=x,
+    TT=TT,
+    P=P,
+    Ktrue=Ktrue,
+    pers=pers, 
+    seed=seed))
+  
+}
+
+
 simstud_JMmixed=function(seed,lambda,TT,P,
                          Ktrue=3,mu=1,
                          phi=.8,rho=0,
@@ -1740,6 +1864,63 @@ simstud_JMmixed2=function(seed,lambda,TT,P,
                   n_states=Ktrue,
                   jump_penalty = lambda,
                   verbose=F,timeflag=timeflag)
+  
+  est$Y=est$Y%>%mutate_if(is.factor,factor,levels=c(1,2,3))
+  simDat$SimData.complete=simDat$SimData.complete%>%
+    mutate_if(is.factor,factor,levels=c(1,2,3))
+  
+  imput.err=gower_dist(est$Y,simDat$SimData.complete)
+  ARI=adj.rand.index(est$best_s,simDat$mchain)
+  
+  # Return
+  return(list(
+    imput.err=imput.err,
+    ARI=ARI,
+    seed=seed,
+    lambda=lambda,
+    TT=TT,
+    P=P,
+    Ktrue=Ktrue,
+    mu=mu,
+    phi=phi,
+    rho=rho,
+    Pcat=Pcat,
+    pers=pers,
+    pNAs=pNAs,
+    typeNA=typeNA,
+    true_seq=simDat$mchain,
+    est_seq=est$best_s,
+    true_data=simDat$SimData.complete,
+    est_data=est$Y))
+  
+}
+
+simstud_JMmixed_missmec=function(seed,lambda,TT,P,
+                                 Ktrue=3,mu=1,
+                                 phi=.8,rho=0,
+                                 Pcat=NULL,pers=.95,
+                                 pNAs=0,typeNA=3){
+  
+  # Simulation study with MCAR, MAR and MNAR missing data
+  # typeNA is the type of missing values (0: MCAR, 1: MAR, 2: MNAR, all other values will turn into no missing imputation)
+  
+  # Simulate
+  simDat=sim_data_mixed_missmec(seed=seed,
+                                TT=TT,
+                                P=P,
+                                Ktrue=Ktrue,
+                                mu=mu,
+                                phi=phi,
+                                rho=rho,
+                                Pcat=Pcat,
+                                pers=pers,
+                                pNAs=pNAs,
+                                typeNA=typeNA)
+  # Estimate
+  est=jump_mixed(simDat$SimData.NA,
+                 n_states=Ktrue,
+                 jump_penalty = lambda,
+                 verbose=F)
   
   est$Y=est$Y%>%mutate_if(is.factor,factor,levels=c(1,2,3))
   simDat$SimData.complete=simDat$SimData.complete%>%
@@ -3459,6 +3640,28 @@ BAC=function(obj,levs=3){
   B=factor(B,levels=1:levs)
   
   return(confusionMatrix(A,B)$overall[1])
+}
+
+clust_purity=function(labels,clusters){
+  
+  # Compute weighted overall purity
+  
+  # Arguments:
+  # labels: True class labels
+  # clusters: Cluster assignments
+  
+  # Value:
+  # Overall cluster purity
+  
+  # Compute purity for each cluster
+  cluster_purities <- tapply(labels, clusters, cluster_purity)
+  
+  # Compute overall purity (weighted by cluster size)
+  overall_purity <- sum(sapply(unique(clusters), function(c) {
+    length(labels[clusters == c]) / length(labels) * cluster_purities[c]
+  }))
+  
+  return(overall_purity)
 }
 
 pw_time=function(data_pw,var_name){
