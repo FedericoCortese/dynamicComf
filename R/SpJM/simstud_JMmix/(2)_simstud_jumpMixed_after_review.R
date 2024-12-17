@@ -60,39 +60,48 @@ library(SpectralClMixed)
 start_no.miss_specluster=Sys.time()
 spClust_no.miss_setup1 <- parallel::mclapply(1:nrow(hp),
                                       function(x)
-                                        simstud_JMmixed_missmec(
-                                          seed=hp[x,]$seed,
-                                          lambda=hp[x,]$lambda,
-                                          TT=hp[x,]$TT,
-                                          P=hp[x,]$P,
-                                          Ktrue=3,mu=1,
-                                          phi=.8,rho=0,
-                                          Pcat=NULL,pers=.95,
-                                          pNAs=0,typeNA=3),
+                                        simstud_speclust(
+                                          seed=hp_comp[x,]$seed,
+                                          TT=hp_comp[x,]$TT,
+                                          P=hp_comp[x,]$P,
+                                          Ktrue=3,
+                                          mu=1,
+                                          phi=.8,
+                                          rho=0,
+                                          Pcat=NULL,
+                                          pers=.95,
+                                          pNAs=0,
+                                          typeNA=3),
                                       mc.cores = parallel::detectCores())
 spClust_no.miss_setup2 <- parallel::mclapply(1:nrow(hp),
                                              function(x)
-                                               simstud_JMmixed_missmec(
-                                                 seed=hp[x,]$seed,
-                                                 lambda=hp[x,]$lambda,
-                                                 TT=hp[x,]$TT,
-                                                 P=hp[x,]$P,
-                                                 Ktrue=3,mu=1,
-                                                 phi=.8,rho=0.2,
-                                                 Pcat=NULL,pers=.95,
-                                                 pNAs=0,typeNA=3),
+                                               simstud_speclust(
+                                                 seed=hp_comp[x,]$seed,
+                                                 TT=hp_comp[x,]$TT,
+                                                 P=hp_comp[x,]$P,
+                                                 Ktrue=3,
+                                                 mu=1,
+                                                 phi=.8,
+                                                 rho=0.2,
+                                                 Pcat=NULL,
+                                                 pers=.95,
+                                                 pNAs=0,
+                                                 typeNA=3),
                                              mc.cores = parallel::detectCores())
 spClust_no.miss_setup3 <- parallel::mclapply(1:nrow(hp),
                                              function(x)
-                                               simstud_JMmixed_missmec(
-                                                 seed=hp[x,]$seed,
-                                                 lambda=hp[x,]$lambda,
-                                                 TT=hp[x,]$TT,
-                                                 P=hp[x,]$P,
-                                                 Ktrue=3,mu=.5,
-                                                 phi=.8,rho=0,
-                                                 Pcat=NULL,pers=.95,
-                                                 pNAs=0,typeNA=3),
+                                               simstud_speclust(
+                                                 seed=hp_comp[x,]$seed,
+                                                 TT=hp_comp[x,]$TT,
+                                                 P=hp_comp[x,]$P,
+                                                 Ktrue=3,
+                                                 mu=.5,
+                                                 phi=.8,
+                                                 rho=0,
+                                                 Pcat=NULL,
+                                                 pers=.95,
+                                                 pNAs=0,
+                                                 typeNA=3),
                                              mc.cores = parallel::detectCores())
 end_no.miss_specluster=Sys.time()
 elapsed_no.miss_specluster=end_no.miss_specluster-start_no.miss_specluster
@@ -206,9 +215,73 @@ mixedJM_MNAR.miss20 <- parallel::mclapply(1:nrow(hp),
 end_MNAR=Sys.time()
 elapsed_MNAR=end_MNAR-start_MNAR
 save(mixedJM_MNAR.miss10,
-     mixedJM_MMNAR.miss20,
+     mixedJM_MNAR.miss20,
      elapsed_MNAR,
      file="mixedJM_MNAR.Rdata")
+
+
+# Results -----------------------------------------------------------------
+
+res_eval=function(res_obj,hp,lambda0=F,ARI=T){
+  
+  if(ARI){
+    res=data.frame(hp,
+                   ARI=unlist(lapply(res_obj,function(x)x$ARI)),
+                   imput.err=unlist(lapply(res_obj,function(x)mean(x$imput.err))),
+                   clust_pur=unlist(lapply(res_obj,function(x)x$clust_pur))
+    )
+    
+    # maxres=res%>%group_by(TT,P)%>%summarise(maxARI=max(ARI,na.rm=T))
+    
+    if(lambda0){
+      res=res[which(res$lambda==0),]
+      res%>%group_by(TT,P)%>%summarise(avARI=median(ARI,na.rm=T),
+                                       sdARI=sd(ARI,na.rm=T),
+                                       avErr=mean(imput.err),
+                                       avClustPur=mean(clust_pur))
+    }
+    
+    else{
+      avres=res%>%group_by(TT,P,lambda)%>%summarise(avARI=median(ARI,na.rm=T),
+                                                    sdARI=sd(ARI,na.rm=T),
+                                                    avErr=mean(imput.err),
+                                                    avClustPur=mean(clust_pur))
+      
+      avres%>%group_by(TT,P)%>%summarise(avARI=mean(avARI),
+                                         sdARI=min(sdARI),
+                                         lambda=lambda[which.max(avARI)],
+                                         avErr=avErr[which.max(avARI)],
+                                         avClustPur=avClustPur[which.max(avClustPur)])
+    }
+  }
+  else{
+    res=data.frame(hp,
+                   #ARI=unlist(lapply(res_obj,function(x)x$ARI)),
+                   imput.err=unlist(lapply(res_obj,function(x)mean(x$imput.err)))
+    )
+    res%>%group_by(TT,P)%>%summarise(
+      #avARI=median(ARI,na.rm=T),
+      avErr=mean(imput.err))
+  }
+  
+}
+
+## No missings
+# Setup 1
+
+res_eval(mixedJM_no.miss_setup1,hp)
+res_eval(mixedJM_no.miss_setup1,hp,lambda0=T)
+res_eval(spClust_no.miss_setup1,hp,lambda0=F)
+
+# Setup 2
+res_eval(mixedJM_no.miss_setup2,hp)
+res_eval(mixedJM_no.miss_setup2,hp,lambda0=T)
+res_eval(spClust_no.miss_setup2,hp,lambda0=F)
+
+# Setup 3
+res_eval(mixedJM_no.miss_setup3,hp)
+res_eval(mixedJM_no.miss_setup3,hp,lambda0=T)
+res_eval(spClust_no.miss_setup3,hp,lambda0=F)
 
 
 # Convergence analysis ----------------------------------------------------
