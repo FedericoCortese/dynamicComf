@@ -61,9 +61,9 @@ start_no.miss_specluster=Sys.time()
 spClust_no.miss_setup1 <- parallel::mclapply(1:nrow(hp),
                                       function(x)
                                         simstud_speclust(
-                                          seed=hp_comp[x,]$seed,
-                                          TT=hp_comp[x,]$TT,
-                                          P=hp_comp[x,]$P,
+                                          seed=hp[x,]$seed,
+                                          TT=hp[x,]$TT,
+                                          P=hp[x,]$P,
                                           Ktrue=3,
                                           mu=1,
                                           phi=.8,
@@ -76,9 +76,9 @@ spClust_no.miss_setup1 <- parallel::mclapply(1:nrow(hp),
 spClust_no.miss_setup2 <- parallel::mclapply(1:nrow(hp),
                                              function(x)
                                                simstud_speclust(
-                                                 seed=hp_comp[x,]$seed,
-                                                 TT=hp_comp[x,]$TT,
-                                                 P=hp_comp[x,]$P,
+                                                 seed=hp[x,]$seed,
+                                                 TT=hp[x,]$TT,
+                                                 P=hp[x,]$P,
                                                  Ktrue=3,
                                                  mu=1,
                                                  phi=.8,
@@ -91,9 +91,9 @@ spClust_no.miss_setup2 <- parallel::mclapply(1:nrow(hp),
 spClust_no.miss_setup3 <- parallel::mclapply(1:nrow(hp),
                                              function(x)
                                                simstud_speclust(
-                                                 seed=hp_comp[x,]$seed,
-                                                 TT=hp_comp[x,]$TT,
-                                                 P=hp_comp[x,]$P,
+                                                 seed=hp[x,]$seed,
+                                                 TT=hp[x,]$TT,
+                                                 P=hp[x,]$P,
                                                  Ktrue=3,
                                                  mu=.5,
                                                  phi=.8,
