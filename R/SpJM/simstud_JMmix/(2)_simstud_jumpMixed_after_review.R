@@ -284,6 +284,37 @@ res_eval(mixedJM_no.miss_setup3,hp,lambda0=T)
 res_eval(spClust_no.miss_setup3,hp,lambda0=F)
 
 
-# Convergence analysis ----------------------------------------------------
+## MCAR
+
+#10%
+res_eval(mixedJM_MCAR.miss10,hp)
+res_eval(mixedJM_MCAR.miss10,hp,lambda0=T)
+
+#20%
+res_eval(mixedJM_MCAR.miss20,hp)
+res_eval(mixedJM_MCAR.miss20,hp,lambda0=T)
+
+## MAR
+
+#10%
+res_eval(mixedJM_MAR.miss10,hp)
+res_eval(mixedJM_MAR.miss10,hp,lambda0=T)
+
+#20%
+res_eval(mixedJM_MAR.miss20,hp)
+res_eval(mixedJM_MAR.miss20,hp,lambda0=T)
+
+## MNAR
+
+#10%
+res_eval(mixedJM_MNAR.miss10,hp)
+res_eval(mixedJM_MNAR.miss10,hp,lambda0=T)
+
+#20%
+res_eval(mixedJM_MNAR.miss20,hp)
+res_eval(mixedJM_MNAR.miss20,hp,lambda0=T)
+
+
+
 
 
