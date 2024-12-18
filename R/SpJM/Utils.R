@@ -1974,7 +1974,7 @@ simstud_speclust=function(seed,TT,P,
   #                n_states=Ktrue,
   #                jump_penalty = lambda,
   #                verbose=F)
-  est=mspec(simDat$SimData, k = Ktrue,verbose=F)
+  est=mspec(simDat$SimData.complete, k = Ktrue,verbose=F)
   
   # est$Y=est$Y%>%mutate_if(is.factor,factor,levels=c(1,2,3))
   # simDat$SimData.complete=simDat$SimData.complete%>%
