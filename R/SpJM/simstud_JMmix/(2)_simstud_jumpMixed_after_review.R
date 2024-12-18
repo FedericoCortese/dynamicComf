@@ -56,14 +56,20 @@ save(mixedJM_no.miss_setup1,mixedJM_no.miss_setup2,mixedJM_no.miss_setup3,
      elapsed_no.miss,file="mixedJM_no_miss.RData")
 
 # Spectral Clustering
+lambda=seq(0,1,by=.05)
+TT=c(50,100,500)
+P=c(4,20,50)
+seeds=1:100
+hp_spCl=expand.grid(TT=TT,P=P,seed=seeds)
+
 library(SpectralClMixed)
 start_no.miss_specluster=Sys.time()
-spClust_no.miss_setup1 <- parallel::mclapply(1:nrow(hp),
+spClust_no.miss_setup1 <- parallel::mclapply(1:nrow(hp_spCl),
                                       function(x)
                                         simstud_speclust(
-                                          seed=hp[x,]$seed,
-                                          TT=hp[x,]$TT,
-                                          P=hp[x,]$P,
+                                          seed=hp_spCl[x,]$seed,
+                                          TT=hp_spCl[x,]$TT,
+                                          P=hp_spCl[x,]$P,
                                           Ktrue=3,
                                           mu=1,
                                           phi=.8,
@@ -73,12 +79,12 @@ spClust_no.miss_setup1 <- parallel::mclapply(1:nrow(hp),
                                           pNAs=0,
                                           typeNA=3),
                                       mc.cores = parallel::detectCores())
-spClust_no.miss_setup2 <- parallel::mclapply(1:nrow(hp),
+spClust_no.miss_setup2 <- parallel::mclapply(1:nrow(hp_spCl),
                                              function(x)
                                                simstud_speclust(
-                                                 seed=hp[x,]$seed,
-                                                 TT=hp[x,]$TT,
-                                                 P=hp[x,]$P,
+                                                 seed=hp_spCl[x,]$seed,
+                                                 TT=hp_spCl[x,]$TT,
+                                                 P=hp_spCl[x,]$P,
                                                  Ktrue=3,
                                                  mu=1,
                                                  phi=.8,
@@ -88,12 +94,12 @@ spClust_no.miss_setup2 <- parallel::mclapply(1:nrow(hp),
                                                  pNAs=0,
                                                  typeNA=3),
                                              mc.cores = parallel::detectCores())
-spClust_no.miss_setup3 <- parallel::mclapply(1:nrow(hp),
+spClust_no.miss_setup3 <- parallel::mclapply(1:nrow(hp_spCl),
                                              function(x)
                                                simstud_speclust(
-                                                 seed=hp[x,]$seed,
-                                                 TT=hp[x,]$TT,
-                                                 P=hp[x,]$P,
+                                                 seed=hp_spCl[x,]$seed,
+                                                 TT=hp_spCl[x,]$TT,
+                                                 P=hp_spCl[x,]$P,
                                                  Ktrue=3,
                                                  mu=.5,
                                                  phi=.8,
