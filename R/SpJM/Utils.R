@@ -1956,7 +1956,7 @@ simstud_speclust=function(seed,TT,P,
                           Ktrue=3,mu=1,
                           phi=.8,rho=0,
                           Pcat=NULL,pers=.95,
-                          pNAs=0,typeNA=2){
+                          pNAs=0,typeNA=3){
   # Simulate
   simDat=sim_data_mixed(seed=seed,
                         TT=TT,
