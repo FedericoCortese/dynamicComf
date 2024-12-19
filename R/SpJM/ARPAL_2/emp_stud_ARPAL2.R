@@ -175,7 +175,7 @@ grid.arrange(ptemp,prel_hum,pwind_speed,prainfall,pglobrad,ncol=2)
 
 
 # Save data
-save(data,file="ARPAL_2/data.Rdata")
+save(data,file="ARPAL_2/data_aq.Rdata")
 
 
 
@@ -328,10 +328,10 @@ data$ma_globrad=rollapply(data$globrad,width=wdn,mean,align="right",fill=NA)
 
 #data=subset(data,select=-c(rainfall,rainfall_min,rainfall_max,wind_speed,wind_speed_min,wind_speed_max))
 
-save(data,file="ARPAL_2/data.Rdata")
+save(data,file="ARPAL_2/data_aq.Rdata")
 
 dat=data
-save(dat,file="ARPAL_2/data.Rdata")
+save(dat,file="ARPAL_2/data_aq.Rdata")
 
 
 # AQI ---------------------------------------------------------------------
@@ -373,7 +373,7 @@ ggplot(dat,aes(x=Date,y=as.numeric(AQI_fact)))+geom_line()+xlab("Date")+ylab("AQ
 
 # JM mix ------------------------------------------------------------------
 
-load("ARPAL_2/data.Rdata")
+load("ARPAL_2/data_aq.Rdata")
 load("ARPAL_2/AQI_fact.Rdata")
 
 # Percentage of missing values

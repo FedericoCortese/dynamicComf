@@ -10,10 +10,10 @@ library(gower)
 library(StatMatch)
 library(SpectralClMixed)
 library(multiUS)
-library(missForest)
+#library(missForest)
 library(parallel)
-library(MCMCprecision)
-require("potts")
+#library(MCMCprecision)
+#require("potts")
 library(missMethods)
 library(aricode)
 #py_install("scipy")
@@ -1468,7 +1468,7 @@ sim_data_mixed=function(seed=123,
                         Pcat=NULL,
                         pers=.95,
                         pNAs=0,
-                        typeNA=2){
+                        typeNA=3){
   
   # Function to simulate mixed data with fixed parameters for the data generating process
   

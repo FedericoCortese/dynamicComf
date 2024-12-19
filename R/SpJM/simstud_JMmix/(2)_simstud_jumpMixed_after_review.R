@@ -63,59 +63,173 @@ seeds=1:100
 hp_spCl=expand.grid(TT=TT,P=P,seed=seeds)
 
 library(SpectralClMixed)
+
 start_no.miss_specluster=Sys.time()
-spClust_no.miss_setup1 <- parallel::mclapply(1:nrow(hp_spCl),
-                                      function(x)
-                                        simstud_speclust(
-                                          seed=hp_spCl[x,]$seed,
-                                          TT=hp_spCl[x,]$TT,
-                                          P=hp_spCl[x,]$P,
-                                          Ktrue=3,
-                                          mu=1,
-                                          phi=.8,
-                                          rho=0,
-                                          Pcat=NULL,
-                                          pers=.95,
-                                          pNAs=0,
-                                          typeNA=3),
-                                      mc.cores = parallel::detectCores())
-spClust_no.miss_setup2 <- parallel::mclapply(1:nrow(hp_spCl),
-                                             function(x)
-                                               simstud_speclust(
-                                                 seed=hp_spCl[x,]$seed,
-                                                 TT=hp_spCl[x,]$TT,
-                                                 P=hp_spCl[x,]$P,
-                                                 Ktrue=3,
-                                                 mu=1,
-                                                 phi=.8,
-                                                 rho=0.2,
-                                                 Pcat=NULL,
-                                                 pers=.95,
-                                                 pNAs=0,
-                                                 typeNA=3),
-                                             mc.cores = parallel::detectCores())
-spClust_no.miss_setup3 <- parallel::mclapply(1:nrow(hp_spCl),
-                                             function(x)
-                                               simstud_speclust(
-                                                 seed=hp_spCl[x,]$seed,
-                                                 TT=hp_spCl[x,]$TT,
-                                                 P=hp_spCl[x,]$P,
-                                                 Ktrue=3,
-                                                 mu=.5,
-                                                 phi=.8,
-                                                 rho=0,
-                                                 Pcat=NULL,
-                                                 pers=.95,
-                                                 pNAs=0,
-                                                 typeNA=3),
-                                             mc.cores = parallel::detectCores())
+
+# Setup 1
+cl<-makeCluster(parallel::detectCores(),type="SOCK")
+parallel::clusterExport(cl,ls())
+parallel::clusterEvalQ(cl,{
+  library(RcppHMM)
+  library(reticulate)
+  library(pdfCluster)
+  library(boot)
+  library(xtable)
+  library(dplyr)
+  library(cluster)
+  library(gower)
+  library(StatMatch)
+  library(SpectralClMixed)
+})
+spClust_no.miss_setup1 <- clusterApply(cl,
+                                       1:nrow(hp_comp),
+                                       function(x)
+                                         simstud_speclust(
+                                           seed=hp_spCl[x,]$seed,
+                                           TT=hp_spCl[x,]$TT,
+                                           P=hp_spCl[x,]$P,
+                                           Ktrue=3,
+                                           mu=1,
+                                           phi=.8,
+                                           rho=0,
+                                           Pcat=NULL,
+                                           pers=.95,
+                                           pNAs=0,
+                                           typeNA=3)
+)
+stopCluster(cl)
+save(spClust_no.miss_setup1,
+     file="spCluster_no_miss_setup1.RData")
+rm(spClust_no.miss_setup1)
+
+# Setup 2
+cl<-makeCluster(parallel::detectCores(),type="SOCK")
+parallel::clusterExport(cl,ls())
+parallel::clusterEvalQ(cl,{
+  library(RcppHMM)
+  library(reticulate)
+  library(pdfCluster)
+  library(boot)
+  library(xtable)
+  library(dplyr)
+  library(cluster)
+  library(gower)
+  library(StatMatch)
+  library(SpectralClMixed)
+})
+spClust_no.miss_setup2 <- clusterApply(cl,
+                                       1:nrow(hp_comp),
+                                       function(x)
+                                         simstud_speclust(
+                                           seed=hp_spCl[x,]$seed,
+                                           TT=hp_spCl[x,]$TT,
+                                           P=hp_spCl[x,]$P,
+                                           Ktrue=3,
+                                           mu=1,
+                                           phi=.8,
+                                           rho=0.2,
+                                           Pcat=NULL,
+                                           pers=.95,
+                                           pNAs=0,
+                                           typeNA=3)
+)
+stopCluster(cl)
+save(spClust_no.miss_setup2,
+     file="spCluster_no_miss_setup2.RData")
+rm(spClust_no.miss_setup2)
+
+cl<-makeCluster(parallel::detectCores(),type="SOCK")
+parallel::clusterExport(cl,ls())
+parallel::clusterEvalQ(cl,{
+  library(RcppHMM)
+  library(reticulate)
+  library(pdfCluster)
+  library(boot)
+  library(xtable)
+  library(dplyr)
+  library(cluster)
+  library(gower)
+  library(StatMatch)
+  library(SpectralClMixed)
+})
+spClust_no.miss_setup3 <- clusterApply(cl,
+                                       1:nrow(hp_comp),
+                                       function(x)
+                                         simstud_speclust(
+                                           seed=hp_spCl[x,]$seed,
+                                           TT=hp_spCl[x,]$TT,
+                                           P=hp_spCl[x,]$P,
+                                           Ktrue=3,
+                                           mu=.5,
+                                           phi=.8,
+                                           rho=0,
+                                           Pcat=NULL,
+                                           pers=.95,
+                                           pNAs=0,
+                                           typeNA=3)
+)
+stopCluster(cl)
+save(spClust_no.miss_setup3,
+     file="spCluster_no_miss_setup3.RData")
+rm(spClust_no.miss_setup3)
+
 end_no.miss_specluster=Sys.time()
 elapsed_no.miss_specluster=end_no.miss_specluster-start_no.miss_specluster
-save(spClust_no.miss_setup1,
-     spClust_no.miss_setup2,
-     spClust_no.miss_setup3,
-     elapsed_no.miss_specluster,
-     file="spClust_no_miss.RData")
+
+
+# start_no.miss_specluster=Sys.time()
+# spClust_no.miss_setup1 <- parallel::mclapply(1:nrow(hp_spCl),
+#                                       function(x)
+#                                         simstud_speclust(
+#                                           seed=hp_spCl[x,]$seed,
+#                                           TT=hp_spCl[x,]$TT,
+#                                           P=hp_spCl[x,]$P,
+#                                           Ktrue=3,
+#                                           mu=1,
+#                                           phi=.8,
+#                                           rho=0,
+#                                           Pcat=NULL,
+#                                           pers=.95,
+#                                           pNAs=0,
+#                                           typeNA=3),
+#                                       mc.cores = parallel::detectCores())
+# spClust_no.miss_setup2 <- parallel::mclapply(1:nrow(hp_spCl),
+#                                              function(x)
+#                                                simstud_speclust(
+#                                                  seed=hp_spCl[x,]$seed,
+#                                                  TT=hp_spCl[x,]$TT,
+#                                                  P=hp_spCl[x,]$P,
+#                                                  Ktrue=3,
+#                                                  mu=1,
+#                                                  phi=.8,
+#                                                  rho=0.2,
+#                                                  Pcat=NULL,
+#                                                  pers=.95,
+#                                                  pNAs=0,
+#                                                  typeNA=3),
+#                                              mc.cores = parallel::detectCores())
+# spClust_no.miss_setup3 <- parallel::mclapply(1:nrow(hp_spCl),
+#                                              function(x)
+#                                                simstud_speclust(
+#                                                  seed=hp_spCl[x,]$seed,
+#                                                  TT=hp_spCl[x,]$TT,
+#                                                  P=hp_spCl[x,]$P,
+#                                                  Ktrue=3,
+#                                                  mu=.5,
+#                                                  phi=.8,
+#                                                  rho=0,
+#                                                  Pcat=NULL,
+#                                                  pers=.95,
+#                                                  pNAs=0,
+#                                                  typeNA=3),
+#                                              mc.cores = parallel::detectCores())
+# end_no.miss_specluster=Sys.time()
+# elapsed_no.miss_specluster=end_no.miss_specluster-start_no.miss_specluster
+# save(spClust_no.miss_setup1,
+#      spClust_no.miss_setup2,
+#      spClust_no.miss_setup3,
+#      elapsed_no.miss_specluster,
+#      file="spClust_no_miss.RData")
 
 
 # Incomplete data -----------------------------

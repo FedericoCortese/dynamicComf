@@ -1,3 +1,5 @@
+source("Utils.R")
+
 conv_analysis_jump_mixed <- function(Y, n_states, 
                                      jump_penalty=1e-5, 
                        initial_states=NULL,
@@ -142,7 +144,8 @@ conv_analysis_jump_mixed <- function(Y, n_states,
       data_convergence=rbind(data_convergence,
                              data.frame(n_init=init,
                                         max_iter=it,
-                                        target=target2,
+                                        targetJM=target2,
+                                        target_kprot=target1,
                                         obs_mov=obs_mov))
       
       if (length(unique(s)) == 1) {
@@ -190,9 +193,143 @@ conv_analysis_jump_mixed <- function(Y, n_states,
               id_best_iter=id_best_iter))
 }
 
+SimData=sim_data_mixed(TT=200,P=20)
+Y=SimData$SimData.complete
 
-temp=conv_analysis_jump_mixed(SimData,n_states=3, jump_penalty=.1,
+temp=conv_analysis_jump_mixed(Y,n_states=3, jump_penalty=.1,
                               max_iter=50, n_init=30,tol=NULL,verbose = T)
 temp$data_convergence
 temp$id_best_init
 temp$id_best_iter
+
+res=temp$data_convergence
+
+sz=22
+pconv1 = res %>%
+  group_by(n_init) %>%
+  ggplot(aes(x = max_iter, y = targetJM, color = factor(n_init))) +
+  geom_line(linewidth = .8) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.title.x = element_text(size = sz), # Size of x-axis label
+    axis.title.y = element_text(size = sz), # Size of y-axis label
+    axis.text.x = element_text(size = sz-2),  # Size of x-axis tick text
+    axis.text.y = element_text(size = sz-2)   # Size of y-axis tick text
+  ) +
+  labs(x = "Iteration", y = "Objective function")
+
+pconv2 = res %>%
+  group_by(n_init) %>%
+  ggplot(aes(x = max_iter, y = obs_mov, color = factor(n_init))) +
+  geom_line(linewidth = .8) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.title.x = element_text(size = sz), # Size of x-axis label
+    axis.title.y = element_text(size = sz), # Size of y-axis label
+    axis.text.x = element_text(size = sz-2),  # Size of x-axis tick text
+    axis.text.y = element_text(size = sz-2)   # Size of y-axis tick text
+  ) +
+  labs(x = "Iteration", y = "# Observations moved")
+
+
+# Merge
+library(gridExtra)
+grid.arrange(pconv1,pconv2,ncol=2)
+
+
+res%>%group_by(n_init)%>%
+  ggplot(aes(x=max_iter,y=target_kprot,color=factor(n_init)))+
+  geom_line(linewidth=.8)+
+  theme_minimal()+
+  theme(legend.position = "none")+
+  labs(x = "Iteration", y = "Objective function")+
+  theme(
+    legend.position = "none",
+    axis.title.x = element_text(size = sz), # Size of x-axis label
+    axis.title.y = element_text(size = sz), # Size of y-axis label
+    axis.text.x = element_text(size = sz-2),  # Size of x-axis tick text
+    axis.text.y = element_text(size = sz-2)   # Size of y-axis tick text
+  ) +
+  labs(x = "Iteration", y = "Objective function")
+
+
+
+# Run 100 times for ninit=1,2,5,10,50, save mean and SD of results only
+
+n_init=c(1,2,5,10,20)
+seeds=1:100
+
+conv_fun_sd=function(seed,n_init,
+                     TT=200,
+                     P=20,
+                     Ktrue=3,
+                     mu=1,
+                     phi=.8,
+                     rho=0,
+                     Pcat=10,
+                     pers=.95,
+                     pNAs=0,
+                     typeNA=3){
+  simDat=sim_data_mixed(seed=seed,
+                        TT=TT,
+                        P=P,
+                        Ktrue=Ktrue,
+                        mu=mu,
+                        phi=phi,
+                        rho=rho,
+                        Pcat=Pcat,
+                        pers=pers,
+                        pNAs=pNAs,
+                        typeNA=typeNA)
+  # Estimate
+  est=jump_mixed(simDat$SimData.NA,
+                 n_states=Ktrue,
+                 jump_penalty = .1,
+                 n_init=n_init,
+                 verbose=F)
+  target1=est$target1
+  target2=est$target2
+  return(list(target1=target1,target2=target2))
+}
+
+hp_conv=expand.grid(n_init=n_init,seed=seeds)
+
+temp2 <- apply(hp_conv, 1, function(x) conv_fun_sd(as.numeric(x["seed"]), as.numeric(x["n_init"])))
+
+res_sd=data.frame(hp_conv,
+                  target1=unlist(lapply(temp2,function(x)x$target1)),
+                  target2=unlist(lapply(temp2,function(x)x$target2)))
+
+
+head(res_sd)
+
+library(ggplot2)
+
+# Melt the data if you want separate boxplots for `target1` and `target2`
+library(reshape2)
+res_sd_melted <- melt(res_sd, id.vars = c("n_init", "seed"), measure.vars = c("target1", "target2"))
+
+# Create the boxplot
+ggplot(res_sd_melted, aes(x = factor(n_init), y = value, fill = variable)) +
+  geom_boxplot() +
+  theme_minimal() +
+  labs(x = "n_init", y = "Target Value", fill = "Target Type") +
+  theme(legend.position = "top")
+
+library(dplyr)
+library(ggplot2)
+
+# Calculate standard deviation of target1 for each n_init
+sd_summary <- res_sd %>%
+  group_by(n_init) %>%
+  summarise(sd_target1 = sd(target1, na.rm = TRUE))
+
+# Create the line plot
+ggplot(sd_summary, aes(x = n_init, y = sd_target1)) +
+  geom_line() +
+  geom_point() +
+  theme_minimal() +
+  labs(x = "n_init", y = "SD of Target1", title = "Standard Deviation of Target1 by n_init")
+
