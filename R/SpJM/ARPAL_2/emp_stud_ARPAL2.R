@@ -374,7 +374,7 @@ ggplot(dat,aes(x=Date,y=as.numeric(AQI_fact)))+geom_line()+xlab("Date")+ylab("AQ
 # JM mix ------------------------------------------------------------------
 
 load("ARPAL_2/data_aq.Rdata")
-load("ARPAL_2/AQI_fact.Rdata")
+load("ARPAL_2/AQI_fact.RData")
 
 # Percentage of missing values
 
@@ -478,17 +478,28 @@ GIC=unlist(lapply(est,function(e){GIC_mixed(e$Y,e$best_s,est[[1]]$best_s,K=e$K,K
 
 res=data.frame(ARI_res,GIC,lambda,K)
 
+res[which.min(res$GIC),]
+
 #plot(res$lambda,res$ARI_res,type="l",xlab="lambda",ylab="ARI",main="ARI vs lambda")
 
-best_est=est[[7]]
+#best_est=est[[7]]
 
-table(best_est$best_s)
+best_est=est[[12]]
+
+round(
+table(best_est$best_s)/length(best_est$best_s)*100
+,2)
 
 best_est$condMM
 
-states=recode(best_est$best_s, "3" = "Good", "2" = "Moderate","1"="US","4"="Unhealthy")
+#states=recode(best_est$best_s, "3" = "Good", "2" = "Moderate","1"="US","4"="Unhealthy")
+
+states=recode(best_est$best_s, "4" = "Good", "3" = "Moderate","2"="US","1"="Unhealthy")
+
 states=factor(states,levels=c("Good","Moderate","US","Unhealthy"))
 #states=factor(best_est$best_s,levels=1:4,labels=c("Good","US","Unhealthy","Moderate"))
+
+#true_states=factor(AQI_fact,levels=4:1,labels=c("Good","Moderate","US","Unhealthy"))
 true_states=factor(AQI_fact,levels=1:4,labels=c("Good","Moderate","US","Unhealthy"))
 
 adj.rand.index(states,true_states)
@@ -668,4 +679,4 @@ round(pcor_good$estimate,2)
 round(pcor_moderate$estimate,2)
 round(pcor_us$estimate,2)
 round(pcor_unhealthy$estimate,2)
->>>>>>> 5faf6041eb9921c0090524ce364232691b8aa476
+
