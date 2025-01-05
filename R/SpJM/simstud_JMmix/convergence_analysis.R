@@ -1,9 +1,8 @@
 source("Utils.R")
-
 conv_analysis_jump_mixed <- function(Y, n_states, 
                                      jump_penalty=1e-5, 
-                       initial_states=NULL,
-                       max_iter=50, n_init=10, tol=1e-5, verbose=FALSE) {
+                                     initial_states=NULL,
+                                     max_iter=50, n_init=10, tol=1e-5, verbose=FALSE) {
   
   n_states=as.integer(n_states)
   
@@ -193,6 +192,9 @@ conv_analysis_jump_mixed <- function(Y, n_states,
               id_best_iter=id_best_iter))
 }
 
+
+# Convergence analysis with no missings -----------------------------------
+
 SimData=sim_data_mixed(TT=200,P=20)
 Y=SimData$SimData.complete
 
@@ -255,8 +257,173 @@ res%>%group_by(n_init)%>%
   labs(x = "Iteration", y = "Objective function")
 
 
+# Convergence with MCAR mechanism --------------------------------
+pNAs=.2
 
-# Run 100 times for ninit=1,2,5,10,50, save mean and SD of results only
+SimData=sim_data_mixed_missmec(TT=200,P=20,
+                                       pNAs=pNAs,
+                                       typeNA=0)
+Y=SimData$SimData.complete
+
+temp=conv_analysis_jump_mixed(Y,n_states=3, jump_penalty=.1,
+                              max_iter=50, n_init=30,tol=NULL,verbose = T)
+temp$data_convergence
+temp$id_best_init
+temp$id_best_iter
+
+res=temp$data_convergence
+
+sz=22
+pconv1 = res %>%
+  group_by(n_init) %>%
+  ggplot(aes(x = max_iter, y = targetJM, color = factor(n_init))) +
+  geom_line(linewidth = .8) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.title.x = element_text(size = sz), # Size of x-axis label
+    axis.title.y = element_text(size = sz), # Size of y-axis label
+    axis.text.x = element_text(size = sz-2),  # Size of x-axis tick text
+    axis.text.y = element_text(size = sz-2)   # Size of y-axis tick text
+  ) +
+  labs(x = "Iteration", y = "Objective function")
+
+pconv2 = res %>%
+  group_by(n_init) %>%
+  ggplot(aes(x = max_iter, y = obs_mov, color = factor(n_init))) +
+  geom_line(linewidth = .8) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.title.x = element_text(size = sz), # Size of x-axis label
+    axis.title.y = element_text(size = sz), # Size of y-axis label
+    axis.text.x = element_text(size = sz-2),  # Size of x-axis tick text
+    axis.text.y = element_text(size = sz-2)   # Size of y-axis tick text
+  ) +
+  labs(x = "Iteration", y = "# Observations moved")
+
+
+# Merge
+library(gridExtra)
+grid.arrange(
+  pconv1, pconv2, 
+  ncol = 2,
+  top = textGrob(paste0("MCAR - ", pNAs*100, "% NAs"), gp = gpar(fontsize = sz, fontface = "bold"))
+)
+
+# Convergence with MAR mechanism -------------------------------------------------------------------------
+
+pNAs=.2
+
+SimData=sim_data_mixed_missmec(TT=200,P=20,
+                               pNAs=pNAs,
+                               typeNA=1)
+Y=SimData$SimData.complete
+
+temp=conv_analysis_jump_mixed(Y,n_states=3, jump_penalty=.1,
+                              max_iter=50, n_init=30,tol=NULL,verbose = T)
+temp$data_convergence
+temp$id_best_init
+temp$id_best_iter
+
+res=temp$data_convergence
+
+sz=22
+pconv1 = res %>%
+  group_by(n_init) %>%
+  ggplot(aes(x = max_iter, y = targetJM, color = factor(n_init))) +
+  geom_line(linewidth = .8) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.title.x = element_text(size = sz), # Size of x-axis label
+    axis.title.y = element_text(size = sz), # Size of y-axis label
+    axis.text.x = element_text(size = sz-2),  # Size of x-axis tick text
+    axis.text.y = element_text(size = sz-2)   # Size of y-axis tick text
+  ) +
+  labs(x = "Iteration", y = "Objective function")
+
+pconv2 = res %>%
+  group_by(n_init) %>%
+  ggplot(aes(x = max_iter, y = obs_mov, color = factor(n_init))) +
+  geom_line(linewidth = .8) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.title.x = element_text(size = sz), # Size of x-axis label
+    axis.title.y = element_text(size = sz), # Size of y-axis label
+    axis.text.x = element_text(size = sz-2),  # Size of x-axis tick text
+    axis.text.y = element_text(size = sz-2)   # Size of y-axis tick text
+  ) +
+  labs(x = "Iteration", y = "# Observations moved")
+
+
+# Merge
+library(gridExtra)
+grid.arrange(
+  pconv1, pconv2, 
+  ncol = 2,
+  top = textGrob(paste0("MAR - ", pNAs*100, "% NAs"), gp = gpar(fontsize = sz, fontface = "bold"))
+)
+
+
+# Convergence with MNAR mechanism -------------------------------------------------------------------------
+
+pNAs=.2
+
+SimData=sim_data_mixed_missmec(TT=200,P=20,
+                               pNAs=pNAs,
+                               typeNA=2)
+Y=SimData$SimData.complete
+
+temp=conv_analysis_jump_mixed(Y,n_states=3, jump_penalty=.1,
+                              max_iter=50, n_init=30,tol=NULL,verbose = T)
+temp$data_convergence
+temp$id_best_init
+temp$id_best_iter
+
+res=temp$data_convergence
+
+sz=22
+pconv1 = res %>%
+  group_by(n_init) %>%
+  ggplot(aes(x = max_iter, y = targetJM, color = factor(n_init))) +
+  geom_line(linewidth = .8) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.title.x = element_text(size = sz), # Size of x-axis label
+    axis.title.y = element_text(size = sz), # Size of y-axis label
+    axis.text.x = element_text(size = sz-2),  # Size of x-axis tick text
+    axis.text.y = element_text(size = sz-2)   # Size of y-axis tick text
+  ) +
+  labs(x = "Iteration", y = "Objective function")
+
+pconv2 = res %>%
+  group_by(n_init) %>%
+  ggplot(aes(x = max_iter, y = obs_mov, color = factor(n_init))) +
+  geom_line(linewidth = .8) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.title.x = element_text(size = sz), # Size of x-axis label
+    axis.title.y = element_text(size = sz), # Size of y-axis label
+    axis.text.x = element_text(size = sz-2),  # Size of x-axis tick text
+    axis.text.y = element_text(size = sz-2)   # Size of y-axis tick text
+  ) +
+  labs(x = "Iteration", y = "# Observations moved")
+
+
+# Merge
+library(gridExtra)
+grid.arrange(
+  pconv1, pconv2, 
+  ncol = 2,
+  top = textGrob(paste0("MNAR - ", pNAs*100, "% NAs"), gp = gpar(fontsize = sz, fontface = "bold"))
+)
+
+# Run 100 times for ninit=1,2,5,10,50, save mean and SD of results --------
+
 
 n_init=c(1,2,5,10,20)
 seeds=1:100
