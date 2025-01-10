@@ -462,4 +462,41 @@ mixedJM_l1vsl2 <- parallel::mclapply(1:nrow(hp),
                                              mc.cores = parallel::detectCores())
 
 
+save(mixedJM_l1vsl2,
+     file="mixedJM_l1vsl2.Rdata")
 
+res=data.frame(hp,
+               ARI_l1=unlist(lapply(mixedJM_l1vsl2,function(x)x$ARI_l1)),
+               ARI_l2=unlist(lapply(mixedJM_l1vsl2,function(x)x$ARI_l2))
+)
+    
+    
+avres_l1=res%>%group_by(TT,P,lambda)%>%summarise(avARI=median(ARI_l1,na.rm=T),
+                                              sdARI=sd(ARI,na.rm=T)
+                                              )
+
+avres_l1%>%group_by(TT,P)%>%summarise(avARI=mean(avARI),
+                                   sdARI=min(sdARI),
+                                   lambda=lambda[which.max(avARI)]
+                                   )
+
+avres_l2=res%>%group_by(TT,P,lambda)%>%summarise(avARI=median(ARI_l2,na.rm=T),
+                                                 sdARI=sd(ARI,na.rm=T)
+)
+
+avres_l2%>%group_by(TT,P)%>%summarise(avARI=mean(avARI),
+                                      sdARI=min(sdARI),
+                                      lambda=lambda[which.max(avARI)]
+)
+
+    
+    
+  
+  
+  
+
+
+## No missings
+# Setup 1
+
+res_eval(mixedJM_no.miss_setup1,hp)
