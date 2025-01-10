@@ -17,6 +17,7 @@ library(parallel)
 library(missMethods)
 library(aricode)
 #py_install("scipy")
+library(mvtnorm)
 
 library(MASS)  # For multivariate normal sampling
 library(spdep)  # For spatial correlation
@@ -983,6 +984,226 @@ jump_mixed <- function(Y, n_states, jump_penalty=1e-5,
               target2=target2))
 }
 
+jump_mixed_github <- function(Y, n_states, jump_penalty=1e-5, 
+                            initial_states=NULL,
+                            max_iter=10, n_init=10, tol=NULL, 
+                            verbose=FALSE,
+                            time_vec=NULL
+                            
+) {
+  # Fit jump model for mixed type data 
+  
+  # Arguments:
+  # Y: data.frame with mixed data types. Categorical variables must be factors.
+  # n_states: number of states
+  # jump_penalty: penalty for the number of jumps
+  # initial_states: initial state sequence
+  # max_iter: maximum number of iterations
+  # n_init: number of initializations
+  # tol: tolerance for convergence
+  # verbose: print progress
+  # time_vec is a vector of time points, needed if times are not equally sampled
+  
+  # Value:
+  # best_s: estimated state sequence
+  # Y: imputed data
+  # Y.orig: original data
+  # condMM: state-conditional medians and modes
+  
+  timeflag=FALSE
+  if(!is.null(time_vec)){
+    timeflag=TRUE
+    if(length(time_vec)!=nrow(Y)){
+      stop("time_vec must have the same length of the number of observations")
+    }
+    else{
+      time=sort(unique(time_vec))
+      dtime=diff(time)
+      dtime=dtime/as.numeric(min(dtime))
+      dtime=as.numeric(dtime)
+    }
+  }
+  
+  n_states=as.integer(n_states)
+  
+  n_obs <- nrow(Y)
+  n_features <- ncol(Y)
+  Gamma <- jump_penalty * (1 - diag(n_states))
+  best_loss <- NULL
+  best_s <- NULL
+  
+  # Which vars are categorical and which are numeric
+  cat_flag=any(sapply(Y, is.factor))
+  
+  if(cat_flag){
+    cat.indx=which(sapply(Y, is.factor))
+    cont.indx=which(sapply(Y, is.numeric))
+    Ycont=Y[,-cat.indx]
+    Ycat=Y[,cat.indx]
+    
+    n_levs=apply(Ycat, 2, function(x)length(unique(x[!is.na(x)])))
+    # n_levs=apply(Ycat, 2, function(x)levels(x))
+    
+    
+    n_cat=length(cat.indx)
+    n_cont=n_features-n_cat
+    # Initialize modes
+    mo <- apply(Ycat,2,Mode)
+    
+    Mcat=ifelse(is.na(Ycat),T,F)
+    
+  }
+  else{
+    Ycont=Y
+    n_cont=dim(Y)[2]
+    n_cat=0
+  }
+  
+  
+  # Initialize mu 
+  mu <- apply(Ycont, 2, median, na.rm = TRUE)
+  Mcont=ifelse(is.na(Ycont),T,F)
+  Ytil=Y
+  
+  
+  
+  # Impute missing values with medians of observed states
+  for(i in 1:n_cont){
+    Ycont[,i]=ifelse(Mcont[,i],mu[i],Ycont[,i])
+  }
+  
+  if(cat_flag){
+    for(i in 1:n_cat){
+      Ycat[,i]=ifelse(Mcat[,i],mo[i],Ycat[,i])
+      Ycat[,i]=factor(Ycat[,i],levels=1:n_levs[i])
+    }
+    Y[,-cat.indx]=Ycont
+    Y[,cat.indx]=Ycat
+  }
+  
+  
+  # State initialization through kmeans++
+  if (!is.null(initial_states)) {
+    s <- initial_states
+  } else {
+    s=initialize_states(Y,n_states)
+  }
+  
+  for (init in 1:n_init) {
+    mu <- matrix(0, nrow=n_states, ncol=n_features-n_cat)
+    
+    if(cat_flag){
+      mo <- matrix(0, nrow=n_states, ncol=length(cat.indx))
+    }
+    
+    loss_old <- 1e10
+    for (it in 1:max_iter) {
+      
+      for (i in unique(s)) {
+        
+        if(sum(s==i)==1){
+          mu[i,] <- Ycont[s==i,]
+          if(cat_flag){
+            mo[i,]=Ycat[s==i,]
+          }
+        }
+        else{
+          mu[i,] <- apply(Ycont[s==i,], 2, 
+                          median, na.rm = TRUE)
+          if(cat_flag){
+            mo[i,]=apply(Ycat[s==i,],2,Mode)
+          } 
+        }
+      }
+      
+      mu=data.frame(mu)
+      if(cat_flag){
+        mo=data.frame(mo,stringsAsFactors=TRUE)
+        for(i in 1:n_cat){
+          mo[,i]=factor(mo[,i],levels=1:n_levs[i])
+        }
+      }
+      
+      # Fit state sequence
+      s_old <- s
+      
+      # Re-fill-in missings
+      for(i in 1:ncol(Ycont)){
+        Ycont[,i]=ifelse(Mcont[,i],mu[s,i],Ycont[,i])
+      }
+      if(cat_flag){
+        for(i in 1:ncol(Ycat)){
+          Ycat[,i]=ifelse(Mcat[,i],mo[s,i],Ycat[,i])
+          Ycat[,i]=factor(Ycat[,i],levels=1:n_levs[i])
+        }
+        
+        Y[,-cat.indx]=Ycont
+        Y[,cat.indx]=Ycat
+        mumo=data.frame(matrix(0,nrow=n_states,ncol=n_features))
+        mumo[,cat.indx]=mo
+        mumo[,cont.indx]=mu
+      }
+      else{
+        Y=Ycont
+        mumo=mu
+      }
+      
+      
+      
+      
+      
+      # var.weights in gower.dist allows for weighted distance
+      
+      loss_by_state=gower.dist(Y,mumo)
+      
+      V <- loss_by_state
+      for (t in (n_obs-1):1) {
+        if(timeflag){
+          V[t-1,] <- loss_by_state[t-1,] + apply(V[t,]/dtime[t] + Gamma, 2, min)
+        }
+        else{
+          V[t-1,] <- loss_by_state[t-1,] + apply(V[t,] + Gamma, 2, min)
+        }
+      }
+      
+      s[1] <- which.min(V[1,])
+      for (t in 2:n_obs) {
+        s[t] <- which.min(V[t,] + Gamma[s[t-1],])
+      }
+      
+      if (length(unique(s)) == 1) {
+        break
+      }
+      loss <- min(V[1,])
+      if (verbose) {
+        cat(sprintf('Iteration %d: %.6e\n', it, loss))
+      }
+      if (!is.null(tol)) {
+        epsilon <- loss_old - loss
+        if (epsilon < tol) {
+          break
+        }
+      } else if (all(s == s_old)) {
+        break
+      }
+      loss_old <- loss
+    }
+    if (is.null(best_s) || (loss_old < best_loss)) {
+      best_loss <- loss_old
+      best_s <- s
+    }
+    #s <- init_states(Y, n_states)+1
+    s=initialize_states(Y,n_states)
+  }
+  
+  #Y[,cat.indx]=apply(Y[,cat.indx],2,droplevels)
+  
+  return(list(best_s=best_s,
+              Y=Y,
+              Y.orig=Ytil,
+              condMM=mumo))
+}
+
 jump_mixed2 <- function(Y, n_states, jump_penalty=1e-5, 
                   initial_states=NULL,
                   max_iter=10, n_init=10, tol=1e-5, verbose=FALSE,
@@ -1765,6 +1986,106 @@ sim_data_mixed_missmec=function(seed=123,
   
 }
 
+sim_data_stud_t=function(seed=123,
+                         TT,
+                         P,
+                         Ktrue=3,
+                         mu=1,
+                         rho=0,
+                         nu=4,
+                         pers=.95,
+                         pNAs=0,
+                         typeNA=3){
+  
+  # Function to simulate stud-t distributed data 
+  
+  # Arguments:
+  # seed: seed for the random number generator
+  # TT: number of observations
+  # P: number of features
+  # Ktrue: number of states
+  # mu: mean value for the continuous variables
+  # rho: correlation for the variables
+  # nu: degrees of freedom for the t-distribution
+  # pers: self-transition probability
+  # pNAs: percentage of missing values
+  # typeNA is the type of missing values (0: MCAR, 1: MAR, 2: MNAR, all other values will turn into no missing imputation)
+  
+  # value:
+  # SimData: matrix of simulated data
+  
+  MU=mu
+  mu=c(-mu,0,mu)
+  
+  
+  # Markov chain simulation
+  x <- numeric(TT)
+  Q <- matrix(rep((1-pers)/(Ktrue-1),Ktrue*Ktrue), 
+              ncol = Ktrue,
+              byrow = TRUE)
+  diag(Q)=rep(pers,Ktrue)
+  init <- rep(1/Ktrue,Ktrue)
+  set.seed(seed)
+  x[1] <- sample(1:Ktrue, 1, prob = init)
+  for(i in 2:TT){
+    x[i] <- sample(1:Ktrue, 1, prob = Q[x[i - 1], ])
+  }
+  
+  # Continuous variables simulation
+  Sigma <- matrix(rho,ncol=P,nrow=P)
+  diag(Sigma)=1
+  
+  Sim = matrix(0, TT, P * Ktrue)
+  SimData = matrix(0, TT, P)
+  
+  set.seed(seed)
+  for(k in 1:Ktrue){
+    # u = MASS::mvrnorm(TT,rep(mu[k],P),Sigma)
+    u = mvtnorm::rmvt(TT, sigma = (nu-2)*Sigma/nu, df = nu, delta = rep(mu[k],P))
+    Sim[, (P * k - P + 1):(k * P)] = u
+  }
+  
+  for (i in 1:TT) {
+    k = x[i]
+    SimData[i, ] = Sim[i, (P * k - P + 1):(P * k)]
+    #SimDataCat[i, ] = SimCat[i, (Pcat * k - Pcat + 1):(Pcat * k)]
+  }
+  
+  if(typeNA==0){
+    SimData.NA=delete_MCAR(SimData, p = pNAs)
+  }
+  
+  else if(typeNA==1){
+    vect <- 1:ncol(SimData)
+    col_mis <- vect[vect %% 2 != 0]
+    cols_ctrl <- vect[vect %% 2 == 0]
+    SimData.NA=delete_MAR_censoring(SimData, 
+                                    p = 2 * pNAs, 
+                                    cols_mis = col_mis, 
+                                    cols_ctrl = cols_ctrl)
+  }
+  
+  else if(typeNA==2){
+    vect <- 1:ncol(SimData)  
+    SimData.NA=delete_MNAR_censoring(SimData, p = 0.2, cols_mis = 1:ncol(SimData))
+  }
+  
+  else{
+    SimData.NA=SimData
+  }
+  
+  return(list(
+    SimData.NA=SimData.NA,
+    SimData.complete=SimData,
+    mchain=x,
+    TT=TT,
+    P=P,
+    Ktrue=Ktrue,
+    pers=pers, 
+    seed=seed))
+  
+}
+
 
 simstud_JMmixed=function(seed,lambda,TT,P,
                          Ktrue=3,mu=1,
@@ -1949,6 +2270,63 @@ simstud_JMmixed_missmec=function(seed,lambda,TT,P,
     est_seq=est$best_s,
     true_data=simDat$SimData.complete,
     est_data=est$Y))
+  
+}
+
+simstud_JMmixed_l1vsl2=function(seed,lambda,TT,P,
+                                Ktrue=3,mu=1,rho=0,pers=.95,nu=4){
+  
+  # Simulation study comparing l1 vs l2 norm
+  
+  # Simulate
+  simDat=sim_data_stud_t(seed=seed,
+                         TT=TT,
+                         P=P,
+                         Ktrue=Ktrue,
+                         mu=mu,
+                         nu=nu,
+                         rho=rho,
+                         pers=pers,
+                         pNAs=0,
+                         typeNA=3)
+  
+  # Estimate
+  est_l1=jump_mixed_github(simDat$SimData.NA,
+                           n_states=Ktrue,
+                           jump_penalty = lambda,
+                           verbose=F)
+  
+  est_l2=jumpR(simDat$SimData.NA, 
+               n_states=Ktrue, jump_penalty=lambda, 
+               verbose=FALSE, method="euclidean",python=F)
+  
+  #est_l1$Y=est$Y%>%mutate_if(is.factor,factor,levels=c(1,2,3))
+  
+  
+  # simDat$SimData.complete=simDat$SimData.complete%>%
+  #   mutate_if(is.factor,factor,levels=c(1,2,3))
+  
+  #imput.err=gower_dist(est$Y,simDat$SimData.complete)
+  
+  ARI_l1=adj.rand.index(est_l1$best_s,simDat$mchain)
+  ARI_l2=adj.rand.index(est_l2,simDat$mchain)
+  
+  #clust_pur=cluster_purity(simDat$mchain,est$best_s)
+  # Return
+  return(list(
+    #imput.err=imput.err,
+    ARI_l1=ARI_l1,
+    ARI_l2=ARI_l2,
+    #clust_pur=clust_pur,
+    seed=seed,
+    lambda=lambda,
+    TT=TT,
+    P=P,
+    Ktrue=Ktrue,
+    mu=mu,
+    rho=rho,
+    nu=nu,
+    pers=pers))
   
 }
 
@@ -2233,7 +2611,8 @@ initialize_states_jumpR <- function(Y, K,method="euclidean") {
 
 jumpR <- function(Y, n_states, jump_penalty=1e-5, 
                   initial_states=NULL,
-                  max_iter=10, n_init=10, tol=NULL, verbose=FALSE, method="euclidean",python=F) {
+                  max_iter=10, n_init=10, tol=NULL, 
+                  verbose=FALSE, method="euclidean",python=F) {
   # Fit jump model using framework of Bemporad et al. (2018)
   
   Y=as.matrix(Y)

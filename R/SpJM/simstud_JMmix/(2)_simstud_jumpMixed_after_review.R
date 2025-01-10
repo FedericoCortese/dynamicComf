@@ -26,6 +26,7 @@ mixedJM_no.miss_setup1 <- parallel::mclapply(1:nrow(hp),
                                           Pcat=NULL,pers=.95,
                                           pNAs=0,typeNA=3),
                                       mc.cores = parallel::detectCores())
+
 mixedJM_no.miss_setup2 <- parallel::mclapply(1:nrow(hp),
                                              function(x)
                                                simstud_JMmixed_missmec(
@@ -435,6 +436,30 @@ res_eval(mixedJM_MNAR.miss20,hp)
 res_eval(mixedJM_MNAR.miss20,hp,lambda0=T)
 
 
+
+
+# l1 vs l2 ----------------------------------------------------------------
+
+lambda=seq(0,1,by=.05)
+TT=c(50,100,500)
+P=c(4,20,50)
+seeds=1:100
+hp=expand.grid(TT=TT,P=P,lambda=lambda,seed=seeds)
+
+# Setup 1, no missing data
+
+mixedJM_l1vsl2 <- parallel::mclapply(1:nrow(hp),
+                                             function(x)
+                                               simstud_JMmixed_l1vsl2(seed=hp[x,]$seed,
+                                                                      TT=hp[x,]$TT,
+                                                                      P=hp[x,]$P,
+                                                                      lambda=hp[x,]$lambda,
+                                                                      Ktrue=3,
+                                                                      mu=1,
+                                                                      rho=0,
+                                                                      nu=4,
+                                                                      pers=.95),
+                                             mc.cores = parallel::detectCores())
 
 
 
