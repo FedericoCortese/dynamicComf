@@ -471,32 +471,34 @@ res=data.frame(hp,
 )
     
     
-avres_l1=res%>%group_by(TT,P,lambda)%>%summarise(avARI=median(ARI_l1,na.rm=T),
-                                              sdARI=sd(ARI,na.rm=T)
-                                              )
+avg_res <- res %>%
+  group_by(TT, P, lambda) %>%
+  summarise(
+    avg_ARI_l1 = mean(ARI_l1,na.rm=T),
+    sd_ARI_l1 = sd(ARI_l1,na.rm=T),
+    avg_ARI_l2 = mean(ARI_l2,na.rm=T),
+    sd_ARI_l2 = sd(ARI_l2,na.rm=T),
+    .groups = "drop"
+  )
 
-avres_l1%>%group_by(TT,P)%>%summarise(avARI=mean(avARI),
-                                   sdARI=min(sdARI),
-                                   lambda=lambda[which.max(avARI)]
-                                   )
+max_ARI_l1 <- avg_res %>%
+  group_by(TT, P) %>%
+  filter(avg_ARI_l1 == max(avg_ARI_l1)) %>%
+  ungroup()
 
-avres_l2=res%>%group_by(TT,P,lambda)%>%summarise(avARI=median(ARI_l2,na.rm=T),
-                                                 sdARI=sd(ARI,na.rm=T)
-)
+# Find the maximum average ARI_l2 and corresponding lambda and standard deviation for each TT and P
+max_ARI_l2 <- avg_res %>%
+  group_by(TT, P) %>%
+  filter(avg_ARI_l2 == max(avg_ARI_l2)) %>%
+  ungroup()
 
-avres_l2%>%group_by(TT,P)%>%summarise(avARI=mean(avARI),
-                                      sdARI=min(sdARI),
-                                      lambda=lambda[which.max(avARI)]
-)
 
-    
-    
+print(max_ARI_l1)
+print(max_ARI_l2)
   
-  
-  
+# merged results
+merged_res <- merge(max_ARI_l1[,c(1,2,4,5)], max_ARI_l2[,c(1,2,6,7)], 
+                    by = c("TT", "P"))
 
+merged_res
 
-## No missings
-# Setup 1
-
-res_eval(mixedJM_no.miss_setup1,hp)
