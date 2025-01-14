@@ -4243,5 +4243,15 @@ cont_jumpR <- function(Y,
     
   }
   
+  old_lab=apply(best_S,1,which.max)
+  
+  new_lab=order_states_condMean(
+    Y[,1],old_lab
+    )
+  
+  mapping <- tapply(old_lab, new_lab, function(x) unique(x))
+  mapping <- as.integer(unlist(mapping))
+  best_S <- best_S[, mapping]
+  
   return(best_S)
 }
