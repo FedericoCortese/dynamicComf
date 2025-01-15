@@ -4112,29 +4112,30 @@ cont_jumpR <- function(Y,
     Y[,i]=ifelse(M[,i],mu[i],Y[,i])
   }
   
-  # State initialization through kmeans++
-  if (!is.null(initial_states)) {
-    s <- initial_states
-  } else {
-      s <- initialize_states_jumpR(Y, K)
-  }
-  
-  mu=matrix(NA,nrow=K,ncol=P)
-  for (i in unique(s)) {
-    # Fit model by updating mean of observed states
-    if(sum(s==i)>1){
-      mu[i,] <- colMeans(Y[s==i,])
-    }
-    else{
-      mu[i,]=mean(Y[s==i,])
-    }
-  }
   
   for (init in 1:n_init) {
     #mu <- matrix(0, nrow=K, ncol=P)
     loss_old <- 1e10
     
     S_old=matrix(0,nrow=TT,ncol=K)
+    
+    # State initialization through kmeans++
+    if (!is.null(initial_states)) {
+      s <- initial_states
+    } else {
+      #s <- initialize_states_jumpR(Y, K)
+      s=maotai::kmeanspp(Y,k=K)
+    }
+    mu=matrix(NA,nrow=K,ncol=P)
+    for (i in unique(s)) {
+      
+      if(sum(s==i)>1){
+        mu[i,] <- colMeans(Y[s==i,])
+      }
+      else{
+        mu[i,]=mean(Y[s==i,])
+      }
+    }
     
     for (it in 1:max_iter) {
       
@@ -4178,8 +4179,8 @@ cont_jumpR <- function(Y,
       
       # Initial step
       values[1, ] <- loss_mx[1, ]
-      
-      # DP iteration
+
+      # DP iteration (bottleneck)
       for (t in 2:TT) {
         values[t, ] <- loss_mx[t, ] + apply(values[t - 1, ] + jump_penalty_mx, 2, min)
       }
@@ -4204,8 +4205,6 @@ cont_jumpR <- function(Y,
         # What if the denominator is 0??
         mu[k,]=apply(Y, 2, function(x) weighted.mean(x, w = S[,k]))
       }
-      
-      # Ordering of states?
       
       # Re-fill-in missings
       for(i in 1:P){
@@ -4239,7 +4238,7 @@ cont_jumpR <- function(Y,
       best_loss <- loss_old
       best_S <- S
     }
-      s <- initialize_states_jumpR(Y, K)
+      #s <- initialize_states_jumpR(Y, K)
     
   }
   
