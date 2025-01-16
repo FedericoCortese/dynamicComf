@@ -4420,9 +4420,12 @@ simstud_contJM=function(seed,lambda,TT,P,
                                 pers=pers,
                                 pNAs=pNAs,
                                 typeNA=typeNA)
+  
+  Y=simDat$SimData.NA
+  
   # Estimate
   est=cont_jumpR(Y, 
-       K, 
+       Ktrue, 
        jump_penalty=lambda, 
        alpha=2,
        initial_states=NULL,
