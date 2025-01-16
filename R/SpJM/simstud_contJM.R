@@ -9,8 +9,10 @@ hp=expand.grid(TT=TT,P=P,lambda=lambda,seed=seeds)
 
 # Calcola i core per livello esterno ed interno
 n_cores_total=parallel::detectCores()
-n_cores_ext <- min(nrow(hp), floor(n_cores_total / 2))  # Massimo metà per livello esterno
-n_cores_int <- floor((n_cores_total - n_cores_ext) / n_cores_ext)
+frac_ext=1/3
+n_cores_ext=n_cores_total*frac_ext
+n_cores_int=(n_cores_total-n_cores_ext)/n_cores_ext
+
 
 # Setup 1
 st=Sys.time()
@@ -24,6 +26,6 @@ contJM_setup1 <- parallel::mclapply(1:nrow(hp),
                                                      phi=.8,rho=0,
                                                      Pcat=NULL,pers=.95,
                                                      pNAs=0,typeNA=3,
-                                                     n_cores_int),
+                                                     n_cores_int=n_cores_int),
                                     mc.cores = n_cores_ext)
 en=Sys.time()
