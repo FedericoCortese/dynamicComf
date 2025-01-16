@@ -4236,8 +4236,8 @@ cont_jumpR <- function(Y,
     if(is.null(n_cores)){
       n_cores=parallel::detectCores()-1
     }
-    hp=expand.grid(init=1:n_init)
-    jms <- parallel::mclapply(1:nrow(hp),
+    hp_init=expand.grid(init=1:n_init)
+    jms <- parallel::mclapply(1:nrow(hp_init),
                               function(x)
                                 onerun_contJM(Y=Y,K=K,
                                               jump_penalty=jump_penalty,alpha=alpha,grid_size=grid_size,
