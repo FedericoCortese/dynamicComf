@@ -4442,6 +4442,6 @@ simstud_contJM=function(seed,lambda,TT,P,
   # imput.err=gower_dist(est$Y,simDat$SimData.complete)
   # ARI=adj.rand.index(est$best_s,simDat$mchain)
   
-  return(est$best_S)
+  return(est)
   
 }
