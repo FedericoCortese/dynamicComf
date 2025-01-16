@@ -4404,7 +4404,8 @@ simstud_contJM=function(seed,lambda,TT,P,
                         phi=.8,rho=0,
                         Pcat=NULL,pers=.95,
                         pNAs=0,typeNA=3,
-                        n_cores_int){
+                        n_cores_int,
+                        prll=T){
   
   Pcat=0
   
@@ -4435,7 +4436,7 @@ simstud_contJM=function(seed,lambda,TT,P,
        mode_loss=T,
        #method="euclidean",
        grid_size=.05,
-       prll=T,
+       prll=prll,
        n_cores=n_cores_int
   )
   
