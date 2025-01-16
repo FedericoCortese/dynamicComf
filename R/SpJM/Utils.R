@@ -4204,11 +4204,11 @@ cont_jumpR <- function(Y,
                   max_iter=10, 
                   n_init=10, 
                   tol=NULL, 
-                  verbose=FALSE, 
                   mode_loss=T,
                   #method="euclidean",
                   grid_size=.03,
-                  prll=F
+                  prll=F,
+                  n_cores=NULL
                   ) {
   # Fit jump model using framework of Bemporad et al. (2018)
   
@@ -4217,9 +4217,6 @@ cont_jumpR <- function(Y,
   
   TT <- nrow(Y)
   P <- ncol(Y)
-  # Gamma <- jump_penalty * (1 - diag(n_states))
-  # best_loss <- NULL
-  # best_S <- NULL
   
   # Initialize mu
   mu <- colMeans(Y,na.rm = T)
@@ -4236,9 +4233,9 @@ cont_jumpR <- function(Y,
   
 
   if(prll){
-    library(parallel)
-    library(snow)
-    library(doSNOW)
+    if(is.null(n_cores)){
+      n_cores=parallel::detectCores()-1
+    }
     hp=expand.grid(init=1:n_init)
     jms <- parallel::mclapply(1:nrow(hp),
                               function(x)
@@ -4246,7 +4243,7 @@ cont_jumpR <- function(Y,
                                               jump_penalty=jump_penalty,alpha=alpha,grid_size=grid_size,
                                               mode_loss=mode_loss,
                                               max_iter=max_iter,tol=tol,initial_states=initial_states),
-                              mc.cores = parallel::detectCores()-1)
+                              mc.cores = n_cores)
   }
   else{
     jms=list()
@@ -4386,14 +4383,8 @@ cont_jumpR <- function(Y,
     }
   }
   
-  #### Check best one among n_init initializations
-  # if (is.null(best_S) || (loss_old < best_loss)) {
-  #   best_loss <- loss_old
-  #   best_S <- S
-  # }
   best_init=which.min(unlist(lapply(jms,function(x)x$value_opt)))
   best_S=jms[[best_init]]$S
-  ####
   
   old_lab=apply(best_S,1,which.max)
   
@@ -4406,4 +4397,48 @@ cont_jumpR <- function(Y,
   best_S <- best_S[, mapping]
   
   return(best_S)
+}
+
+simstud_contJM=function(seed,lambda,TT,P,
+                        Ktrue=3,mu=1,
+                        phi=.8,rho=0,
+                        Pcat=NULL,pers=.95,
+                        pNAs=0,typeNA=3,
+                        n_cores_int){
+  
+  Pcat=0
+  
+  # Simulate
+  simDat=sim_data_mixed_missmec(seed=seed,
+                                TT=TT,
+                                P=P,
+                                Ktrue=Ktrue,
+                                mu=mu,
+                                phi=phi,
+                                rho=rho,
+                                Pcat=Pcat,
+                                pers=pers,
+                                pNAs=pNAs,
+                                typeNA=typeNA)
+  # Estimate
+  est=cont_jumpR(Y, 
+       K, 
+       jump_penalty=lambda, 
+       alpha=2,
+       initial_states=NULL,
+       max_iter=10, 
+       n_init=10, 
+       tol=NULL, 
+       mode_loss=T,
+       #method="euclidean",
+       grid_size=.05,
+       prll=T,
+       n_cores=n_cores_int
+  )
+  
+  # imput.err=gower_dist(est$Y,simDat$SimData.complete)
+  # ARI=adj.rand.index(est$best_s,simDat$mchain)
+  
+  return(est$best_S)
+  
 }
