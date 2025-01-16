@@ -13,6 +13,7 @@ frac_ext=1/3
 n_cores_ext=n_cores_total*frac_ext
 n_cores_int=(n_cores_total-n_cores_ext)/n_cores_ext
 
+n_cores_ext=30
 
 # Setup 1
 st=Sys.time()
@@ -26,6 +27,7 @@ contJM_setup1 <- parallel::mclapply(1:nrow(hp),
                                                      phi=.8,rho=0,
                                                      Pcat=NULL,pers=.95,
                                                      pNAs=0,typeNA=3,
+                                                     prll=F,
                                                      n_cores_int=n_cores_int),
                                     mc.cores = n_cores_ext)
 en=Sys.time()
