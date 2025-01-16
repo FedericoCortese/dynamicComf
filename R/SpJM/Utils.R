@@ -4208,7 +4208,7 @@ cont_jumpR <- function(Y,
                   mode_loss=T,
                   #method="euclidean",
                   grid_size=.03,
-                  parallel=F
+                  prll=F
                   ) {
   # Fit jump model using framework of Bemporad et al. (2018)
   
@@ -4235,7 +4235,7 @@ cont_jumpR <- function(Y,
   }
   
 
-  if(parallel){
+  if(prll){
     library(parallel)
     library(snow)
     library(doSNOW)
