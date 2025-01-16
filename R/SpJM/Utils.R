@@ -4077,7 +4077,8 @@ discretize_prob_simplex <- function(n_c, grid_size) {
 
 onerun_contJM=function(Y,K,
                        jump_penalty,alpha,grid_size,mode_loss=T,
-                       max_iter,tol,initial_states){
+                       max_iter,tol,initial_states,M){
+  tryCatch({
   TT=nrow(Y)
   loss_old <- 1e10
   
@@ -4193,7 +4194,10 @@ onerun_contJM=function(Y,K,
   
   
   
-  return(list(S=S,value_opt=value_opt))
+  return(list(S=S,value_opt=value_opt))}, error = function(e) {
+    # Return a consistent placeholder on error
+    return(list(S = NA, value_opt = Inf))
+  })
 }
 
 cont_jumpR <- function(Y, 
@@ -4240,9 +4244,12 @@ cont_jumpR <- function(Y,
     jms <- parallel::mclapply(1:nrow(hp_init),
                               function(x)
                                 onerun_contJM(Y=Y,K=K,
-                                              jump_penalty=jump_penalty,alpha=alpha,grid_size=grid_size,
+                                              jump_penalty=jump_penalty,
+                                              alpha=alpha,grid_size=grid_size,
                                               mode_loss=mode_loss,
-                                              max_iter=max_iter,tol=tol,initial_states=initial_states),
+                                              max_iter=max_iter,tol=tol,
+                                              initial_states=initial_states,
+                                              M=M),
                               mc.cores = n_cores)
   }
   else{
@@ -4251,7 +4258,7 @@ cont_jumpR <- function(Y,
       
       jms[[init]]=onerun_contJM(Y,K,
                                 jump_penalty,alpha,grid_size,mode_loss,
-                                max_iter,tol,initial_states)
+                                max_iter,tol,initial_states,M=M)
       
       # #mu <- matrix(0, nrow=K, ncol=P)
       # loss_old <- 1e10
@@ -4386,15 +4393,15 @@ cont_jumpR <- function(Y,
   best_init=which.min(unlist(lapply(jms,function(x)x$value_opt)))
   best_S=jms[[best_init]]$S
   
-  old_lab=apply(best_S,1,which.max)
-  
-  new_lab=order_states_condMean(
-    Y[,1],old_lab
-    )
-  
-  mapping <- tapply(old_lab, new_lab, function(x) unique(x))
-  mapping <- as.integer(unlist(mapping))
-  best_S <- best_S[, mapping]
+  # old_lab=apply(best_S,1,which.max)
+  # 
+  # new_lab=order_states_condMean(
+  #   Y[,1],old_lab
+  #   )
+  # 
+  # mapping <- tapply(old_lab, new_lab, function(x) unique(x))
+  # mapping <- as.integer(unlist(mapping))
+  # best_S <- best_S[, mapping]
   
   return(best_S)
 }

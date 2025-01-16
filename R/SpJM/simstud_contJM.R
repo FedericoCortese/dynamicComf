@@ -3,7 +3,9 @@ source("Utils.R")
 
 lambda=seq(0,1,by=.1)
 TT=c(100,1000)
-P=c(4,20,50)
+# Errore quando vario i P, potrei separare gli studi simulati per ogni P
+# P=c(4,20,50)
+P=20
 seeds=1:100
 hp=expand.grid(TT=TT,P=P,lambda=lambda,seed=seeds)
 
