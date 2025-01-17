@@ -3801,7 +3801,7 @@ STjumpDist=function(Y,n_states,
   P=ncol(Y)-2
   # Time differences
   Y.orig=Y
-  
+
   if(timeflag){
     time=sort(unique(Y.orig$t))
     dtime=diff(time)
@@ -3822,6 +3822,13 @@ STjumpDist=function(Y,n_states,
   
   library(dplyr)
   Y <- data.frame(t=Y.orig$t,m=Y.orig$m,Y)
+  
+  # Reorder columns so that we have t,m, cat vars and cont vars
+  cat.indx=which(sapply(Y, is.factor))
+  cont.indx=which(sapply(Y, is.numeric))
+  cont.indx=cont.indx[-(1:2)]
+  Y=Y[,c(1,2,cat.indx,cont.indx)]
+  
   YY=subset(Y,select=-c(t,m))
   
   TT=length(unique(Y$t))
@@ -3833,6 +3840,8 @@ STjumpDist=function(Y,n_states,
   Ycont=YY[,cont.indx]
   
   Ycat=YY[,cat.indx]
+  levels_cat=lapply(Ycat,levels)
+  names(levels_cat)=cat.indx
   
   n_cat=length(cat.indx)
   n_cont=length(cont.indx)
@@ -3899,13 +3908,19 @@ STjumpDist=function(Y,n_states,
       
       Ycont <- Mcont * mu[as.vector(t(S)), ] + (!Mcont) * Ycont
       
+      mo_2=apply(mo,2,as.numeric)
+      Ycat <- Mcat * mo_2[as.vector(t(S)), ] + (!Mcat) * apply(Ycat,2,as.numeric)
+      Ycat=data.frame(Ycat)
+      for(cc in 1:n_cat){
+        Ycat[,cc]=factor(Ycat[,cc],levels=levels_cat[[cc]])
+      }
       
       # for(i in 1:nrow(Mcont)){
       #   Ycont[i,]=unlist(ifelse(Mcont[i,],mu[as.vector(t(S))[i],],Ycont[i,]))
       # }
-      for(i in 1:nrow(Mcat)){
-        Ycat[i,]=unlist(ifelse(Mcat[i,],mo[as.vector(t(S))[i],],Ycat[i,]))
-      }
+      # for(i in 1:nrow(Mcat)){
+      #   Ycat[i,]=unlist(ifelse(Mcat[i,],mo[as.vector(t(S))[i],],Ycat[i,]))
+      # }
       
       YY[,-cat.indx]=Ycont
       YY[,cat.indx]=Ycat
