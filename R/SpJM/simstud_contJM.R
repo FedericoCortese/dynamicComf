@@ -19,7 +19,7 @@ n_cores_int=(n_cores_total-n_cores_ext)/n_cores_ext
 
 # Setup 1
 st=Sys.time()
-contJM_setup1 <- parallel::mclapply(1:nrow(hp),
+contJM_setup1_P20 <- parallel::mclapply(1:nrow(hp),
                                     function(x)
                                       simstud_contJM(seed=hp[x,]$seed,
                                                      lambda=hp[x,]$lambda,
@@ -33,3 +33,5 @@ contJM_setup1 <- parallel::mclapply(1:nrow(hp),
                                                      n_cores_int=n_cores_int),
                                     mc.cores = n_cores_ext)
 en=Sys.time()
+elapsed=en-st
+save(contJM_setup1_P20,elapsed,file="contJM_setup1_P20.Rdata")
