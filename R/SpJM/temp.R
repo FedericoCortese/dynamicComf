@@ -37,3 +37,35 @@ fit=cont_jumpR(Y,
 
 adj.rand.index(apply(fit,1,which.max),Sim$mchain)
 
+
+### spatiotemp
+M=20
+TT=50
+theta=.01
+beta=.9
+K=3
+mu=1
+rho=0
+phi=0.8
+P=5
+Pcat=2
+seed=123
+pg=0
+pNAs=0
+
+result <- generate_spatio_temporal_data(M, TT, theta, beta, K = K,
+                                        mu=mu,rho=rho,phi=phi,
+                                        P=P,Pcat=Pcat,seed=seed,pGap=pg,pNAs=pNAs)
+
+Y.compl=result$Y
+D=result$dist_matrix
+Y=result$Y.NA
+Y=Y[,-(3:4)]
+head(Y)
+
+jump_penalty = .1
+grid_size =.05
+verbose=F
+tol=NULL
+spatial_penalty = .1
+alpha=2

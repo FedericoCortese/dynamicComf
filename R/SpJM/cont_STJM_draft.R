@@ -76,7 +76,8 @@ onerun_cont_STJM=function(Y,K,
     
     Y[,-(1:2)]=YY
     
-    TT=nrow(Y)
+    #TT=nrow(Y)
+    TT=length(unique(Y$t))
     loss_old <- 1e10
     
 
@@ -101,9 +102,10 @@ onerun_cont_STJM=function(Y,K,
       
       # Compute loss matrix
       loss_mx <- matrix(NA, nrow(Y), nrow(mu)) # (TxM)xK
-      for (r in 1:nrow(Y)) {
+      # Bottleneck, need to vectorize
+      for (r in 1:nrow(YY)) {
         for (k in 1:nrow(mu)) {
-          loss_mx[r, k] <- .5*sqrt(sum((Y[r, ] - mu[k, ])^2))
+          loss_mx[r, k] <- .5*sqrt(sum((YY[r, ] - mu[k, ])^2))
           # Substitute with gower here
         }
       }
@@ -139,21 +141,23 @@ onerun_cont_STJM=function(Y,K,
       values <- matrix(NA, TT*M, N) # (TxM)xN
       assign <- integer(TT*M) #TxM
       
-      # Initial step
-      values[1, ] <- loss_mx[1, ]
-      
+    
       # DP iteration (bottleneck)
       for(m in 1:M){
-        for(k in 1:n_states){
-          #temp <- t(t((S[,-m]==k))/D[m,-m])
-          ##########
-          # DA RIPENSARE PENALTY SPAZIALE
-          temp <- t(t((S[,-m]==k))*exp(-D[m,-m]))
-          loss_by_state[,k]=loss_by_state[,k]-
-            spatial_penalty*rowSums(temp)
-          ###########
-        }
         
+        # Initial step
+        indx=which(Y$m==m)
+        values[1, ] <- loss_mx[indx[1], ]
+        
+        # Add spatial penalty
+        loss_mx[indx[1], ]=loss_mx[indx[1], ]+spatial_penalty*dist_matrix[m,]
+        # dist_matrix e' una matrice contenente tutte le distanze di Helling fra l'attuale s_{1,m,}
+        # e tutte le altre s_{1,m',}, pesate per l'exp della distanza fra m e m'
+        # PROBLEMA: alla prima iterazione s_m e s_m' non esistono
+        # SOLUZIONE: in base alla inizializzazione S crea la matrice dei vettori di prob ad esempio come 
+        # (1,0,0) se allocato in k=1
+        # (0,1,0) se allocato in k=2
+        # (0,0,1) se allocato in k=3
       }
       for (t in 2:TT) {
         if(timeflag){
