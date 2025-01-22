@@ -39,6 +39,10 @@ adj.rand.index(apply(fit,1,which.max),Sim$mchain)
 
 
 ### spatiotemp
+
+source("Utils.R")
+
+
 M=20
 TT=50
 theta=.01

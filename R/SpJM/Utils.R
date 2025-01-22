@@ -2583,7 +2583,7 @@ simstud_missForest=function(seed,
 }
 
 
-# Continuous SJM with missings -------------------------------------------------------
+# SJM with missings -------------------------------------------------------
 
 initialize_states_jumpR <- function(Y, K,method="euclidean") {
   n <- nrow(Y)
@@ -4679,3 +4679,14 @@ simstud_contJM=function(seed,lambda,TT,P,
   return(est)
   
 }
+
+
+# Continuous ST-JM --------------------------------------------------------
+
+hellinger_distance <- function(p, q) {
+  if (length(p) != length(q)) {
+    stop("The probability vectors must have the same length.")
+  }
+  sqrt(0.5 * sum((sqrt(p) - sqrt(q))^2))
+}
+

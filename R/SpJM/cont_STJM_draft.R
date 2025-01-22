@@ -1,9 +1,3 @@
-hellinger_distance <- function(p, q) {
-  if (length(p) != length(q)) {
-    stop("The probability vectors must have the same length.")
-  }
-  sqrt(0.5 * sum((sqrt(p) - sqrt(q))^2))
-}
 
 
 onerun_cont_STJM=function(Y,K,
@@ -87,6 +81,19 @@ onerun_cont_STJM=function(Y,K,
       S[,m]=initialize_states(Y[which(Y$m==m),-(1:2)],n_states)
     }
     
+    # Initialize soft clustering matrix
+    SS <- matrix(0, nrow = TT * M, ncol = 2 + n_states)
+    SS[, 1] <- rep(1:TT, each = M)  # First column: t indices
+    SS[, 2] <- rep(1:M, times = TT) # Second column: m indices
+    for (t in 1:TT) {
+      for (m in 1:M) {
+        state <- S[t, m]
+        SS[(t - 1) * M + m, 2 + state] <- 1  # Set the appropriate column to 1
+      }
+    }
+    SS=data.frame(SS)
+    colnames(SS)=c("t","m",1:n_states)
+    
     #mu=matrix(NA,nrow=K,ncol=P)
     mu <- matrix(0, nrow=n_states, ncol=length(cont.indx))
     mo <- matrix(0, nrow=n_states, ncol=length(cat.indx))
@@ -101,15 +108,22 @@ onerun_cont_STJM=function(Y,K,
       # E Step
       
       # Compute loss matrix
+      #st=Sys.time()
       loss_mx <- matrix(NA, nrow(Y), nrow(mu)) # (TxM)xK
       # Bottleneck, need to vectorize
       for (r in 1:nrow(YY)) {
         for (k in 1:nrow(mu)) {
           loss_mx[r, k] <- .5*sqrt(sum((YY[r, ] - mu[k, ])^2))
-          # Substitute with gower here
         }
       }
+      # en=Sys.time()
+      # en-st
       
+      #st2=Sys.time()
+      loss_mx_new <- 0.5 * sqrt(outer(1:nrow(YY), 1:nrow(mu), 
+                                  Vectorize(function(r, k) sum((YY[r, ] - mu[k, ])^2))))
+      # en2=Sys.time()
+      # en2-st2
       # Continuous model
       
       prob_vecs <- discretize_prob_simplex(K, grid_size)
@@ -130,61 +144,57 @@ onerun_cont_STJM=function(Y,K,
         loss_mx <- loss_mx %*% t(prob_vecs) # (TxM)xN
       }
       
-      
       N <- ncol(loss_mx)
       
       loss_mx[is.nan(loss_mx)] <- Inf
       
-      # DP algorithm initialization
-      # values <- matrix(NA, TT, N)
-      # assign <- integer(TT)
-      values <- matrix(NA, TT*M, N) # (TxM)xN
-      assign <- integer(TT*M) #TxM
-      
-    
       # DP iteration (bottleneck)
       for(m in 1:M){
+        
+        values <- matrix(NA, TT*M, N) # (TxM)xN
+        assign <- integer(TT*M) #TxM
         
         # Initial step
         indx=which(Y$m==m)
         values[1, ] <- loss_mx[indx[1], ]
         
         # Add spatial penalty
-        loss_mx[indx[1], ]=loss_mx[indx[1], ]+spatial_penalty*dist_matrix[m,]
-        # dist_matrix e' una matrice contenente tutte le distanze di Helling fra l'attuale s_{1,m,}
-        # e tutte le altre s_{1,m',}, pesate per l'exp della distanza fra m e m'
-        # PROBLEMA: alla prima iterazione s_m e s_m' non esistono
-        # SOLUZIONE: in base alla inizializzazione S crea la matrice dei vettori di prob ad esempio come 
-        # (1,0,0) se allocato in k=1
-        # (0,1,0) se allocato in k=2
-        # (0,0,1) se allocato in k=3
-      }
-      for (t in 2:TT) {
-        if(timeflag){
-        values[t, ] <- loss_mx[t, ] + 
-          apply(values[t - 1, ]/dtime[t-1] + jump_penalty_mx, 2, min)
+        SSt=SS[SS$t==1,]
+        
+        # Per ogni m, devo penalizzare le proposte in prob_vecs in base alla distanza di Hellinger
+        # pesata per la distanza spaziale
+        # Forse conviene ragionare da subito in termini di adiacenze altrimenti e' un macello
+        
+        dist_vec=apply(prob_vecs,1,function(x)hellinger_distance(SSt[m,-(1:2)],x))
+        
+        dist_weights <- ifelse(D[m,] == 0, 0, 1 / D[m,])  
+        #dist_weights <- dist_weights / sum(dist_weights)
+        
+        dist_vec=dist_vec*dist_weights
+        loss_mx[indx[1], ]=loss_mx[indx[1], ]+spatial_penalty*dist_vec
+        
+        for (t in 2:TT) {
+          
+          values[t, ] <- loss_mx[t, ] + 
+            apply(values[t - 1, ] + jump_penalty_mx, 2, min)
         }
-        ######
-        # DA RIVEDERE INDICIZZAZIONE DEL DENOMINATORE dtime
+        
+        S=matrix(NA,nrow=TT,ncol=K)
+        
+        # Find optimal path backwards
+        assign[TT] <- which.min(values[TT, ])
+        value_opt <- values[TT, assign[TT]]
+        
+        S[TT,]=prob_vecs[assign[TT],]
+        
+        # Traceback
+        for (t in (TT - 1):1) {
+          assign[t] <- which.min(values[t, ] + jump_penalty_mx[, assign[t + 1]])
+          S[t,]=prob_vecs[assign[t],]
+        }
+        
       }
-      else{
-        values[t, ] <- loss_mx[t, ] + 
-          apply(values[t - 1, ] + jump_penalty_mx, 2, min)
-      }
       
-      S=matrix(NA,nrow=TT,ncol=K)
-      
-      # Find optimal path backwards
-      assign[TT] <- which.min(values[TT, ])
-      value_opt <- values[TT, assign[TT]]
-      
-      S[TT,]=prob_vecs[assign[TT],]
-      
-      # Traceback
-      for (t in (TT - 1):1) {
-        assign[t] <- which.min(values[t, ] + jump_penalty_mx[, assign[t + 1]])
-        S[t,]=prob_vecs[assign[t],]
-      }
       
       # M Step
       
