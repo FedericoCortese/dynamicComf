@@ -1,4 +1,5 @@
-
+# 1) Provare a sostituire qualche ciclo for con apply
+# 2) Sostituire media euclidea con distanza di Gower
 
 onerun_cont_STJM=function(Y,K,
                        jump_penalty,
@@ -13,19 +14,19 @@ onerun_cont_STJM=function(Y,K,
     # Time differences
     Y.orig=Y
     
-    if(timeflag){
-      time=sort(unique(Y.orig$t))
-      dtime=diff(time)
-      dtime=dtime/as.numeric(min(dtime))
-      dtime=as.numeric(dtime)
+    # if(timeflag){
+    #   time=sort(unique(Y.orig$t))
+    #   dtime=diff(time)
+    #   dtime=dtime/as.numeric(min(dtime))
+    #   dtime=as.numeric(dtime)
+    #   Y=subset(Y,select=-c(t,m))
+    #   Y=Y%>%mutate_if(is.numeric,function(x)as.numeric(scale(x)))
+    # }
+    # 
+    # else{
       Y=subset(Y,select=-c(t,m))
       Y=Y%>%mutate_if(is.numeric,function(x)as.numeric(scale(x)))
-    }
-    
-    else{
-      Y=subset(Y,select=-c(t,m))
-      Y=Y%>%mutate_if(is.numeric,function(x)as.numeric(scale(x)))
-    }
+    #}
     
     Y <- data.frame(t=Y.orig$t,m=Y.orig$m,Y)
     
@@ -108,23 +109,20 @@ onerun_cont_STJM=function(Y,K,
       # E Step
       
       # Compute loss matrix
-      #st=Sys.time()
-      loss_mx <- matrix(NA, nrow(Y), nrow(mu)) # (TxM)xK
+
       # Bottleneck, need to vectorize
-      for (r in 1:nrow(YY)) {
-        for (k in 1:nrow(mu)) {
-          loss_mx[r, k] <- .5*sqrt(sum((YY[r, ] - mu[k, ])^2))
-        }
-      }
-      # en=Sys.time()
-      # en-st
+      # for (r in 1:nrow(YY)) {
+      #   for (k in 1:nrow(mu)) {
+      #     loss_mx[r, k] <- .5*sqrt(sum((YY[r, ] - mu[k, ])^2))
+      #   }
+      # }
       
-      #st2=Sys.time()
-      loss_mx_new <- 0.5 * sqrt(outer(1:nrow(YY), 1:nrow(mu), 
+      #lg=gower.dist(YY,mu)
+      
+      # Slighlty faster
+      loss_mx<- 0.5 * sqrt(outer(1:nrow(YY), 1:nrow(mu), 
                                   Vectorize(function(r, k) sum((YY[r, ] - mu[k, ])^2))))
-      # en2=Sys.time()
-      # en2-st2
-      # Continuous model
+      
       
       prob_vecs <- discretize_prob_simplex(K, grid_size)
       pairwise_l1_dist <- as.matrix(dist(prob_vecs, method = "manhattan")) / 2
@@ -148,64 +146,74 @@ onerun_cont_STJM=function(Y,K,
       
       loss_mx[is.nan(loss_mx)] <- Inf
       
+      values <- matrix(NA, TT*M, N) # (TxM)xN
+      value_opt=rep(0,M)
+      assign <- integer(TT*M) #TxM
+      SS_new=SS
+      SS_new[,-(1:2)]=0
+      
       # DP iteration (bottleneck)
       for(m in 1:M){
         
-        values <- matrix(NA, TT*M, N) # (TxM)xN
-        assign <- integer(TT*M) #TxM
+        # Verificare se i pesi spaziali vanno bene
+        dist_weights <- ifelse(D[m,] == 0, 0, 1 / D[m,]) 
         
-        # Initial step
-        indx=which(Y$m==m)
-        values[1, ] <- loss_mx[indx[1], ]
+        spat_weigh_Ndim=rep(0,N)
         
-        # Add spatial penalty
-        SSt=SS[SS$t==1,]
-        
-        # Per ogni m, devo penalizzare le proposte in prob_vecs in base alla distanza di Hellinger
-        # pesata per la distanza spaziale
-        # Forse conviene ragionare da subito in termini di adiacenze altrimenti e' un macello
-        
-        dist_vec=apply(prob_vecs,1,function(x)hellinger_distance(SSt[m,-(1:2)],x))
-        
-        dist_weights <- ifelse(D[m,] == 0, 0, 1 / D[m,])  
-        #dist_weights <- dist_weights / sum(dist_weights)
-        
-        dist_vec=dist_vec*dist_weights
-        loss_mx[indx[1], ]=loss_mx[indx[1], ]+spatial_penalty*dist_vec
-        
-        for (t in 2:TT) {
-          
-          values[t, ] <- loss_mx[t, ] + 
-            apply(values[t - 1, ] + jump_penalty_mx, 2, min)
+        for(n in 1:N){
+          spat_weigh_Ndim[n]=
+            sum(apply(SS[SS$t==1,-(1:2)],1,
+                      function(x)hellinger_distance(prob_vecs[n,],x))*dist_weights)
         }
         
-        S=matrix(NA,nrow=TT,ncol=K)
+        #dist_weights <- dist_weights / sum(dist_weights)
+        indx=which(Y$m==m)
+      
+        values[indx[1], ] <- loss_mx[indx[1], ]+spatial_penalty*spat_weigh_Ndim
+
+        # Bootleneck!!
+        for (t in 2:TT) {
+          
+          spat_weigh_Ndim=rep(0,N)
+          
+          for(n in 1:N){
+            spat_weigh_Ndim[n]=
+              sum(apply(SS[SS$t==t,-(1:2)],1,function(x)hellinger_distance(prob_vecs[n,],x))*dist_weights)
+          }
+          
+          values[indx[t], ] <- loss_mx[indx[t], ] + 
+            apply(values[indx[t-1], ] + jump_penalty_mx, 2, min)+
+            spatial_penalty*spat_weigh_Ndim
+        }
         
         # Find optimal path backwards
-        assign[TT] <- which.min(values[TT, ])
-        value_opt <- values[TT, assign[TT]]
+        assign[indx[TT]] <- which.min(values[indx[TT], ])
+        value_opt[m] <- values[indx[TT], assign[indx[TT]]]
         
-        S[TT,]=prob_vecs[assign[TT],]
+        SS_new[indx[TT],-(1:2)]=prob_vecs[assign[indx[TT]],]
         
         # Traceback
         for (t in (TT - 1):1) {
-          assign[t] <- which.min(values[t, ] + jump_penalty_mx[, assign[t + 1]])
-          S[t,]=prob_vecs[assign[t],]
+          assign[indx[t]] <- which.min(values[indx[t], ] + 
+                                          jump_penalty_mx[, assign[indx[t+1]]])
+          SS_new[indx[t],-(1:2)]=prob_vecs[assign[indx[t]],]
         }
         
       }
-      
+      value_opt=mean(value_opt)
       
       # M Step
       
       for(k in 1:K){
         # What if the denominator is 0??
-        mu[k,]=apply(Y, 2, function(x) weighted.mean(x, w = S[,k]))
+        mu[k,]=apply(YY, 2, function(x) weighted.mean(x, w = SS_new[,k+2]))
       }
       
-      # Re-fill-in missings
+      # Re-fill-in missings with the new means of the MAP (maximum a posteriori) states
+      # Not sure if it's a good idea
+      
       for(i in 1:P){
-        Y[,i]=ifelse(M[,i],mu[apply(S,1,which.max),i],Y[,i])
+        YY[,i]=ifelse(Mcont[,i],mu[apply(SS_new[,-(1:2)],1,which.max),i],YY[,i])
       }
       
       if (!is.null(tol)) {
@@ -215,18 +223,18 @@ onerun_cont_STJM=function(Y,K,
         }
       } 
       
-      else if (all(S == S_old)) {
+      else if (all(SS == SS_new)) {
         break
       }
       
-      S_old=S
+      SS=SS_new
       
       loss_old <- value_opt
     }
     
     
     
-    return(list(S=S,value_opt=value_opt))}, error = function(e) {
+    return(list(S=SS,value_opt=value_opt))}, error = function(e) {
       # Return a consistent placeholder on error
       return(list(S = NA, value_opt = Inf))
     })

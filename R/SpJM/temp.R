@@ -43,15 +43,15 @@ adj.rand.index(apply(fit,1,which.max),Sim$mchain)
 source("Utils.R")
 
 
-M=20
-TT=50
+M=5
+TT=10
 theta=.01
 beta=.9
 K=3
 mu=1
 rho=0
 phi=0.8
-P=5
+P=6
 Pcat=2
 seed=123
 pg=0
@@ -73,3 +73,4 @@ verbose=F
 tol=NULL
 spatial_penalty = .1
 alpha=2
+n_states=3
