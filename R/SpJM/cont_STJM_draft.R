@@ -1,78 +1,17 @@
 # 1) Provare a sostituire qualche ciclo for con apply
 # 2) Sostituire media euclidea con distanza di Gower
 
-onerun_cont_STJM=function(Y,K,
+onerun_cont_STJM=function(Y,n_states,D,
                        jump_penalty,
                        spatial_penalty,
                        alpha,grid_size,mode_loss=T,
                        max_iter,tol,initial_states){
   tryCatch({
     
-    Y=Y[order(Y$t,Y$m),]
-    
-    P=ncol(Y)-2
-    # Time differences
-    Y.orig=Y
-    
-    # if(timeflag){
-    #   time=sort(unique(Y.orig$t))
-    #   dtime=diff(time)
-    #   dtime=dtime/as.numeric(min(dtime))
-    #   dtime=as.numeric(dtime)
-    #   Y=subset(Y,select=-c(t,m))
-    #   Y=Y%>%mutate_if(is.numeric,function(x)as.numeric(scale(x)))
-    # }
-    # 
-    # else{
-      Y=subset(Y,select=-c(t,m))
-      Y=Y%>%mutate_if(is.numeric,function(x)as.numeric(scale(x)))
-    #}
-    
-    Y <- data.frame(t=Y.orig$t,m=Y.orig$m,Y)
-    
-    # Reorder columns so that we have t,m, cat vars and cont vars
-    cat.indx=which(sapply(Y, is.factor))
-    cont.indx=which(sapply(Y, is.numeric))
-    cont.indx=cont.indx[-(1:2)]
-    Y=Y[,c(1,2,cat.indx,cont.indx)]
-    
-    YY=subset(Y,select=-c(t,m))
-    
     TT=length(unique(Y$t))
     M=length(unique(Y$m))
     
-    cat.indx=which(sapply(YY, is.factor))
-    cont.indx=which(sapply(YY, is.numeric))
     
-    Ycont=YY[,cont.indx]
-    
-    Ycat=YY[,cat.indx]
-    levels_cat=lapply(Ycat,levels)
-    names(levels_cat)=cat.indx
-    
-    n_cat=length(cat.indx)
-    n_cont=length(cont.indx)
-    
-    ###
-    # Missing data imputation 
-    Mcont=ifelse(is.na(Ycont),T,F)
-    Mcat=ifelse(is.na(Ycat),T,F)
-    mu <- colMeans(Ycont,na.rm = T)
-    mo <- apply(Ycat,2,Mode)
-    for(i in 1:n_cont){
-      Ycont[,i]=ifelse(Mcont[,i],mu[i],Ycont[,i])
-    }
-    for(i in 1:n_cat){
-      x=Ycat[,i]
-      Ycat[which(is.na(Ycat[,i])),i]=mo[i]
-    }
-    YY[,-cat.indx]=Ycont
-    YY[,cat.indx]=Ycat
-    
-    Y[,-(1:2)]=YY
-    
-    #TT=nrow(Y)
-    TT=length(unique(Y$t))
     loss_old <- 1e10
     
 
@@ -95,33 +34,34 @@ onerun_cont_STJM=function(Y,K,
     SS=data.frame(SS)
     colnames(SS)=c("t","m",1:n_states)
     
-    #mu=matrix(NA,nrow=K,ncol=P)
     mu <- matrix(0, nrow=n_states, ncol=length(cont.indx))
     mo <- matrix(0, nrow=n_states, ncol=length(cat.indx))
     
     for (i in unique(as.vector(S))) {
-      mu[i,] <- colMeans(Ycont[as.vector(t(S))==i,])
+      # substitute with medians
+      mu[i,] <- apply(Ycont[as.vector(t(S))==i,], 2, median, na.rm = TRUE)
       mo[i,]=apply(Ycat[as.vector(t(S))==i,],2,Mode)
     }
+    
+    mu=data.frame(mu)
+    mo=data.frame(mo,stringsAsFactors=TRUE)
+    for(i in 1:n_cat){
+      mo[,i]=factor(mo[,i],levels=levels(Ycat[,i]))
+    }
+    mumo=data.frame(matrix(0,nrow=n_states,ncol=P))
+    mumo[,cat.indx]=mo
+    mumo[,cont.indx]=mu
+    colnames(mumo)=colnames(YY)
     
     for (it in 1:max_iter) {
       
       # E Step
       
-      # Compute loss matrix
-
-      # Bottleneck, need to vectorize
-      # for (r in 1:nrow(YY)) {
-      #   for (k in 1:nrow(mu)) {
-      #     loss_mx[r, k] <- .5*sqrt(sum((YY[r, ] - mu[k, ])^2))
-      #   }
-      # }
-      
-      #lg=gower.dist(YY,mu)
+      loss_mx=gower.dist(YY,mumo)
       
       # Slighlty faster
-      loss_mx<- 0.5 * sqrt(outer(1:nrow(YY), 1:nrow(mu), 
-                                  Vectorize(function(r, k) sum((YY[r, ] - mu[k, ])^2))))
+      # loss_mx<- 0.5 * sqrt(outer(1:nrow(YY), 1:nrow(mu), 
+      #                             Vectorize(function(r, k) sum((YY[r, ] - mu[k, ])^2))))
       
       
       prob_vecs <- discretize_prob_simplex(K, grid_size)
@@ -154,7 +94,7 @@ onerun_cont_STJM=function(Y,K,
       
       # DP iteration (bottleneck)
       for(m in 1:M){
-        
+        #print(m)
         # Verificare se i pesi spaziali vanno bene
         dist_weights <- ifelse(D[m,] == 0, 0, 1 / D[m,]) 
         
@@ -173,7 +113,7 @@ onerun_cont_STJM=function(Y,K,
 
         # Bootleneck!!
         for (t in 2:TT) {
-          
+          #print(t)
           spat_weigh_Ndim=rep(0,N)
           
           for(n in 1:N){
@@ -205,16 +145,29 @@ onerun_cont_STJM=function(Y,K,
       # M Step
       
       for(k in 1:K){
-        # What if the denominator is 0??
-        mu[k,]=apply(YY, 2, function(x) weighted.mean(x, w = SS_new[,k+2]))
+        mu[k,]=apply(Ycont, 2, function(x) weighted_median(x, weights = SS_new[,k+2]))
+        mo[k,]=apply(Ycat,2,function(x)weighted_mode(x,weights=SS_new[,k+2]))
       }
       
-      # Re-fill-in missings with the new means of the MAP (maximum a posteriori) states
-      # Not sure if it's a good idea
+      mumo[,cat.indx]=mo
+      mumo[,cont.indx]=mu
+      colnames(mumo)=colnames(YY)
       
-      for(i in 1:P){
-        YY[,i]=ifelse(Mcont[,i],mu[apply(SS_new[,-(1:2)],1,which.max),i],YY[,i])
+      # Re-fill-in missings 
+      Ycont <- Mcont * mu[as.vector(t(S)), ] + (!Mcont) * Ycont
+      
+      mo_2=apply(mo,2,as.numeric)
+      Ycat <- Mcat * mo_2[as.vector(t(S)), ] + (!Mcat) * apply(Ycat,2,as.numeric)
+      Ycat=data.frame(Ycat)
+      for(cc in 1:n_cat){
+        Ycat[,cc]=factor(Ycat[,cc],levels=levels_cat[[cc]])
       }
+      
+      YY[,-cat.indx]=Ycont
+      YY[,cat.indx]=Ycat
+      
+      Y[,-(1:2)]=YY
+      
       
       if (!is.null(tol)) {
         epsilon <- loss_old - value_opt
@@ -234,8 +187,26 @@ onerun_cont_STJM=function(Y,K,
     
     
     
-    return(list(S=SS,value_opt=value_opt))}, error = function(e) {
+    return(list(S=SS,value_opt=value_opt,mumo=mumo))}, 
+    error = function(e) {
       # Return a consistent placeholder on error
       return(list(S = NA, value_opt = Inf))
     })
 }
+
+
+prova=onerun_cont_STJM(Y,K=3,D,
+                       jump_penalty = .1,
+                       spatial_penalty = .1,
+                       alpha=2,
+                       grid_size = .05,
+                       mode_loss=T,
+                       max_iter=5,
+                       tol=NULL,
+                       initial_states = NULL)
+
+apply(prova$S[prova$S$m==1,-(1:2)],1,which.max)
+result$S[,1]
+apply(prova$S[prova$S$m==2,-(1:2)],1,which.max)
+result$S[,2]
+

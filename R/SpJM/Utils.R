@@ -765,6 +765,7 @@ Mode <- function(x,na.rm=T) {
 
 }
 
+
 initialize_states <- function(Y, K) {
   n <- nrow(Y)
   
@@ -4690,3 +4691,391 @@ hellinger_distance <- function(p, q) {
   sqrt(0.5 * sum((sqrt(p) - sqrt(q))^2))
 }
 
+weighted_median <- function(x, weights) {
+  # Ensure x and weights are of the same length
+  if (length(x) != length(weights)) {
+    stop("x and weights must have the same length.")
+  }
+  
+  # Sort x and weights by x
+  sorted_indices <- order(x)
+  x <- x[sorted_indices]
+  weights <- weights[sorted_indices]
+  
+  # Compute cumulative weights
+  cumulative_weights <- cumsum(weights)
+  total_weight <- sum(weights)
+  
+  # Find the smallest x such that the cumulative weight is >= 50% of the total weight
+  weighted_median <- x[which(cumulative_weights >= total_weight / 2)[1]]
+  
+  return(weighted_median)
+}
+
+weighted_mode <- function(x, weights) {
+  # Ensure x and weights are of the same length
+  if (length(x) != length(weights)) {
+    stop("x and weights must have the same length.")
+  }
+  
+  # Aggregate weights for each unique value of x
+  unique_x <- unique(x)
+  aggregated_weights <- sapply(unique_x, function(val) sum(weights[x == val]))
+  
+  # Find the value of x with the maximum aggregated weight
+  weighted_mode <- unique_x[which.max(aggregated_weights)]
+  
+  return(weighted_mode)
+}
+
+onerun_cont_STJM=function(Y,n_states,D,
+                          jump_penalty,
+                          spatial_penalty,
+                          alpha,grid_size,mode_loss=T,
+                          max_iter,tol,initial_states, 
+                          Mcont, Mcat,cont.indx,cat.indx,levels_cat){
+  #tryCatch({
+    
+  YY=Y[,-(1:2)]
+  Ycat=YY[,cat.indx]
+  Ycont=YY[,cont.indx]
+    n_cat=length(cat.indx)
+    n_cont=length(cont.indx)
+    TT=length(unique(Y$t))
+    M=length(unique(Y$m))
+    
+    
+    loss_old <- 1e10
+    
+    
+    # State initialization
+    S=matrix(0,nrow=TT,ncol=M)
+    for(m in 1:M){
+      S[,m]=initialize_states(Y[which(Y$m==m),-(1:2)],n_states)
+    }
+    
+    # Initialize soft clustering matrix
+    SS <- matrix(0, nrow = TT * M, ncol = 2 + n_states)
+    SS[, 1] <- rep(1:TT, each = M)  # First column: t indices
+    SS[, 2] <- rep(1:M, times = TT) # Second column: m indices
+    for (t in 1:TT) {
+      for (m in 1:M) {
+        state <- S[t, m]
+        SS[(t - 1) * M + m, 2 + state] <- 1  # Set the appropriate column to 1
+      }
+    }
+    SS=data.frame(SS)
+    colnames(SS)=c("t","m",1:n_states)
+    
+    mu <- matrix(0, nrow=n_states, ncol=length(cont.indx))
+    mo <- matrix(0, nrow=n_states, ncol=length(cat.indx))
+    
+    for (i in unique(as.vector(S))) {
+      # substitute with medians
+      mu[i,] <- apply(Ycont[as.vector(t(S))==i,], 2, median, na.rm = TRUE)
+      mo[i,]=apply(Ycat[as.vector(t(S))==i,],2,Mode)
+    }
+    
+    mu=data.frame(mu)
+    mo=data.frame(mo,stringsAsFactors=TRUE)
+    for(i in 1:n_cat){
+      mo[,i]=factor(mo[,i],levels=levels(Ycat[,i]))
+    }
+    mumo=data.frame(matrix(0,nrow=n_states,ncol=P))
+    mumo[,cat.indx]=mo
+    mumo[,cont.indx]=mu
+    colnames(mumo)=colnames(YY)
+    
+    for (it in 1:max_iter) {
+      
+      # E Step
+      
+      loss_mx=gower.dist(YY,mumo)
+      
+      # Slighlty faster
+      # loss_mx<- 0.5 * sqrt(outer(1:nrow(YY), 1:nrow(mu), 
+      #                             Vectorize(function(r, k) sum((YY[r, ] - mu[k, ])^2))))
+      
+      
+      prob_vecs <- discretize_prob_simplex(n_states, grid_size)
+      pairwise_l1_dist <- as.matrix(dist(prob_vecs, method = "manhattan")) / 2
+      jump_penalty_mx <- jump_penalty * (pairwise_l1_dist ^ alpha)
+      
+      if (mode_loss) {
+        # Adding mode loss
+        m_loss <- log(rowSums(exp(-jump_penalty_mx)))
+        m_loss <- m_loss - m_loss[1]  # Offset a constant
+        jump_penalty_mx <- jump_penalty_mx + m_loss
+      }
+      
+      LARGE_FLOAT=1e1000
+      # Handle continuous model with probability vectors
+      if (!is.null(prob_vecs)) {
+        loss_mx[is.nan(loss_mx)] <- LARGE_FLOAT
+        loss_mx <- loss_mx %*% t(prob_vecs) # (TxM)xN
+      }
+      
+      N <- ncol(loss_mx)
+      
+      loss_mx[is.nan(loss_mx)] <- Inf
+      
+      values <- matrix(NA, TT*M, N) # (TxM)xN
+      value_opt=rep(0,M)
+      assign <- integer(TT*M) #TxM
+      SS_new=SS
+      SS_new[,-(1:2)]=0
+      
+      # DP iteration (bottleneck)
+      for(m in 1:M){
+        #print(m)
+        # Verificare se i pesi spaziali vanno bene
+        dist_weights <- ifelse(D[m,] == 0, 0, 1 / D[m,]) 
+        
+        spat_weigh_Ndim=rep(0,N)
+        
+        for(n in 1:N){
+          spat_weigh_Ndim[n]=
+            sum(apply(SS[SS$t==1,-(1:2)],1,
+                      function(x)hellinger_distance(prob_vecs[n,],x))*dist_weights)
+        }
+        
+        #dist_weights <- dist_weights / sum(dist_weights)
+        indx=which(Y$m==m)
+        
+        values[indx[1], ] <- loss_mx[indx[1], ]+spatial_penalty*spat_weigh_Ndim
+        
+        # Bootleneck!!
+        for (t in 2:TT) {
+          #print(t)
+          spat_weigh_Ndim=rep(0,N)
+          
+          for(n in 1:N){
+            spat_weigh_Ndim[n]=
+              sum(apply(SS[SS$t==t,-(1:2)],1,function(x)hellinger_distance(prob_vecs[n,],x))*dist_weights)
+          }
+          
+          values[indx[t], ] <- loss_mx[indx[t], ] + 
+            apply(values[indx[t-1], ] + jump_penalty_mx, 2, min)+
+            spatial_penalty*spat_weigh_Ndim
+        }
+        
+        # Find optimal path backwards
+        assign[indx[TT]] <- which.min(values[indx[TT], ])
+        value_opt[m] <- values[indx[TT], assign[indx[TT]]]
+        
+        SS_new[indx[TT],-(1:2)]=prob_vecs[assign[indx[TT]],]
+        
+        # Traceback
+        for (t in (TT - 1):1) {
+          assign[indx[t]] <- which.min(values[indx[t], ] + 
+                                         jump_penalty_mx[, assign[indx[t+1]]])
+          SS_new[indx[t],-(1:2)]=prob_vecs[assign[indx[t]],]
+        }
+        
+      }
+      value_opt=mean(value_opt)
+      
+      # M Step
+      
+      for(k in 1:n_states){
+        mu[k,]=apply(Ycont, 2, function(x) weighted_median(x, weights = SS_new[,k+2]))
+        mo[k,]=apply(Ycat,2,function(x)weighted_mode(x,weights=SS_new[,k+2]))
+      }
+      
+      mumo[,cat.indx]=mo
+      mumo[,cont.indx]=mu
+      colnames(mumo)=colnames(YY)
+      
+      # Re-fill-in missings 
+      Ycont <- Mcont * mu[as.vector(t(S)), ] + (!Mcont) * Ycont
+      
+      mo_2=apply(mo,2,as.numeric)
+      Ycat <- Mcat * mo_2[as.vector(t(S)), ] + (!Mcat) * apply(Ycat,2,as.numeric)
+      Ycat=data.frame(Ycat)
+      for(cc in 1:n_cat){
+        Ycat[,cc]=factor(Ycat[,cc],levels=levels_cat[[cc]])
+      }
+      
+      YY[,-cat.indx]=Ycont
+      YY[,cat.indx]=Ycat
+      
+      Y[,-(1:2)]=YY
+      
+      
+      if (!is.null(tol)) {
+        epsilon <- loss_old - value_opt
+        if (epsilon < tol) {
+          break
+        }
+      } 
+      
+      else if (all(SS == SS_new)) {
+        break
+      }
+      
+      SS=SS_new
+      
+      loss_old <- value_opt
+    }
+    
+    
+    
+    return(list(S=SS,value_opt=value_opt,mumo=mumo))
+#    }
+# , 
+#     error = function(e) {
+#       # Return a consistent placeholder on error
+#       return(list(S = NA, value_opt = Inf))
+#     })
+}
+
+cont_STJM <- function(Y,K,D,
+                      jump_penalty,
+                      spatial_penalty,
+                      alpha=2,grid_size=.05,mode_loss=T,
+                      n_init=10,
+                      max_iter=10,tol=NULL,initial_states=NULL,
+                      n_cores=NULL,prll=F
+) {
+  
+  Y=Y[order(Y$t,Y$m),]
+  P=ncol(Y)-2
+  Y.orig=Y
+  
+  Y=subset(Y,select=-c(t,m))
+  Y=Y%>%mutate_if(is.numeric,function(x)as.numeric(scale(x)))
+  
+  Y <- data.frame(t=Y.orig$t,m=Y.orig$m,Y)
+  
+  # Reorder columns so that we have t,m, cat vars and cont vars
+  cat.indx=which(sapply(Y, is.factor))
+  cont.indx=which(sapply(Y, is.numeric))
+  cont.indx=cont.indx[-(1:2)]
+  Y=Y[,c(1,2,cat.indx,cont.indx)]
+  
+  YY=subset(Y,select=-c(t,m))
+  
+  TT=length(unique(Y$t))
+  M=length(unique(Y$m))
+  
+  cat.indx=which(sapply(YY, is.factor))
+  cont.indx=which(sapply(YY, is.numeric))
+  
+  Ycont=YY[,cont.indx]
+  
+  Ycat=YY[,cat.indx]
+  levels_cat=lapply(Ycat,levels)
+  names(levels_cat)=cat.indx
+  
+  n_cat=length(cat.indx)
+  n_cont=length(cont.indx)
+  
+  ###
+  # Missing data imputation 
+  Mcont=ifelse(is.na(Ycont),T,F)
+  Mcat=ifelse(is.na(Ycat),T,F)
+  mu <- apply(Ycont, 2, median, na.rm = TRUE)
+  #mu <- colMeans(Ycont,na.rm = T)
+  mo <- apply(Ycat,2,Mode)
+  for(i in 1:n_cont){
+    Ycont[,i]=ifelse(Mcont[,i],mu[i],Ycont[,i])
+  }
+  for(i in 1:n_cat){
+    x=Ycat[,i]
+    Ycat[which(is.na(Ycat[,i])),i]=mo[i]
+  }
+  YY[,-cat.indx]=Ycont
+  YY[,cat.indx]=Ycat
+  
+  Y[,-(1:2)]=YY
+  
+  #TT=nrow(Y)
+  
+  if(prll){
+    if(is.null(n_cores)){
+      n_cores=parallel::detectCores()-1
+    }
+    hp_init=expand.grid(init=1:n_init)
+    jms <- parallel::mclapply(1:nrow(hp_init),
+                              function(x)
+                                onerun_cont_STJM(Y=Y,n_states=K,
+                                                 D=D,
+                                                 jump_penalty=jump_penalty,
+                                                 spatial_penalty = spatial_penalty,
+                                                 alpha=alpha,grid_size=grid_size,
+                                                 mode_loss=mode_loss,
+                                                 max_iter=max_iter,tol=tol,
+                                                 initial_states=initial_states,
+                                                 Mcont=Mcont, Mcat=Mcat,
+                                                 cont.indx=cont.indx,cat.indx=cat.indx,levels_cat=levels_cat),
+                              mc.cores = n_cores)
+  }
+  else{
+    jms=list()
+    for (init in 1:n_init) {
+      
+      jms[[init]]=onerun_cont_STJM(Y=Y,n_states=K,
+                                   D=D,
+                                jump_penalty=jump_penalty,
+                                spatial_penalty = spatial_penalty,
+                                alpha=alpha,grid_size=grid_size,
+                                mode_loss=mode_loss,
+                                max_iter=max_iter,tol=tol,
+                                initial_states=initial_states,
+                                Mcont=Mcont, Mcat=Mcat,
+                                cont.indx=cont.indx,cat.indx=cat.indx,levels_cat=levels_cat)
+      
+    }
+  }
+  
+  best_init=which.min(unlist(lapply(jms,function(x)x$value_opt)))
+  best_S=jms[[best_init]]$S
+  best_mumo=jms[[best_init]]$mumo
+  
+  
+  return(best_S)
+}
+
+simstud_cont_STJM=function(seed,lambda,
+                           TT,P,M,
+                           Ktrue=3,mu=1,
+                           phi=.8,rho=0,
+                           theta=.9,beta=.01,
+                           Pcat=NULL,pers=.95,
+                           pNAs=0,typeNA=3,
+                           n_cores_int=NULL,
+                           prll=F){
+  
+  #Pcat=0
+  if(is.null(Pcat)){
+    Pcat=P/2
+  }
+  
+  # Simulate
+  simDat=generate_spatio_temporal_data(M, TT, theta=theta, beta=beta, K = Ktrue,
+                                       mu=mu,rho=rho,phi=phi,
+                                       P=P,Pcat=Pcat,seed=seed,
+                                       #pGap=pg,
+                                       pNAs=pNAs)
+  
+  #Y.compl=simDat$Y
+  D=simDat$dist_matrix
+  Y=simDat$Y.NA
+  
+  # Estimate
+  
+  est=cont_STJM(Y=Y,K=Ktrue,D=D,
+                jump_penalty=lambda,
+                spatial_penalty=gamma,
+                alpha=2,grid_size=.05,mode_loss=T,
+                n_init=10,
+                max_iter=10,tol=NULL,initial_states=NULL,
+                n_cores=n_cores_int,prll=prll
+  )
+  
+  # imput.err=gower_dist(est$Y,simDat$SimData.complete)
+  # ARI=adj.rand.index(est$best_s,simDat$mchain)
+  
+  return(est)
+  
+}

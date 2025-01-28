@@ -43,8 +43,8 @@ adj.rand.index(apply(fit,1,which.max),Sim$mchain)
 source("Utils.R")
 
 
-M=5
-TT=10
+M=2
+TT=5
 theta=.01
 beta=.9
 K=3
@@ -64,7 +64,7 @@ result <- generate_spatio_temporal_data(M, TT, theta, beta, K = K,
 Y.compl=result$Y
 D=result$dist_matrix
 Y=result$Y.NA
-Y=Y[,-(3:4)]
+#Y=Y[,-(3:4)]
 head(Y)
 
 jump_penalty = .1
