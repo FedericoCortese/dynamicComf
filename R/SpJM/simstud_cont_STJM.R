@@ -6,7 +6,7 @@ TT=30
 M=10
 lambda=seq(0,1,by=.1)
 gamma=seq(0,1,by=.1)
-seeds=1:100
+seeds=1:10
 hp=expand.grid(TT=TT,M=M,P=P,
                lambda=lambda,gamma=gamma,
                seed=seeds)
