@@ -18,6 +18,7 @@ frac_ext=1/3
 n_cores_ext=n_cores_total*frac_ext
 n_cores_int=(n_cores_total-n_cores_ext)/n_cores_ext
 
+#grid_size=NULL
 
 # Setup 1
 st=Sys.time()
@@ -29,6 +30,7 @@ cont_STJM_setup1_P10 <- parallel::mclapply(1:nrow(hp),
                                                             M=hp[x,]$M,
                                                             Ktrue=3,mu=1,
                                                             phi=.8,rho=0,
+                                                            #grid_size=NULL,
                                                             theta=.9,beta=.01,
                                                             Pcat=NULL,pers=.95,
                                                             pNAs=0,typeNA=3,

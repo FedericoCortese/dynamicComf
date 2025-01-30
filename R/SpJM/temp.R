@@ -43,8 +43,8 @@ adj.rand.index(apply(fit,1,which.max),Sim$mchain)
 source("Utils.R")
 
 
-M=2
-TT=5
+M=10
+TT=50
 theta=.01
 beta=.9
 K=3
@@ -74,3 +74,14 @@ tol=NULL
 spatial_penalty = .1
 alpha=2
 n_states=3
+
+prova=cont_STJM(Y,K,D,
+                      jump_penalty,
+                      spatial_penalty,
+                      alpha=2,grid_size=NULL,mode_loss=T,
+                rand_search_sample = 5,
+                      n_init=10,
+                      max_iter=10,tol=NULL,initial_states=NULL,
+                      n_cores=NULL,prll=F
+)
+
