@@ -2,9 +2,8 @@ library(parallel)
 source("Utils.R")
 
 P=10
-lambda=seq(0,1,by=.1)
-TT=c(50,100)
-M=c(10,20)
+TT=30
+M=10
 lambda=seq(0,1,by=.1)
 gamma=seq(0,1,by=.1)
 seeds=1:100

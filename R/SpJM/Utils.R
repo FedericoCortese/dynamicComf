@@ -4731,7 +4731,8 @@ weighted_mode <- function(x, weights) {
 onerun_cont_STJM=function(Y,n_states,D,
                           jump_penalty,
                           spatial_penalty,
-                          alpha,grid_size,mode_loss=T,
+                          alpha,grid_size=NULL,rand_search_sample=100,
+                          mode_loss=T,
                           max_iter,tol,initial_states, 
                           Mcont, Mcat,cont.indx,cat.indx,levels_cat){
   #tryCatch({
@@ -4739,10 +4740,10 @@ onerun_cont_STJM=function(Y,n_states,D,
   YY=Y[,-(1:2)]
   Ycat=YY[,cat.indx]
   Ycont=YY[,cont.indx]
-    n_cat=length(cat.indx)
-    n_cont=length(cont.indx)
-    TT=length(unique(Y$t))
-    M=length(unique(Y$m))
+  n_cat=length(cat.indx)
+  n_cont=length(cont.indx)
+  TT=length(unique(Y$t))
+  M=length(unique(Y$m))
     
     
     loss_old <- 1e10
@@ -4797,7 +4798,16 @@ onerun_cont_STJM=function(Y,n_states,D,
       #                             Vectorize(function(r, k) sum((YY[r, ] - mu[k, ])^2))))
       
       
-      prob_vecs <- discretize_prob_simplex(n_states, grid_size)
+      if(!is.null(grid)){
+        # Grid search
+        prob_vecs <- discretize_prob_simplex(n_states, grid_size)
+      }
+      else{
+        # Random search
+        prob_vecs <- matrix(runif(n_states * rand_search_sample), nrow = rand_search_sample)
+        prob_vecs=t(apply(prob_vecs,1,function(x)x/sum(x)))
+      }
+
       pairwise_l1_dist <- as.matrix(dist(prob_vecs, method = "manhattan")) / 2
       jump_penalty_mx <- jump_penalty * (pairwise_l1_dist ^ alpha)
       
@@ -4828,8 +4838,8 @@ onerun_cont_STJM=function(Y,n_states,D,
       # DP iteration (bottleneck)
       for(m in 1:M){
         #print(m)
-        # Verificare se i pesi spaziali vanno bene
-        dist_weights <- ifelse(D[m,] == 0, 0, 1 / D[m,]) 
+        # I pesi sono definiti come le distanze normalizzate tra 0 e 1
+        dist_weights <- ifelse(D[m,] == 0, 0, D[m,])/sum(ifelse(D[m,] == 0, 0, D[m,])) 
         
         spat_weigh_Ndim=rep(0,N)
         
@@ -4839,7 +4849,6 @@ onerun_cont_STJM=function(Y,n_states,D,
                       function(x)hellinger_distance(prob_vecs[n,],x))*dist_weights)
         }
         
-        #dist_weights <- dist_weights / sum(dist_weights)
         indx=which(Y$m==m)
         
         values[indx[1], ] <- loss_mx[indx[1], ]+spatial_penalty*spat_weigh_Ndim
@@ -4851,7 +4860,8 @@ onerun_cont_STJM=function(Y,n_states,D,
           
           for(n in 1:N){
             spat_weigh_Ndim[n]=
-              sum(apply(SS[SS$t==t,-(1:2)],1,function(x)hellinger_distance(prob_vecs[n,],x))*dist_weights)
+              sum(apply(SS[SS$t==t,-(1:2)],1,
+                        function(x)hellinger_distance(prob_vecs[n,],x))*dist_weights)
           }
           
           values[indx[t], ] <- loss_mx[indx[t], ] + 
