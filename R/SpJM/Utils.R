@@ -4684,6 +4684,10 @@ simstud_contJM=function(seed,lambda,TT,P,
 
 # Continuous ST-JM --------------------------------------------------------
 
+sample_dirichlet_vector <- function(K, alpha = .3) {
+  return(MCMCpack::rdirichlet(1, rep(alpha, K)))  # Generate a K-dim probability vector
+}
+
 hellinger_distance <- function(p, q) {
   if (length(p) != length(q)) {
     stop("The probability vectors must have the same length.")
@@ -4731,7 +4735,10 @@ weighted_mode <- function(x, weights) {
 onerun_cont_STJM=function(Y,n_states,D,
                           jump_penalty,
                           spatial_penalty,
-                          alpha,grid_size,mode_loss=T,
+                          alpha,
+                          grid_size=NULL,
+                          rand_search_sample=100,
+                          mode_loss=T,
                           max_iter,tol,initial_states, 
                           Mcont, Mcat,cont.indx,cat.indx,levels_cat){
   #tryCatch({
@@ -4739,10 +4746,10 @@ onerun_cont_STJM=function(Y,n_states,D,
   YY=Y[,-(1:2)]
   Ycat=YY[,cat.indx]
   Ycont=YY[,cont.indx]
-    n_cat=length(cat.indx)
-    n_cont=length(cont.indx)
-    TT=length(unique(Y$t))
-    M=length(unique(Y$m))
+  n_cat=length(cat.indx)
+  n_cont=length(cont.indx)
+  TT=length(unique(Y$t))
+  M=length(unique(Y$m))
     
     
     loss_old <- 1e10
@@ -4786,6 +4793,31 @@ onerun_cont_STJM=function(Y,n_states,D,
     mumo[,cont.indx]=mu
     colnames(mumo)=colnames(YY)
     
+    # Should this be moved outside the for loop of max_iter?
+    if(!is.null(grid_size)){
+      # Grid search
+      prob_vecs <- discretize_prob_simplex(n_states, grid_size)
+    }
+    else{
+      # Random search
+      # Consider using Dirichlet distribution to put more mass on extremes
+      prob_vecs <-matrix(rep(sample_dirichlet_vector(n_states, alpha = .3),rand_search_sample), 
+                         nrow = rand_search_sample)
+      # prob_vecs <- matrix(runif(n_states * rand_search_sample), nrow = rand_search_sample)
+      # prob_vecs=t(apply(prob_vecs,1,function(x)x/sum(x)))
+    }
+    
+    # This should be computed for each m and t differently if we adopt recursive refinement
+    pairwise_l1_dist <- as.matrix(dist(prob_vecs, method = "manhattan")) / 2
+    jump_penalty_mx <- jump_penalty * (pairwise_l1_dist ^ alpha)
+    
+    if (mode_loss) {
+      # Adding mode loss
+      m_loss <- log(rowSums(exp(-jump_penalty_mx)))
+      m_loss <- m_loss - m_loss[1]  # Offset a constant
+      jump_penalty_mx <- jump_penalty_mx + m_loss
+    }
+    
     for (it in 1:max_iter) {
       
       # E Step
@@ -4796,17 +4828,6 @@ onerun_cont_STJM=function(Y,n_states,D,
       # loss_mx<- 0.5 * sqrt(outer(1:nrow(YY), 1:nrow(mu), 
       #                             Vectorize(function(r, k) sum((YY[r, ] - mu[k, ])^2))))
       
-      
-      prob_vecs <- discretize_prob_simplex(n_states, grid_size)
-      pairwise_l1_dist <- as.matrix(dist(prob_vecs, method = "manhattan")) / 2
-      jump_penalty_mx <- jump_penalty * (pairwise_l1_dist ^ alpha)
-      
-      if (mode_loss) {
-        # Adding mode loss
-        m_loss <- log(rowSums(exp(-jump_penalty_mx)))
-        m_loss <- m_loss - m_loss[1]  # Offset a constant
-        jump_penalty_mx <- jump_penalty_mx + m_loss
-      }
       
       LARGE_FLOAT=1e1000
       # Handle continuous model with probability vectors
@@ -4828,8 +4849,10 @@ onerun_cont_STJM=function(Y,n_states,D,
       # DP iteration (bottleneck)
       for(m in 1:M){
         #print(m)
-        # Verificare se i pesi spaziali vanno bene
-        dist_weights <- ifelse(D[m,] == 0, 0, 1 / D[m,]) 
+        indx=which(Y$m==m)
+        
+        # I pesi sono definiti come le distanze normalizzate tra 0 e 1
+        dist_weights <- ifelse(D[m,] == 0, 0, D[m,])/sum(ifelse(D[m,] == 0, 0, D[m,])) 
         
         spat_weigh_Ndim=rep(0,N)
         
@@ -4838,9 +4861,6 @@ onerun_cont_STJM=function(Y,n_states,D,
             sum(apply(SS[SS$t==1,-(1:2)],1,
                       function(x)hellinger_distance(prob_vecs[n,],x))*dist_weights)
         }
-        
-        #dist_weights <- dist_weights / sum(dist_weights)
-        indx=which(Y$m==m)
         
         values[indx[1], ] <- loss_mx[indx[1], ]+spatial_penalty*spat_weigh_Ndim
         
@@ -4851,7 +4871,8 @@ onerun_cont_STJM=function(Y,n_states,D,
           
           for(n in 1:N){
             spat_weigh_Ndim[n]=
-              sum(apply(SS[SS$t==t,-(1:2)],1,function(x)hellinger_distance(prob_vecs[n,],x))*dist_weights)
+              sum(apply(SS[SS$t==t,-(1:2)],1,
+                        function(x)hellinger_distance(prob_vecs[n,],x))*dist_weights)
           }
           
           values[indx[t], ] <- loss_mx[indx[t], ] + 
@@ -4873,6 +4894,7 @@ onerun_cont_STJM=function(Y,n_states,D,
         }
         
       }
+      # vector assign tells, for each m and t, which one among the N candidate vectors is the best
       value_opt=mean(value_opt)
       
       # M Step
@@ -4932,7 +4954,8 @@ onerun_cont_STJM=function(Y,n_states,D,
 cont_STJM <- function(Y,K,D,
                       jump_penalty,
                       spatial_penalty,
-                      alpha=2,grid_size=.05,mode_loss=T,
+                      alpha=2,grid_size=.05,
+                      mode_loss=T,rand_search_sample=100,
                       n_init=10,
                       max_iter=10,tol=NULL,initial_states=NULL,
                       n_cores=NULL,prll=F
@@ -5003,6 +5026,7 @@ cont_STJM <- function(Y,K,D,
                                                  jump_penalty=jump_penalty,
                                                  spatial_penalty = spatial_penalty,
                                                  alpha=alpha,grid_size=grid_size,
+                                                 rand_search_sample=rand_search_sample,
                                                  mode_loss=mode_loss,
                                                  max_iter=max_iter,tol=tol,
                                                  initial_states=initial_states,
@@ -5019,6 +5043,7 @@ cont_STJM <- function(Y,K,D,
                                 jump_penalty=jump_penalty,
                                 spatial_penalty = spatial_penalty,
                                 alpha=alpha,grid_size=grid_size,
+                                rand_search_sample=rand_search_sample,
                                 mode_loss=mode_loss,
                                 max_iter=max_iter,tol=tol,
                                 initial_states=initial_states,
@@ -5044,6 +5069,7 @@ simstud_cont_STJM=function(seed,lambda,
                            Pcat=NULL,pers=.95,
                            pNAs=0,typeNA=3,
                            n_cores_int=NULL,
+                           grid_size=.05,
                            prll=F){
   
   #Pcat=0
@@ -5067,7 +5093,7 @@ simstud_cont_STJM=function(seed,lambda,
   est=cont_STJM(Y=Y,K=Ktrue,D=D,
                 jump_penalty=lambda,
                 spatial_penalty=gamma,
-                alpha=2,grid_size=.05,mode_loss=T,
+                alpha=2,grid_size=grid_size,mode_loss=T,
                 n_init=10,
                 max_iter=10,tol=NULL,initial_states=NULL,
                 n_cores=n_cores_int,prll=prll
