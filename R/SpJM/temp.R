@@ -68,20 +68,23 @@ Y=result$Y.NA
 head(Y)
 
 jump_penalty = .1
+lambda=jump_penalty
 grid_size =NULL
 verbose=F
 tol=NULL
 spatial_penalty = .1
+gamma=spatial_penalty
 alpha=2
 n_states=3
+
+# n_cores=10
+# parallel_ga = 3
 
 prova=cont_STJM(Y,K,D,
                 jump_penalty,
                 spatial_penalty,
-                alpha=2,grid_size=NULL,mode_loss=T,
-                rand_search_sample = 100,
                 n_init=10,
                 max_iter=10,tol=NULL,initial_states=NULL,
-                n_cores=10,prll=T
+                n_cores=10,prll=T,parallel_ga = 3
 )
 
