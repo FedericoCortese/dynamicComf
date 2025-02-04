@@ -72,7 +72,7 @@ lambda=jump_penalty
 grid_size =NULL
 verbose=F
 tol=NULL
-spatial_penalty = .1
+spatial_penalty = 0.05
 gamma=spatial_penalty
 alpha=2
 n_states=3
@@ -80,11 +80,28 @@ n_states=3
 # n_cores=10
 # parallel_ga = 3
 
+st=Sys.time()
 prova=cont_STJM(Y,K,D,
                 jump_penalty,
                 spatial_penalty,
                 n_init=10,
                 max_iter=10,tol=NULL,initial_states=NULL,
-                n_cores=10,prll=T,parallel_ga = 3
+                n_cores=30,prll=T,parallel_ga = F
 )
+en=Sys.time()
+en-st
 
+true_SS=data.frame(result$S)
+colnames(true_SS)=paste0(1:M)
+res_SS_long=true_SS %>%
+  mutate(t = 1:n()) %>%
+  tidyr::pivot_longer(cols = -t, names_to = "m", values_to = "true") %>%
+  mutate(m=as.integer(m))%>%
+  arrange(t, m)
+
+est_SS=apply(prova[,-c(1:2)],1,which.max)
+res_SS_long$est=est_SS
+
+adj.rand.index(res_SS_long$true,res_SS_long$est)
+
+table(res_SS_long$true,res_SS_long$est)

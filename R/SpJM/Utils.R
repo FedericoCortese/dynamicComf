@@ -5201,7 +5201,7 @@ GA_onerun_cont_STJM=function(Y,n_states,D,
       # Genetic Algorithm
       GA_m=ga_optimize(SS_all=SS, loss_mx_m, W,
                        gamma, lambda, m, K,
-                       pop_size = 20, max_generations = 10,
+                       pop_size = 50, max_generations = 50,
                        parallel_ga=parallel_ga)
       
       SS_new[SS_new$m==m,-c(1:2)]=GA_m$best_SS_m
