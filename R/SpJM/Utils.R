@@ -4768,27 +4768,47 @@ onerun_cont_STJM=function(Y,n_states,D,
     for(m in 1:M){
       S[,m]=initialize_states(Y[which(Y$m==m),-(1:2)],n_states)
     }
+    # I need vectorized S many times, let's do it only once
+    vec_S=as.vector(t(S))
     
     # Initialize soft clustering matrix
+    # SLOW
+    # SS <- matrix(0, nrow = TT * M, ncol = 2 + n_states)
+    # SS[, 1] <- rep(1:TT, each = M)  # First column: t indices
+    # SS[, 2] <- rep(1:M, times = TT) # Second column: m indices
+    # for (t in 1:TT) {
+    #   for (m in 1:M) {
+    #     state <- S[t, m]
+    #     SS[(t - 1) * M + m, 2 + state] <- 1  # Set the appropriate column to 1
+    #   }
+    # }
+    # SS=data.frame(SS)
+    # colnames(SS)=c("t","m",1:n_states)
+    
+    # FASTER
     SS <- matrix(0, nrow = TT * M, ncol = 2 + n_states)
-    SS[, 1] <- rep(1:TT, each = M)  # First column: t indices
-    SS[, 2] <- rep(1:M, times = TT) # Second column: m indices
-    for (t in 1:TT) {
-      for (m in 1:M) {
-        state <- S[t, m]
-        SS[(t - 1) * M + m, 2 + state] <- 1  # Set the appropriate column to 1
-      }
-    }
-    SS=data.frame(SS)
-    colnames(SS)=c("t","m",1:n_states)
+    
+    SS[, 1] <- rep(1:TT, each = M)  # Time indices
+    SS[, 2] <- rep(1:M, times = TT) # Spatial indices
+    
+    # Compute row indices in SS corresponding to (t, m)
+    row_indices <- rep(1:(TT * M))  # Row positions in SS
+    col_indices <- vec_S + 2  # Convert S into a vector and shift for SS indexing
+    
+    # Assign 1s in a single step
+    SS[cbind(row_indices, col_indices)] <- 1 
+    
+    # Convert to DataFrame and set column names
+    SS <- data.frame(SS)
+    colnames(SS) <- c("t", "m", 1:n_states)
     
     mu <- matrix(0, nrow=n_states, ncol=length(cont.indx))
     mo <- matrix(0, nrow=n_states, ncol=length(cat.indx))
     
-    for (i in unique(as.vector(S))) {
+    for (i in unique(vec_S)) {
       # substitute with medians
-      mu[i,] <- apply(Ycont[as.vector(t(S))==i,], 2, median, na.rm = TRUE)
-      mo[i,]=apply(Ycat[as.vector(t(S))==i,],2,Mode)
+      mu[i,] <- apply(Ycont[vec_S==i,], 2, median, na.rm = TRUE)
+      mo[i,]=apply(Ycat[vec_S==i,],2,Mode)
     }
     
     mu=data.frame(mu)
