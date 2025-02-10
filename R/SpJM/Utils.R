@@ -20,6 +20,9 @@ library(aricode)
 library(mvtnorm)
 library(GA)
 
+library(foreach)
+library(doParallel)
+
 library(MASS)  # For multivariate normal sampling
 library(spdep)  # For spatial correlation
 
@@ -4748,7 +4751,8 @@ onerun_cont_STJM=function(Y,n_states,D,
                           rand_search_sample=100,
                           mode_loss=T,
                           max_iter,tol,initial_states, 
-                          Mcont, Mcat,cont.indx,cat.indx,levels_cat){
+                          Mcont, Mcat,cont.indx,cat.indx,levels_cat,
+                          ncores_M=ncores_M){
   #tryCatch({
     
   YY=Y[,-(1:2)]
@@ -4872,10 +4876,13 @@ onerun_cont_STJM=function(Y,n_states,D,
       value_opt=rep(0,M)
       assign <- integer(TT*M) #TxM
       SS_new=SS
+      #SS_new=SS[,-(1:2)]
       SS_new[,-(1:2)]=0
       
+      if(is.null(ncores_M)){
       # DP iteration (bottleneck)
       for(m in 1:M){
+        
         #print(m)
         indx=which(Y$m==m)
         
@@ -4886,8 +4893,10 @@ onerun_cont_STJM=function(Y,n_states,D,
         
         for(n in 1:N){
           spat_weigh_Ndim[n]=
-            sum(apply(SS[SS$t==1,-(1:2)],1,
-                      function(x)hellinger_distance(prob_vecs[n,],x))*dist_weights)
+            sum(apply(SS[SS$t==1,-(1:2)],
+                      1,
+                      function(x)
+                        hellinger_distance(prob_vecs[n,],x))*dist_weights)
         }
         
         values[indx[1], ] <- loss_mx[indx[1], ]+spatial_penalty*spat_weigh_Ndim
@@ -4906,6 +4915,7 @@ onerun_cont_STJM=function(Y,n_states,D,
           values[indx[t], ] <- loss_mx[indx[t], ] + 
             apply(values[indx[t-1], ] + jump_penalty_mx, 2, min)+
             spatial_penalty*spat_weigh_Ndim
+          
         }
         
         # Find optimal path backwards
@@ -4924,7 +4934,85 @@ onerun_cont_STJM=function(Y,n_states,D,
       }
       # vector assign tells, for each m and t, which one among the N candidate vectors is the best
       value_opt=mean(value_opt)
-      
+      }
+      else{
+        num_cores <- ncores_M  # Use all but one core
+        cl <- makeCluster(num_cores)
+        registerDoParallel(cl)
+        
+        # Parallel Execution using foreach
+        SS_new <- foreach(m = 1:M, .combine = '+') %dopar% {
+          
+          indx <- which(Y$m == m)
+          
+          # Compute normalized distance weights
+          dist_weights <- ifelse(D[m,] == 0, 0, D[m,]) / sum(ifelse(D[m,] == 0, 0, D[m,])) 
+          
+          spat_weigh_Ndim <- numeric(N)
+          
+          # hellinger_distance <- function(p, q) {
+          #   if (length(p) != length(q)) {
+          #     stop("The probability vectors must have the same length.")
+          #   }
+          #   sqrt(0.5 * sum((sqrt(p) - sqrt(q))^2))
+          # }
+          
+          # Compute Hellinger distance for t = 1
+          spat_weigh_Ndim <- colSums(sapply(1:N, function(n) {
+            apply(SS[SS$t == 1, -(1:2)], 1, function(x){
+              #hellinger_distance(prob_vecs[n,], x)
+              sqrt(0.5 * sum((sqrt(x) - sqrt(prob_vecs[n,]))^2))
+            } 
+              ) * dist_weights
+          }))
+          
+          values[indx[1], ] <- loss_mx[indx[1], ] + spatial_penalty * spat_weigh_Ndim
+          
+          
+          for (t in 2:TT) {
+            spat_weigh_Ndim <- colSums(sapply(1:N, function(n) {
+              apply(SS[SS$t == t, -(1:2)], 1, function(x){
+                #hellinger_distance(prob_vecs[n,], x)
+                sqrt(0.5 * sum((sqrt(x) - sqrt(prob_vecs[n,]))^2))
+              }
+                
+                    ) * dist_weights
+            }))
+            
+            values[indx[t], ] <- loss_mx[indx[t], ] + 
+              apply(values[indx[t-1], ] + jump_penalty_mx, 2, min) +
+              spatial_penalty * spat_weigh_Ndim
+          }
+          
+          # Find optimal path backwards
+          assign[indx[TT]] <- which.min(values[indx[TT], ])
+          #value_opt[m] <- values[indx[TT], assign[indx[TT]]]
+          value_opt <- values[indx[TT], assign[indx[TT]]]
+          
+          SS_new=matrix(0,nrow=TT*M,ncol=n_states)
+          
+          SS_new[indx[TT], ] <- prob_vecs[assign[indx[TT]],]
+          
+          # Traceback
+          for (t in (TT - 1):1) {
+            assign[indx[t]] <- which.min(values[indx[t], ] + 
+                                           jump_penalty_mx[, assign[indx[t + 1]]])
+            SS_new[indx[t],] <- prob_vecs[assign[indx[t]],]
+          }
+          SS_new=rbind(rep(value_opt,n_states),SS_new)
+          
+          return(SS_new[,])  # Avoid returning large objects inside parallel execution
+        }
+        
+        # Stop parallel cluster after execution
+        stopCluster(cl)
+        
+        value_opt=SS_new[1,1]/M
+        SS_new=SS_new[-1,]
+        SS_new=data.frame(t=Y$t,m=Y$m,SS_new)
+        colnames(SS_new)=c("t","m",1:n_states)
+      }
+
       # M Step
       
       for(k in 1:n_states){
@@ -5292,7 +5380,8 @@ cont_STJM <- function(Y,K,D,
                       mode_loss=T,rand_search_sample=100,
                       n_init=10,
                       max_iter=10,tol=NULL,initial_states=NULL,
-                      n_cores=NULL,prll=F,parallel_ga=F
+                      n_cores=NULL,prll=F,ncores_M=NULL
+                      #,parallel_ga=F
 ) {
   
   # n_cores is the number of cores dedicated to parallel computation for different initialization
@@ -5360,23 +5449,24 @@ cont_STJM <- function(Y,K,D,
     hp_init=expand.grid(init=1:n_init)
     jms <- parallel::mclapply(1:nrow(hp_init),
                               function(x)
-                                GA_onerun_cont_STJM(Y=Y,n_states=K,D=D,
-                                                             jump_penalty=jump_penalty,
-                                                             spatial_penalty=spatial_penalty,
-                                                             max_iter,tol,initial_states, 
-                                                             Mcont, Mcat,cont.indx,cat.indx,levels_cat,
-                                                             parallel_ga=parallel_ga),
-                                # onerun_cont_STJM(Y=Y,n_states=K,
-                                #                  D=D,
-                                #                  jump_penalty=jump_penalty,
-                                #                  spatial_penalty = spatial_penalty,
-                                #                  alpha=alpha,grid_size=grid_size,
-                                #                  rand_search_sample=rand_search_sample,
-                                #                  mode_loss=mode_loss,
-                                #                  max_iter=max_iter,tol=tol,
-                                #                  initial_states=initial_states,
-                                #                  Mcont=Mcont, Mcat=Mcat,
-                                #                  cont.indx=cont.indx,cat.indx=cat.indx,levels_cat=levels_cat),
+                                # GA_onerun_cont_STJM(Y=Y,n_states=K,D=D,
+                                #                              jump_penalty=jump_penalty,
+                                #                              spatial_penalty=spatial_penalty,
+                                #                              max_iter,tol,initial_states, 
+                                #                              Mcont, Mcat,cont.indx,cat.indx,levels_cat,
+                                #                              parallel_ga=parallel_ga),
+                                onerun_cont_STJM(Y=Y,n_states=K,
+                                                 D=D,
+                                                 jump_penalty=jump_penalty,
+                                                 spatial_penalty = spatial_penalty,
+                                                 alpha=alpha,grid_size=grid_size,
+                                                 rand_search_sample=rand_search_sample,
+                                                 mode_loss=mode_loss,
+                                                 max_iter=max_iter,tol=tol,
+                                                 initial_states=initial_states,
+                                                 Mcont=Mcont, Mcat=Mcat,
+                                                 cont.indx=cont.indx,cat.indx=cat.indx,levels_cat=levels_cat,
+                                                 ncores_M = ncores_M),
                               mc.cores = n_cores)
     # Sostituire con GA_onerun_cont_STJM
   }
@@ -5384,25 +5474,26 @@ cont_STJM <- function(Y,K,D,
     jms=list()
     for (init in 1:n_init) {
       
-      jms[[init]]=GA_onerun_cont_STJM(Y=Y,n_states=K,D=D,
-                                      jump_penalty=jump_penalty,
-                                      spatial_penalty=spatial_penalty,
-                                      max_iter,tol,initial_states, 
-                                      Mcont, Mcat,cont.indx,cat.indx,levels_cat,
-                                      parallel_ga=parallel_ga)
+      # jms[[init]]=GA_onerun_cont_STJM(Y=Y,n_states=K,D=D,
+      #                                 jump_penalty=jump_penalty,
+      #                                 spatial_penalty=spatial_penalty,
+      #                                 max_iter,tol,initial_states, 
+      #                                 Mcont, Mcat,cont.indx,cat.indx,levels_cat,
+      #                                 parallel_ga=parallel_ga)
       
     
-      # jms[[init]]=onerun_cont_STJM(Y=Y,n_states=K,
-      #                              D=D,
-      #                           jump_penalty=jump_penalty,
-      #                           spatial_penalty = spatial_penalty,
-      #                           alpha=alpha,grid_size=grid_size,
-      #                           rand_search_sample=rand_search_sample,
-      #                           mode_loss=mode_loss,
-      #                           max_iter=max_iter,tol=tol,
-      #                           initial_states=initial_states,
-      #                           Mcont=Mcont, Mcat=Mcat,
-      #                           cont.indx=cont.indx,cat.indx=cat.indx,levels_cat=levels_cat)
+      jms[[init]]=onerun_cont_STJM(Y=Y,n_states=K,
+                                   D=D,
+                                jump_penalty=jump_penalty,
+                                spatial_penalty = spatial_penalty,
+                                alpha=alpha,grid_size=grid_size,
+                                rand_search_sample=rand_search_sample,
+                                mode_loss=mode_loss,
+                                max_iter=max_iter,tol=tol,
+                                initial_states=initial_states,
+                                Mcont=Mcont, Mcat=Mcat,
+                                cont.indx=cont.indx,cat.indx=cat.indx,levels_cat=levels_cat,
+                                ncores_M = ncores_M)
     
     }
   }

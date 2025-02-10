@@ -43,8 +43,9 @@ adj.rand.index(apply(fit,1,which.max),Sim$mchain)
 source("Utils.R")
 
 
-M=10
-TT=50
+M=5
+TT=10
+
 theta=.01
 beta=.9
 K=3
@@ -67,12 +68,12 @@ Y=result$Y.NA
 #Y=Y[,-(3:4)]
 head(Y)
 
-jump_penalty = .1
+jump_penalty = 0.1
 lambda=jump_penalty
-grid_size =NULL
+grid_size =.05
 verbose=F
 tol=NULL
-spatial_penalty = 0.05
+spatial_penalty = 0.1
 gamma=spatial_penalty
 alpha=2
 n_states=3
@@ -84,9 +85,11 @@ st=Sys.time()
 prova=cont_STJM(Y,K,D,
                 jump_penalty,
                 spatial_penalty,
-                n_init=10,
+                n_init=2,
+                mode_loss = T,
+                grid_size = .05,
                 max_iter=10,tol=NULL,initial_states=NULL,
-                n_cores=30,prll=T,parallel_ga = F
+                n_cores=NULL,prll=F,ncores_M=10
 )
 en=Sys.time()
 en-st
