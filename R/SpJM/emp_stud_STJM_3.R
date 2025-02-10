@@ -27,7 +27,9 @@ data_utci=data.frame(time=time_utci_8,UTCI=utci_sing[,1]-273.15)
 
 ####
 
-load("D:/git/dynamicComf/dynamicComf/R/SpJM/Y_3.Rdata")
+# SEE emp_stud_STJM_2 for Y_3.Rdata
+#load("D:/git/dynamicComf/dynamicComf/R/SpJM/Y_3.Rdata")
+load("~/git/dynamicComf/R/SpJM/Y_3.Rdata")
 
 # Merge with pre-existing data
 Y_4=Y_complete[,c("t","m","time")]%>%
