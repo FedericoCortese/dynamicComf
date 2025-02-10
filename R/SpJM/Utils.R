@@ -3854,8 +3854,8 @@ STjumpDist=function(Y,n_states,
   Mcont=ifelse(is.na(Ycont),T,F)
   Mcat=ifelse(is.na(Ycat),T,F)
   # Initialize mu 
-  mu <- colMeans(Ycont,na.rm = T)
-  # mu=apply(Ycont,2,median,na.rm=T)
+  #mu <- colMeans(Ycont,na.rm = T)
+   mu=apply(Ycont,2,median,na.rm=T)
   # Initialize modes
   mo <- apply(Ycat,2,Mode)
   # Impute missing values with mean of observed states
@@ -3887,8 +3887,8 @@ STjumpDist=function(Y,n_states,
     
     for (it in 1:max_iter) {
       for (i in unique(as.vector(S))) {
-        mu[i,] <- colMeans(Ycont[as.vector(t(S))==i,])
-        #mu[i,]=apply(Ycont[as.vector(t(S))==i,],2,median)
+        #mu[i,] <- colMeans(Ycont[as.vector(t(S))==i,])
+        mu[i,]=apply(Ycont[as.vector(t(S))==i,],2,median)
         mo[i,]=apply(Ycat[as.vector(t(S))==i,],2,Mode)
       }
       
