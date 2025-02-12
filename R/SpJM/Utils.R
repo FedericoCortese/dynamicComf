@@ -5774,11 +5774,13 @@ simstud_fuzzyJM=function(seed,lambda,TT,P,
                  max_iter=10, n_init=10, tol=NULL, 
                  verbose=FALSE)
   
+  MAP=apply(est$best_S,1,which.max)
   
-  ARI=adj.rand.index(est$best_s,simDat$mchain)
+  ARI=adj.rand.index(MAP,simDat$mchain)
   
   # Return
   return(list(
+    S=best_S,
     ARI=ARI,
     seed=seed,
     lambda=lambda,
