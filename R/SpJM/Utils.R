@@ -5732,7 +5732,7 @@ fuzzy_jump <- function(Y,
       loss_old <- loss
       S_old=S
     }
-    if (is.null(best_s) || (loss_old < best_loss)) {
+    if (is.null(best_S) || (loss_old < best_loss)) {
       best_loss <- loss_old
       best_S <- S
     }
