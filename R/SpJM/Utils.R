@@ -5739,11 +5739,11 @@ fuzzy_jump <- function(Y,
     s=initialize_states(Y,n_states)
   }
   
-  MAP=apply(best_S,1,which.max)
-  res_Y=data.frame(Y,MAP=MAP)
-  col_sort=as.integer(names(sort(tapply(res_Y[,cont.indx[1]],res_Y$MAP,mean))))
-  mumo=mumo[col_sort,]
-  best_S=best_S[,col_sort]
+  # MAP=apply(best_S,1,which.max)
+  # res_Y=data.frame(Y,MAP=MAP)
+  # col_sort=as.integer(names(sort(tapply(res_Y[,cont.indx[1]],res_Y$MAP,mean))))
+  # mumo=mumo[col_sort,]
+  # best_S=best_S[,col_sort]
   
   return(list(best_S=best_S,
               Y=Y,
@@ -5774,25 +5774,27 @@ simstud_fuzzyJM=function(seed,lambda,TT,P,
                  max_iter=10, n_init=10, tol=NULL, 
                  verbose=FALSE)
   
-  MAP=apply(est$best_S,1,which.max)
-  
-  ARI=adj.rand.index(MAP,simDat$mchain)
+  # MAP=apply(est$best_S,1,which.max)
+  # 
+  # ARI=adj.rand.index(MAP,simDat$mchain)
   
   # Return
   return(list(
-    S=est$best_S,
-    ARI=ARI,
-    seed=seed,
-    lambda=lambda,
-    TT=TT,
-    P=P,
-    Ktrue=K,
-    mu=mu,
-    phi=phi,
-    rho=rho,
-    Pcat=Pcat,
-    pers=pers,
-    true_seq=simDat$mchain,
-    est_seq=MAP))
+    S=est$best_S
+    # ,
+    # ARI=ARI,
+    # seed=seed,
+    # lambda=lambda,
+    # TT=TT,
+    # P=P,
+    # Ktrue=K,
+    # mu=mu,
+    # phi=phi,
+    # rho=rho,
+    # Pcat=Pcat,
+    # pers=pers,
+    # true_seq=simDat$mchain,
+    # est_seq=MAP
+    ))
   
 }
