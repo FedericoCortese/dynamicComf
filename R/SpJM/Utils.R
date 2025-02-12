@@ -5780,7 +5780,7 @@ simstud_fuzzyJM=function(seed,lambda,TT,P,
   
   # Return
   return(list(
-    S=best_S,
+    S=est$best_S,
     ARI=ARI,
     seed=seed,
     lambda=lambda,
