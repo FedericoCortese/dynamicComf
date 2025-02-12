@@ -5793,6 +5793,6 @@ simstud_fuzzyJM=function(seed,lambda,TT,P,
     Pcat=Pcat,
     pers=pers,
     true_seq=simDat$mchain,
-    est_seq=est$best_s))
+    est_seq=MAP))
   
 }
