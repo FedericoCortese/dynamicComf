@@ -15,14 +15,13 @@ hp=expand.grid(TT=TT,P=P,lambda=lambda,seed=seeds)
 start_=Sys.time()
 fuzzyJM_sim <- parallel::mclapply(1:nrow(hp),
                                       function(x)
-                                        simstud_JMmixed(seed=hp[x,]$seed,
+                                        simstud_fuzzyJM(seed=hp[x,]$seed,
                                         lambda=hp[x,]$lambda,
                                         TT=hp[x,]$TT,
                                         P=hp[x,]$P,
                                         K=3,mu=1,
                                         phi=.8,rho=0,
-                                        Pcat=NULL,pers=.95,
-                                        pNAs=0,typeNA=2),
+                                        Pcat=NULL,pers=.95),
                                       mc.cores = parallel::detectCores()-1)
 
 
