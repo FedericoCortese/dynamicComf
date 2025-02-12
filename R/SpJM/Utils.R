@@ -5765,6 +5765,8 @@ simstud_fuzzyJM=function(seed,lambda,TT,P,
                         rho=rho,
                         Pcat=Pcat,
                         pers=pers)
+  
+  Y=simDat$SimData.complete
   # Estimate
   est=fuzzy_jump(Y, 
                  n_states=K, jump_penalty=lambda, 
