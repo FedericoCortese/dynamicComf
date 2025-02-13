@@ -2,6 +2,7 @@
 library(cluster)
 library(StatMatch)
 library(poliscidata) # for weighted mode 
+library(pdfCluster) # for ARI
 
 weighted_median <- function(x, weights) {
   # Ensure x and weights are of the same length
@@ -432,13 +433,14 @@ fuzzy_jump <- function(Y,
     s=initialize_states(Y,n_states)
   }
   
-  # MAP=apply(best_S,1,which.max)
-  # res_Y=data.frame(Y,MAP=MAP)
-  # col_sort=as.integer(names(sort(tapply(res_Y[,cont.indx[1]],res_Y$MAP,mean))))
-  # mumo=mumo[col_sort,]
-  # best_S=best_S[,col_sort]
+  MAP=apply(best_S,1,which.max)
+  res_Y=data.frame(Y,MAP=MAP)
+  col_sort=as.integer(names(sort(tapply(res_Y[,cont.indx[1]],res_Y$MAP,mean))))
+  mumo=mumo[col_sort,]
+  best_S=best_S[,col_sort]
   
   return(list(best_S=best_S,
+              MAP=MAP,
               Y=Y,
               condMM=mumo))
 }
@@ -469,13 +471,14 @@ simstud_fuzzyJM=function(seed,lambda,TT,P,
   
   # MAP=apply(est$best_S,1,which.max)
   # 
-  # ARI=adj.rand.index(MAP,simDat$mchain)
+  ARI=adj.rand.index(est$MAP,simDat$mchain)
   
   # Return
   return(list(
-    S=est$best_S
-    # ,
-    # ARI=ARI,
+    S=est$best_S,
+    MAP=est$MAP ,
+    ARI=ARI
+    #,
     # seed=seed,
     # lambda=lambda,
     # TT=TT,
