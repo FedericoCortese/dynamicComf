@@ -4,14 +4,9 @@ library(parallel)
 
 #source("Utils.R")
 
-
-# P=4 ---------------------------------------------------------------------
-
-
 lambda=seq(0,1,by=.05)
 TT=c(50,100,500)
-#P=c(4,20,50)
-P=4
+P=c(4,20,50)
 seeds=1:100
 
 hp=expand.grid(TT=TT,P=P,lambda=lambda,seed=seeds)
@@ -20,7 +15,7 @@ hp=expand.grid(TT=TT,P=P,lambda=lambda,seed=seeds)
 source("Utils_fuzzyJM.R")
 
 start_=Sys.time()
-fuzzyJM_sim_P4 <- parallel::mclapply(1:nrow(hp),
+fuzzyJM_sim <- parallel::mclapply(1:nrow(hp),
                                       function(x)
                                         simstud_fuzzyJM(seed=hp[x,]$seed,
                                         lambda=hp[x,]$lambda,
@@ -54,6 +49,6 @@ fuzzyJM_sim_P4 <- parallel::mclapply(1:nrow(hp),
 
 end_=Sys.time()
 elapsed_=end_-start_
-save(fuzzyJM_sim_P4,elapsed_,file="fuzzyJM_sim_P4.RData")
+save(fuzzyJM_sim,elapsed_,file="fuzzyJM_sim.RData")
 
 
