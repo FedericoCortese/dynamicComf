@@ -14,6 +14,8 @@ hp=expand.grid(TT=TT,P=P,lambda=lambda,seed=seeds)
 
 source("Utils_fuzzyJM.R")
 
+# CHECK FUTURE APPLY
+
 start_=Sys.time()
 fuzzyJM_sim <- parallel::mclapply(1:nrow(hp),
                                       function(x)
