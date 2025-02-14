@@ -10,23 +10,32 @@ P=c(4,20,50)
 seeds=1:100
 
 hp=expand.grid(TT=TT,P=P,lambda=lambda,seed=seeds)
-#hp=hp[1:10,]
+
+nrow_hp=nrow(hp)
+n_chunks=10
+chunk_length=nrow_hp/n_chunks
 
 source("Utils_fuzzyJM.R")
 
-# CHECK FUTURE APPLY
+fuzzyJM_sim=list()
 
 start_=Sys.time()
-fuzzyJM_sim <- parallel::mclapply(1:nrow(hp),
-                                      function(x)
-                                        simstud_fuzzyJM(seed=hp[x,]$seed,
-                                        lambda=hp[x,]$lambda,
-                                        TT=hp[x,]$TT,
-                                        P=hp[x,]$P,
-                                        K=3,mu=1,
-                                        phi=.8,rho=0,
-                                        Pcat=NULL,pers=.95),
-                                      mc.cores = parallel::detectCores()-1)
+
+for(i in 1:n_chunks){
+  fuzzyJM_sim[(1+(i-1)*chunk_length):(chunk_length*i)]=
+    parallel::mclapply(1:nrow(hp),
+                       function(x)
+                         simstud_fuzzyJM(seed=hp[x,]$seed,
+                                         lambda=hp[x,]$lambda,
+                                         TT=hp[x,]$TT,
+                                         P=hp[x,]$P,
+                                         K=3,mu=1,
+                                         phi=.8,rho=0,
+                                         Pcat=NULL,pers=.95),
+                       mc.cores = parallel::detectCores()-1)
+  print(i)
+  
+}
 
 # source("Utils_fuzzyJM.R")
 # cl<-makeCluster(parallel::detectCores(),type="SOCK")
