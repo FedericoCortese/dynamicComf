@@ -24,7 +24,7 @@ start_=Sys.time()
 for(i in 1:n_chunks){
   hp_chunk=hp[(1+(i-1)*chunk_length):(chunk_length*i),]
   fuzzyJM_sim[(1+(i-1)*chunk_length):(chunk_length*i)]=
-    parallel::mclapply(1:nrow(hp),
+    parallel::mclapply(1:nrow(hp_chunk),
                        function(x)
                          simstud_fuzzyJM(seed=hp_chunk[x,]$seed,
                                          lambda=hp_chunk[x,]$lambda,
