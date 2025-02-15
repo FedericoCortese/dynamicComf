@@ -64,3 +64,28 @@ elapsed_=end_-start_
 save(fuzzyJM_sim,elapsed_,file="fuzzyJM_sim.RData")
 
 
+
+# Results -----------------------------------------------------------------
+
+ARI_fuzzyJM=unlist(lapply(fuzzyJM_sim, function(x) {
+  if (is.list(x) && !is.null(x$ARI)) {
+    return(x$ARI)
+  } else {
+    return(NA)  # Return NA if structure is invalid
+  }
+}))
+
+res=data.frame(hp,ARI_fuzzyJM)
+
+average_ari <- aggregate(ARI_fuzzyJM ~ TT + P + lambda, data = res, FUN = mean)
+average_ari
+
+best_lambda <- average_ari[with(average_ari, ave(ARI_fuzzyJM, TT, P, FUN = max) == ARI_fuzzyJM), c("TT", "P", "lambda", "ARI_fuzzyJM")]
+best_lambda
+
+
+ggplot(average_ari, aes(x = lambda, y = ARI_fuzzyJM)) +
+  geom_line() +
+  facet_grid(TT ~ P) +
+  labs(x = "Lambda", y = "Average ARI", title = "ARI") +
+  theme_minimal()
