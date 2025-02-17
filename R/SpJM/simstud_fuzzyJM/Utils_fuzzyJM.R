@@ -304,7 +304,9 @@ fuzzy_jump <- function(Y,
   if(cat_flag){
     cat.indx=which(sapply(Y, is.factor))
     cont.indx=which(sapply(Y, is.numeric))
-    Ycont=Y[,-cat.indx]
+    Ycont=Y[,cont.indx]
+    Ycont=apply(Ycont,2,scale)
+    Y[,cont.indx]=Ycont
     Ycat=Y[,cat.indx]
     
     n_levs=apply(Ycat, 2, function(x)length(unique(x[!is.na(x)])))
@@ -316,9 +318,13 @@ fuzzy_jump <- function(Y,
   else{
     cont.indx=1:n_features
     Ycont=Y
+    Ycont=apply(Ycont,2,scale)
+    Y[,cont.indx]=Ycont
     n_cont=dim(Y)[2]
     n_cat=0
   }
+  
+  
   
   
   for (init in 1:n_init) {
