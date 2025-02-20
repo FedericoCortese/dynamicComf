@@ -309,8 +309,13 @@ fuzzy_jump <- function(Y,
     Y[,cont.indx]=Ycont
     Ycat=Y[,cat.indx]
     
-    n_levs=apply(Ycat, 2, function(x)length(unique(x[!is.na(x)])))
-    
+    if(length(cat.indx)==1){
+      n_levs=length(levels(Ycat))
+    }
+    else{
+      n_levs=apply(Ycat, 2, function(x)length(unique(x[!is.na(x)])))
+    }
+
     n_cat=length(cat.indx)
     n_cont=n_features-n_cat
     
@@ -350,7 +355,12 @@ fuzzy_jump <- function(Y,
       # substitute with medians
       mu[i,] <- apply(Ycont[s==i,], 2, median, na.rm = TRUE)
       if(cat_flag){
-        mo[i,]=apply(Ycat[s==i,],2,Mode)
+        if(length(cat.indx)==1){
+            mo[i,]=Mode(Ycat[s==i])
+        }
+        else{
+          mo[i,]=apply(Ycat[s==i,],2,Mode)
+        }
       }
     }
     
@@ -360,7 +370,12 @@ fuzzy_jump <- function(Y,
     if(cat_flag){
       mo=data.frame(mo,stringsAsFactors=TRUE)
       for(i in 1:n_cat){
-        mo[,i]=factor(mo[,i],levels=levels(Ycat[,i]))
+        if(length(cat.indx)==1){
+          mo[,i]=factor(mo[,i],levels=levels(Ycat[i]))
+        }
+        else{
+          mo[,i]=factor(mo[,i],levels=levels(Ycat[,i]))
+        }
       }
       mumo=data.frame(matrix(0,nrow=n_states,ncol=n_features))
       mumo[,cat.indx]=mo
@@ -405,8 +420,15 @@ fuzzy_jump <- function(Y,
         mu[k,]=apply(Ycont,2,function(x){poliscidata::wtd.median(x,weights=S[,k])})
         
         if(cat_flag){
+          if(n_cat==1){
+            mo[k,]=poliscidata::wtd.mode(Ycat,weights=S[,k])
+            
+          }
+          else{
+            mo[k,]=apply(Ycat,2,function(x){poliscidata::wtd.mode(x,weights=S[,k])})
+            
+          }
           #mo[k,]=apply(Ycat,2,function(x)weighted_mode(x,weights=S[,k]))
-          mo[k,]=apply(Ycat,2,function(x){poliscidata::wtd.mode(x,weights=S[,k])})
         }
       }
       

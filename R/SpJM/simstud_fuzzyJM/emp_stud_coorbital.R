@@ -383,16 +383,18 @@ df164207_select=df164207[,c("t","value_min","value_max",
 
 df164207_select=df164207[,c("t",
                             "theta",
-                            "domega",
+                            "omega",
+                            #"domega",
                             "value_min","value_max",
-                            "I_HS","I_QS",
-                            "mean_osc",
-                            "I_domega","type")]
+                            #"I_HS","I_QS",
+                            #"mean_osc",
+                            "I_domega",
+                            "type")]
 
 str(df164207_select)
-df164207_select$I_HS=as.factor(df164207_select$I_HS)
-df164207_select$I_QS=as.factor(df164207_select$I_QS)
-df164207_select$I_domega=as.factor(df164207_select$I_domega)
+# df164207_select$I_HS=as.factor(df164207_select$I_HS)
+# df164207_select$I_QS=as.factor(df164207_select$I_QS)
+df164207_select$I_domega=as.factor(as.numeric(df164207_select$I_domega))
 
 str(df164207_select)
 df164207_select=df164207_select[complete.cases(df164207_select),]
@@ -416,7 +418,7 @@ plotly::plot_ly(
 
 source("Utils_fuzzyJM.R")
 #lambda=0.75
-lambda=.5
+lambda=.2
 
 fit_164207=fuzzy_jump(Y,2,lambda,verbose=TRUE,tol=1e-6)
 
@@ -435,6 +437,13 @@ res_164207=data.frame(
   prob_state_1=fit_164207$best_S[,1],
   prob_state_2=fit_164207$best_S[,2]
 )
+
+tapply(res_164207$theta,res_164207$MAP,mean)
+tapply(res_164207$theta,res_164207$MAP,sd)
+
+tapply(res_164207$omega,res_164207$MAP,mean)
+tapply(res_164207$omega,res_164207$MAP,sd)
+
 
 plotly::plot_ly(
   data = res_164207,
@@ -465,6 +474,46 @@ plotly::plot_ly(
                 "<br>State 2:", prob_state_2),
   hoverinfo = "text"
 ) 
+
+# Static plot
+# Load necessary libraries
+library(ggplot2)
+library(patchwork)  # For arranging plots
+sz=15
+
+# Define the base plot function with custom text sizes
+plot_scatter <- function(y_var,x_label, y_label,range=1000:4000) {
+  ggplot(res_164207[range,], aes(x = t, y = !!sym(y_var), color = prob_state_1)) +
+    #geom_line(aes(y=!!sym(y_var)),color="grey80")+
+    geom_point(size = 1.5) +
+    scale_color_gradient(low = "lightgreen", high = "lightcoral",limits = c(0, 1),
+                         labels = scales::number_format(accuracy = 0.1),
+                         guide = guide_colorbar(title.position = "top", 
+                                                title.hjust = 0.5)) +  
+    labs(x=x_label, y = y_label, color = expression(s[QS])) +
+    theme_minimal() +
+    theme(
+      #legend.title.align = 0.5,
+      legend.position = "top",                 # Legend on top
+      legend.text = element_text(size = sz-3),   # Legend text size
+      legend.title = element_text(size = sz-5),  # Legend title size
+      axis.title = element_text(size = sz-2),    # Axis labels size
+      axis.text = element_text(size = sz-3)      # Axis tick labels size
+    )
+}
+
+# Create the two plots
+plot_theta <- plot_scatter("theta"," ", expression(theta))
+plot_omega <- plot_scatter("omega","Time", expression(omega))
+
+# Arrange plots vertically with a shared legend at the top
+final_plot <- (plot_theta / plot_omega) + 
+  plot_layout(guides = "collect") & 
+  theme(legend.position = "bottom")
+
+# Print the final combined plot
+print(final_plot)
+
 
 # 2002AA29 ----------------------------------------------------------------
 
