@@ -426,6 +426,16 @@ summary(fit_164207$best_S)
 
 table(fit_164207$MAP,df164207_select$type)
 
+df164207_select$type<- ifelse(df164207_select$type == -1, 2, 1)
+
+res_compare=data.frame(MAP=fit_164207$MAP,
+                       true=df164207_select$type)
+
+res_compare$MAP=as.factor(res_compare$MAP)
+res_compare$true=as.factor(res_compare$true)
+
+caret::confusionMatrix(res_compare$MAP,res_compare$true)
+
 mclust::adjustedRandIndex(fit_164207$MAP,df164207_select$type)
 
 res_164207=data.frame(
@@ -479,23 +489,24 @@ plotly::plot_ly(
 # Load necessary libraries
 library(ggplot2)
 library(patchwork)  # For arranging plots
-sz=15
+sz=20
 
 # Define the base plot function with custom text sizes
-plot_scatter <- function(y_var,x_label, y_label,range=1000:4000) {
+plot_scatter <- function(y_var,x_label, y_label,range=1800:4500) {
   ggplot(res_164207[range,], aes(x = t, y = !!sym(y_var), color = prob_state_1)) +
     #geom_line(aes(y=!!sym(y_var)),color="grey80")+
     geom_point(size = 1.5) +
-    scale_color_gradient(low = "lightgreen", high = "lightcoral",limits = c(0, 1),
+    scale_color_gradient(low = "cyan", high = "magenta",limits = c(0, 1),
                          labels = scales::number_format(accuracy = 0.1),
                          guide = guide_colorbar(title.position = "top", 
                                                 title.hjust = 0.5)) +  
+    scale_x_continuous(labels = scales::scientific_format())+
     labs(x=x_label, y = y_label, color = expression(s[QS])) +
     theme_minimal() +
     theme(
       #legend.title.align = 0.5,
       legend.position = "top",                 # Legend on top
-      legend.text = element_text(size = sz-3),   # Legend text size
+      legend.text = element_text(size = sz-8),   # Legend text size
       legend.title = element_text(size = sz-5),  # Legend title size
       axis.title = element_text(size = sz-2),    # Axis labels size
       axis.text = element_text(size = sz-3)      # Axis tick labels size
