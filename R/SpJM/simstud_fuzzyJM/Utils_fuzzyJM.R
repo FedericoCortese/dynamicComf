@@ -116,6 +116,10 @@ get_cat=function(y,mc,mu_val,phi){
   
 }
 
+
+# Temporal ----------------------------------------------------------------
+
+
 sim_data_mixed=function(seed=123,
                         TT,
                         P,
@@ -522,3 +526,8 @@ simstud_fuzzyJM=function(seed,lambda,TT,P,
   ))
   
 }
+
+
+# Spatio-temporal ---------------------------------------------------------
+
+
