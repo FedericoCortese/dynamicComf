@@ -6,7 +6,7 @@ trans_theta=function(theta){
 }
 
 max_min_feat=function(data,tt_thres_maxmin=2.5,l=5){
-  
+  library(dplyr)
   maxs <- as.numeric(splus2R::peaks(data$theta, span = l))
   mins <- as.numeric(splus2R::peaks(-data$theta, span = l))
   
@@ -240,6 +240,7 @@ plotly::plot_ly(
   #text = ~paste("Time:", time, "<br>Theta:", theta, "<br>State:", MAP),
   hoverinfo = "text"
 )
+
 
 df164207_maxmin_theta=max_min_feat(df164207,
                                    tt_thres_maxmin=2.5,l=5)
