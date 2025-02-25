@@ -487,41 +487,56 @@ plotly::plot_ly(
 ) 
 
 # Static plot
-# Load necessary libraries
+##########
 library(ggplot2)
-library(patchwork)  # For arranging plots
-sz=20
+library(patchwork)
 
-# Define the base plot function with custom text sizes
-plot_scatter <- function(y_var,x_label, y_label,range=1800:4500) {
-  ggplot(res_164207[range,], aes(x = t, y = !!sym(y_var), color = prob_state_1)) +
-    #geom_line(aes(y=!!sym(y_var)),color="grey80")+
-    geom_point(size = 1.5) +
-    scale_color_gradient(low = "cyan", high = "magenta",limits = c(0, 1),
-                         labels = scales::number_format(accuracy = 0.1),
-                         guide = guide_colorbar(title.position = "top", 
-                                                title.hjust = 0.5)) +  
-    scale_x_continuous(labels = scales::scientific_format())+
-    labs(x=x_label, y = y_label, color = expression(s[QS])) +
+sz = 18  # Text size for labels
+
+# Function to normalize values to [0,1]
+normalize <- function(x) {
+  return((x - min(x)) / (max(x) - min(x)))
+}
+
+# Function to plot theta/omega with prob_state_1 on a secondary axis
+plot_dual_axis <- function(y_var, y_label, show_x_axis = TRUE, range = 1800:4500) {
+  data_subset <- res_164207[range,]
+  
+  # Normalize both y_var (theta/omega) and prob_state_1
+  y_scaled <- normalize(data_subset[[y_var]])
+  prob_scaled <- normalize(data_subset$prob_state_1)
+  
+  ggplot(data_subset, aes(x = t)) +
+    # Plot normalized theta/omega (black line, left axis)
+    geom_line(aes(y = y_scaled), color = "black", size = 1) +
+    # Plot normalized prob_state_1 (red dashed line, right axis)
+    geom_line(aes(y = prob_scaled), color = "red", size = 1, alpha = 0.5, linetype = "longdash") +
+    # Scale axes back to original range
+    scale_y_continuous(
+      name = y_label,  # Left y-axis label for theta/omega
+      sec.axis = sec_axis(~ ., name = expression(s[QS]))  # Right y-axis for prob_state_1
+    ) +
+    scale_x_continuous(labels = scales::scientific_format()) +  # Set x-axis to scientific notation
+    labs(x = ifelse(show_x_axis, "Time", ""), y = y_label) +  # Hide x-axis label for top plot
     theme_minimal() +
     theme(
-      #legend.title.align = 0.5,
-      legend.position = "top",                 # Legend on top
-      legend.text = element_text(size = sz-8),   # Legend text size
-      legend.title = element_text(size = sz-5),  # Legend title size
-      axis.title = element_text(size = sz-2),    # Axis labels size
-      axis.text = element_text(size = sz-3)      # Axis tick labels size
+      legend.position = "none",  # No legend needed
+      axis.title.y.left = element_text(color = "black", size = sz, margin = margin(r = 10)),  # Avoid overlap
+      axis.title.y.right = element_text(color = "red", size = sz, margin = margin(l = 10)), 
+      axis.text.y.left = element_text(size = sz-8),
+      axis.text.y.right = element_text(size = sz-8),
+      axis.text.x = element_text(size = ifelse(show_x_axis, sz-8, 0)),  # Hide x-axis labels for top plot
+      axis.title.x = element_text(size = ifelse(show_x_axis, sz-3, 0)),  # Hide x-axis title for top plot
+      axis.ticks.x = element_blank()  # Remove x-ticks for the top plot
     )
 }
 
-# Create the two plots
-plot_theta <- plot_scatter("theta"," ", expression(theta))
-plot_omega <- plot_scatter("omega","Time", expression(omega))
+# Create the two plots (hide x-axis on the first one)
+plot_theta <- plot_dual_axis("theta", expression(theta), show_x_axis = FALSE)
+plot_omega <- plot_dual_axis("omega", expression(omega), show_x_axis = TRUE)
 
-# Arrange plots vertically with a shared legend at the top
-final_plot <- (plot_theta / plot_omega) + 
-  plot_layout(guides = "collect") & 
-  theme(legend.position = "bottom")
+# Arrange plots vertically with a single shared x-axis
+final_plot <- plot_theta / plot_omega + plot_layout(heights = c(1, 1.2))  # Adjust height for clarity
 
 # Print the final combined plot
 print(final_plot)
