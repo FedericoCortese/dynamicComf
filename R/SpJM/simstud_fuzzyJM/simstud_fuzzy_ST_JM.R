@@ -10,7 +10,7 @@ TT=100
 #TT=c(50,100)
 #P=c(4,20)
 P=12
-M=c(10,20)
+M=20
 seeds=1:100
 
 hp=expand.grid(lambda=lambda,gamma=gamma,TT=TT,P=P,M=M,seed=seeds)
