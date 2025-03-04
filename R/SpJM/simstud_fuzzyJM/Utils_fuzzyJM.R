@@ -960,42 +960,87 @@ fuzzy_STJM=function(Y,
         }
       }
       else{
-        num_cores <- ncores_M  # Use all but one core
+        num_cores <- ncores_M  
         cl <- makeCluster(num_cores)
         registerDoParallel(cl)
-        SS <- foreach(m = 1:M, .combine = '+') %dopar% {
-          indx=which(Y$m==m)
-          omega_m=dist_weights[m,]
-          Wm=sum(omega_m)
+        # SS <- foreach(m = 1:M
+        #               #, .combine = '+'
+        #               ) %dopar% {
+        #   indx=which(Y$m==m)
+        #   omega_m=dist_weights[m,]
+        #   Wm=sum(omega_m)
+        #   
+        #   g2_1=1/(g[indx,]^2+gamma*Wm+lambda)
+        #   g2_1[1,]=1/(g[indx[1],]^2+gamma*Wm)
+        #   
+        #   s_til_m=g2_1/rowSums(g2_1)
+        #   
+        #   s_i=as.matrix(SS[SS$t==1,-(1:2)])
+        #   
+        #   A=sum((omega_m%*%s_i)/g2_1[1,])
+        #   B=(omega_m%*%s_i)/g2_1[1,]
+        #   
+        #   SS[indx[1],-(1:2)]=s_til_m[1,]-gamma*s_til_m[1,]*A+gamma*B
+        #   
+        #   for(t in 2:TT){
+        #     s_i=as.matrix(SS[SS$t==t,-(1:2)])
+        #     A=sum((omega_m%*%s_i)/g2_1[t,])
+        #     B=(omega_m%*%s_i)/g2_1[t,]
+        #     SS[indx[t],-(1:2)]=
+        #       s_til_m[t,]-
+        #       gamma*(B-s_til_m[t,]*A)+
+        #       lambda*(SS[indx[t-1],-(1:2)]/g2_1[t,]-
+        #                 s_til_m[t,]*sum(SS[indx[t-1],-(1:2)]/g2_1))
+        #     # Potrebbero non sommare a  uno, verificare
+        #     # Intanto normalizzo
+        #     SS[indx[t],-(1:2)]=SS[indx[t],-(1:2)]/sum(SS[indx[t],-(1:2)])
+        #   }
+        #   return(as.matrix(SS))
+        # }
+        SS <- foreach(m = 1:M, .combine = rbind, 
+                             .packages = "matrixStats") %dopar% {
+          indx <- which(Y$m == m)
+          omega_m <- dist_weights[m, ]
+          Wm <- sum(omega_m)
           
-          g2_1=1/(g[indx,]^2+gamma*Wm+lambda)
-          g2_1[1,]=1/(g[indx[1],]^2+gamma*Wm)
+          g2_1 <- 1 / (g[indx, ]^2 + gamma * Wm + lambda)
+          g2_1[1, ] <- 1 / (g[indx[1], ]^2 + gamma * Wm)
           
-          s_til_m=g2_1/rowSums(g2_1)
+          s_til_m <- g2_1 / rowSums(g2_1)
           
-          s_i=as.matrix(SS[SS$t==1,-(1:2)])
+          # Create a local copy of SS for this iteration
+          SS_local <- SS  # Assuming SS is pre-initialized and accessible
           
-          A=sum((omega_m%*%s_i)/g2_1[1,])
-          B=(omega_m%*%s_i)/g2_1[1,]
+          s_i <- as.matrix(SS_local[SS_local$t == 1, -(1:2)])
           
-          SS[indx[1],-(1:2)]=s_til_m[1,]-gamma*s_til_m[1,]*A+gamma*B
+          A <- sum((omega_m %*% s_i) / g2_1[1, ])
+          B <- (omega_m %*% s_i) / g2_1[1, ]
           
-          for(t in 2:TT){
-            s_i=as.matrix(SS[SS$t==t,-(1:2)])
-            A=sum((omega_m%*%s_i)/g2_1[t,])
-            B=(omega_m%*%s_i)/g2_1[t,]
-            SS[indx[t],-(1:2)]=
-              s_til_m[t,]-
-              gamma*(B-s_til_m[t,]*A)+
-              lambda*(SS[indx[t-1],-(1:2)]/g2_1[t,]-
-                        s_til_m[t,]*sum(SS[indx[t-1],-(1:2)]/g2_1))
-            # Potrebbero non sommare a  uno, verificare
-            # Intanto normalizzo
-            SS[indx[t],-(1:2)]=SS[indx[t],-(1:2)]/sum(SS[indx[t],-(1:2)])
+          SS_local[indx[1], -(1:2)] <- s_til_m[1, ] - gamma * s_til_m[1, ] * A + gamma * B
+          
+          for (t in 2:TT) {
+            s_i <- as.matrix(SS_local[SS_local$t == t, -(1:2)])
+            A <- sum((omega_m %*% s_i) / g2_1[t, ])
+            B <- (omega_m %*% s_i) / g2_1[t, ]
+            
+            SS_local[indx[t], -(1:2)] <-
+              s_til_m[t, ] -
+              gamma * (B - s_til_m[t, ] * A) +
+              lambda * (SS_local[indx[t - 1], -(1:2)] / g2_1[t, ] -
+                          s_til_m[t, ] * sum(SS_local[indx[t - 1], -(1:2)] / g2_1))
+            
+            # Normalize
+            SS_local[indx[t], -(1:2)] <- SS_local[indx[t], -(1:2)] / sum(SS_local[indx[t], -(1:2)])
           }
-          return(SS[,])
+          
+          # Return the data frame for this m
+          return(data.frame(t = SS_local$t[indx], m = m, 
+                            SS_local[indx, -(1:2)]))
         }
         stopCluster(cl)
+        colnames(SS) <- c("t", "m", 1:K)
+        # sort SS by t 
+        SS=SS[order(SS$t), ]
         
         }
       
@@ -1068,9 +1113,13 @@ fuzzy_STJM=function(Y,
 
 simstud_fuzzySTJM=function(lambda,gamma,seed,M,TT,beta, theta,
                              mu=.5,rho=0.2,
-                             K=3,P=20,phi=.8,Pcat=10,pNAs=0,pg=0){
+                             K=3,P=20,phi=.8,Pcat=NULL,pNAs=0,pg=0,
+                           ncores_M=3){
   
   library(MASS)
+  if(is.null(Pcat)){
+    Pcat=floor(P/2)
+  }
   
   result <- generate_spatio_temporal_data(M, TT, theta, beta, K = K,
                                           mu=mu,rho=rho,phi=phi,
@@ -1083,7 +1132,7 @@ simstud_fuzzySTJM=function(lambda,gamma,seed,M,TT,beta, theta,
   dist_weights=dist_fun_norm(D)
   
   # tf=I(pg>0)
-  prova=fuzzy_STJM(Y,K,dist_weights,lambda,gamma,verbose=T,tol=1e-6)
+  prova=fuzzy_STJM(Y,K,dist_weights,lambda,gamma,verbose=F,tol=1e-6,ncores_M=ncores_M,n_init = 5)
   
   best_S=prova$S
   
@@ -1109,13 +1158,17 @@ simstud_fuzzySTJM=function(lambda,gamma,seed,M,TT,beta, theta,
   # 
   ARI=adj.rand.index(df_long$true_state,MAP$MAP)
   
-  
   return(list(ARI=ARI,
-              S_true=S_true,best_s=best_s,
+              S_true=df_long,
+              best_S=best_S,
               lambda=lambda,
               gamma=gamma,
               seed=seed,
-              M=M,TT=TT,
-              mu=mu,rho=rho,
-              K=K,P=P,phi=phi,Pcat=Pcat,pNAs=pNAs,pg=pg))
+              M=M,TT=TT,P=P,
+              lambda=lambda,
+              gamma=gamma
+              # ,
+              # mu=mu,rho=rho,
+              # K=K,P=P,phi=phi,Pcat=Pcat,pNAs=pNAs,pg=pg
+              ))
 }
