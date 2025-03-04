@@ -300,6 +300,8 @@ fuzzy_jump <- function(Y,
                        max_iter=10, n_init=10, tol=NULL, 
                        verbose=FALSE
                        # ,
+                       # alpha=NULL
+                       # # ,
                        #        time_vec=NULL
                        
 ) {
@@ -340,7 +342,6 @@ fuzzy_jump <- function(Y,
   
   n_obs <- nrow(Y)
   n_features <- ncol(Y)
-  Gamma <- jump_penalty * (1 - diag(n_states))
   best_loss <- NULL
   best_S <- NULL
   
@@ -434,10 +435,12 @@ fuzzy_jump <- function(Y,
     loss_old <- 1e10
     for (it in 1:max_iter) {
       
-      # var.weights in gower.dist allows for weighted distance
-      
+
       # E step
       V=gower.dist(Y,mumo)^2
+      # if(!is.null(alpha)){
+      #   V=V-alpha
+      # }
       V1=1/V
       V1_lambda=1/(V+jump_penalty)
       S_til=V1_lambda/rowSums(V1_lambda)
@@ -463,15 +466,17 @@ fuzzy_jump <- function(Y,
       # M step
       for(k in 1:n_states){
         #mu[k,]=apply(Ycont, 2, function(x) weighted_median(x, weights = S[,k]))
-        mu[k,]=apply(Ycont,2,function(x){poliscidata::wtd.median(x,weights=S[,k])})
-        
+        #mu[k,]=apply(Ycont,2,function(x){poliscidata::wtd.median(x,weights=S[,k])})
+        mu[k,]=apply(Ycont,2,function(x){poliscidata::wtd.median(x,weights=S[,k]^2)})
         if(cat_flag){
           if(n_cat==1){
-            mo[k,]=poliscidata::wtd.mode(Ycat,weights=S[,k])
+            #mo[k,]=poliscidata::wtd.mode(Ycat,weights=S[,k])
+            mo[k,]=poliscidata::wtd.mode(Ycat,weights=S[,k]^2)
             
           }
           else{
-            mo[k,]=apply(Ycat,2,function(x){poliscidata::wtd.mode(x,weights=S[,k])})
+            #mo[k,]=apply(Ycat,2,function(x){poliscidata::wtd.mode(x,weights=S[,k])})
+            mo[k,]=apply(Ycat,2,function(x){poliscidata::wtd.mode(x,weights=S[,k]^2)})
             
           }
           #mo[k,]=apply(Ycat,2,function(x)weighted_mode(x,weights=S[,k]))
@@ -543,6 +548,12 @@ simstud_fuzzyJM=function(seed,lambda,TT,P,
                  max_iter=10, n_init=10, tol=NULL, 
                  verbose=FALSE)
   
+  est_modeloss=fuzzy_jump(Y, 
+                 n_states=K, jump_penalty=lambda, 
+                 initial_states=NULL,
+                 max_iter=10, n_init=10, tol=NULL, 
+                 verbose=T,alpha=20)
+  
   # MAP=apply(est$best_S,1,which.max)
   # 
   ARI=adj.rand.index(est$MAP,simDat$mchain)
@@ -551,7 +562,7 @@ simstud_fuzzyJM=function(seed,lambda,TT,P,
   return(list(
     S=est$best_S,
     MAP=est$MAP ,
-    ARI=ARI
+    ARI=ARI,
     #,
     # seed=seed,
     # lambda=lambda,
@@ -563,7 +574,7 @@ simstud_fuzzyJM=function(seed,lambda,TT,P,
     # rho=rho,
     # Pcat=Pcat,
     # pers=pers,
-    # true_seq=simDat$mchain,
+    true_seq=simDat$mchain
     # est_seq=MAP
   ))
   
@@ -1047,8 +1058,11 @@ fuzzy_STJM=function(Y,
       
       # M Step
       for(k in 1:K){
-        mu[k,]=apply(Ycont, 2, function(x) weighted_median(x, weights = SS[,k+2]))
-        mo[k,]=apply(Ycat,2,function(x)weighted_mode(x,weights=SS[,k+2]))
+        
+        mu[k,]=apply(Ycont,2,function(x){poliscidata::wtd.median(x,weights=SS[,k+2]^2)})
+        mo[k,]=apply(Ycat,2,function(x){poliscidata::wtd.mode(x,weights=SS[,k+2]^2)})
+        # mu[k,]=apply(Ycont, 2, function(x) weighted_median(x, weights = SS[,k+2]))
+        # mo[k,]=apply(Ycat,2,function(x)weighted_mode(x,weights=SS[,k+2]))
       }
       
       mumo[,cat.indx]=mo
@@ -1132,7 +1146,9 @@ simstud_fuzzySTJM=function(lambda,gamma,seed,M,TT,beta, theta,
   dist_weights=dist_fun_norm(D)
   
   # tf=I(pg>0)
-  prova=fuzzy_STJM(Y,K,dist_weights,lambda,gamma,verbose=F,tol=1e-6,ncores_M=ncores_M,n_init = 5)
+  prova=fuzzy_STJM(Y,K,dist_weights,lambda,gamma,verbose=F,tol=1e-6,
+                   ncores_M=ncores_M,
+                   n_init = 5)
   
   best_S=prova$S
   
@@ -1157,7 +1173,7 @@ simstud_fuzzySTJM=function(lambda,gamma,seed,M,TT,beta, theta,
   # }
   # 
   ARI=adj.rand.index(df_long$true_state,MAP$MAP)
-  
+  ARI
   return(list(ARI=ARI,
               S_true=df_long,
               best_S=best_S,
