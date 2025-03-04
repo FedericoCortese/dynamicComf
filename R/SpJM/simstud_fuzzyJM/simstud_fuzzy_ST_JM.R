@@ -15,11 +15,11 @@ seeds=1:100
 
 hp=expand.grid(lambda=lambda,gamma=gamma,TT=TT,P=P,M=M,seed=seeds)
 
-n_cores_total=parallel::detectCores()
-frac_ext=1/3
-n_cores_ext=n_cores_total*frac_ext
-n_cores_int=n_cores_int=n_cores_int=(n_cores_total-n_cores_ext)/n_cores_ext
-n_cores_ext=ceiling(n_cores_total*frac_ext)
+# n_cores_total=parallel::detectCores()
+# frac_ext=1/3
+# n_cores_ext=n_cores_total*frac_ext
+# n_cores_int=n_cores_int=n_cores_int=(n_cores_total-n_cores_ext)/n_cores_ext
+# n_cores_ext=ceiling(n_cores_total*frac_ext)
 
 # nrow_hp=nrow(hp)
 # n_chunks=10
@@ -42,8 +42,8 @@ fuzzy_STJM_sim=parallel::mclapply(1:nrow(hp),
                                      theta=.01,
                                               mu=1,rho=0,
                                               K=3,phi=.8,pNAs=0,pg=0,
-                                              ncores_M=n_cores_int),
-                   mc.cores = n_cores_ext)
+                                              ncores_M=NULL),
+                   mc.cores = detectCores()-1)
 
 end_=Sys.time()
 elapsed_=end_-start_
