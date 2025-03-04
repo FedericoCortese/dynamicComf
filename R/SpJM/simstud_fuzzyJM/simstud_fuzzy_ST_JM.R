@@ -6,8 +6,10 @@ library(parallel)
 
 lambda=seq(0,1,by=.05)
 gamma=seq(0,1,by=.05)
-TT=c(50,100)
-P=c(4,20)
+TT=100
+#TT=c(50,100)
+#P=c(4,20)
+P=12
 M=c(10,20)
 seeds=1:100
 
