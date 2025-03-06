@@ -569,8 +569,8 @@ simstud_fuzzyJM=function(seed,lambda,TT,P,
     }
   }
   
-  est$MAP=as.factor(relabel_clusters(est$MAP,simDat$mchain))
-  simDat$mchain=as.factor(simDat$mchain)
+  est$MAP=factor(relabel_clusters(est$MAP,simDat$mchain),levels=1:K)
+  simDat$mchain=factor(simDat$mchain,levels=1:K)
   
   BAC=caret::confusionMatrix(est$MAP,simDat$mchain)$overall[1]
   
