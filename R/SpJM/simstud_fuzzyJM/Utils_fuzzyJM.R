@@ -524,6 +524,11 @@ fuzzy_jump <- function(Y,
               condMM=mumo))
 }
 
+relabel_clusters <- function(predicted, true) {
+  mapping <- apply(table(predicted, true), 1, which.max)
+  sapply(predicted, function(x) mapping[x])
+}
+
 simstud_fuzzyJM=function(seed,lambda,TT,P,
                          K=3,mu=1,
                          phi=.8,rho=0,
@@ -548,14 +553,20 @@ simstud_fuzzyJM=function(seed,lambda,TT,P,
                  max_iter=10, n_init=10, tol=NULL, 
                  verbose=FALSE)
   
-  est_modeloss=fuzzy_jump(Y, 
-                 n_states=K, jump_penalty=lambda, 
-                 initial_states=NULL,
-                 max_iter=10, n_init=10, tol=NULL, 
-                 verbose=T,alpha=20)
+  # est_modeloss=fuzzy_jump(Y, 
+  #                n_states=K, jump_penalty=lambda, 
+  #                initial_states=NULL,
+  #                max_iter=10, n_init=10, tol=NULL, 
+  #                verbose=T,alpha=20)
   
   # MAP=apply(est$best_S,1,which.max)
   # 
+  
+  est$MAP=as.factor(relabel_clusters(est$MAP,simDat$mchain))
+  simDat$mchain=as.factor(simDat$mchain)
+  
+  BAC=caret::confusionMatrix(est$MAP,simDat$mchain)$overall[1]
+  
   ARI=adj.rand.index(est$MAP,simDat$mchain)
   
   # Return
@@ -563,6 +574,7 @@ simstud_fuzzyJM=function(seed,lambda,TT,P,
     S=est$best_S,
     MAP=est$MAP ,
     ARI=ARI,
+    BAC=BAC,
     #,
     # seed=seed,
     # lambda=lambda,
