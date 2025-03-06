@@ -192,13 +192,13 @@ res_scen2=data.frame(hp,ARI_fuzzyJM_scen2,BAC_fuzzyJM_scen2)
 
 # BAC
 average_bac <- aggregate(BAC_fuzzyJM_scen2 ~ TT + P + lambda, 
-                         data = res, FUN = mean)
+                         data = res_scen2, FUN = mean)
 average_bac
 
 best_lambda <- average_bac[with(average_bac, ave(BAC_fuzzyJM_scen2, 
                                                  TT, P, FUN = max) == 
                                   BAC_fuzzyJM_scen2), 
-                           c("TT", "P", "lambda", "BAC_fuzzyJM")]
+                           c("TT", "P", "lambda", "BAC_fuzzyJM_scen2")]
 best_lambda
 
 
@@ -210,13 +210,13 @@ ggplot(average_bac, aes(x = lambda, y = BAC_fuzzyJM_scen2)) +
 
 # ARI
 average_ari <- aggregate(ARI_fuzzyJM_scen2 ~ TT + P + lambda, 
-                         data = res, FUN = mean)
+                         data = res_scen2, FUN = mean)
 average_ari
 
 best_lambda <- average_ari[with(average_ari,
                                 ave(ARI_fuzzyJM_scen2, TT, P, 
                                     FUN = max) == ARI_fuzzyJM_scen2), 
-                           c("TT", "P", "lambda", "ARI_fuzzyJM")]
+                           c("TT", "P", "lambda", "ARI_fuzzyJM_scen2")]
 best_lambda
 
 
