@@ -547,20 +547,27 @@ simstud_fuzzyJM=function(seed,lambda,TT,P,
   
   Y=simDat$SimData.complete
   # Estimate
-  est=fuzzy_jump(Y, 
-                 n_states=K, jump_penalty=lambda, 
-                 initial_states=NULL,
-                 max_iter=10, n_init=10, tol=NULL, 
-                 verbose=FALSE)
-  
-  # est_modeloss=fuzzy_jump(Y, 
+  # est=fuzzy_jump(Y, 
   #                n_states=K, jump_penalty=lambda, 
   #                initial_states=NULL,
   #                max_iter=10, n_init=10, tol=NULL, 
-  #                verbose=T,alpha=20)
-  
-  # MAP=apply(est$best_S,1,which.max)
-  # 
+  #                verbose=FALSE)
+  success <- FALSE
+  trials=1
+  while (!success&trials<10) {
+    est <- try(fuzzy_jump(Y, 
+                          n_states = K, jump_penalty = lambda, 
+                          initial_states = NULL,
+                          max_iter = 10, n_init = 10, tol = NULL, 
+                          verbose = FALSE), silent = TRUE)
+    trials=trials+1
+    
+    if (!inherits(est, "try-error")) {
+      success <- TRUE  # Exit the loop if no error
+    } else {
+      message("Retrying fuzzy_jump() due to an error...")
+    }
+  }
   
   est$MAP=as.factor(relabel_clusters(est$MAP,simDat$mchain))
   simDat$mchain=as.factor(simDat$mchain)
