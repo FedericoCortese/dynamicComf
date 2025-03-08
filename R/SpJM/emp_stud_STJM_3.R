@@ -29,7 +29,7 @@ data_utci=data.frame(time=time_utci_8,UTCI=utci_sing[,1]-273.15)
 
 # SEE emp_stud_STJM_2 for Y_3.Rdata
 #load("D:/git/dynamicComf/dynamicComf/R/SpJM/Y_3.Rdata")
-load("~/git/dynamicComf/R/SpJM/Y_3.Rdata")
+load("Y_3.Rdata")
 
 # Merge with pre-existing data
 Y_4=Y_complete[,c("t","m","time")]%>%
@@ -79,8 +79,8 @@ D=distm(data_stat_number[,c("longitude","latitude")],
         data_stat_number[,c("longitude","latitude")], 
         fun = distGeo)/1000
 
-lambda=.05
-gamma=.05
+lambda=0.05
+gamma=0.05
 
 fit=STjumpDist(Y_6,3,D,
                jump_penalty=lambda,
@@ -102,15 +102,19 @@ times=Y_5$time[-(1:56)]
 Y_res=data.frame(Y_6,State,times)
 table(Y_res$State)/length(times)*100
 
-tapply(Y_res$air_temp,Y_res$State,mean,na.rm=T)
-tapply(Y_res$rh,Y_res$State,mean,na.rm=T)
-tapply(Y_res$rainfall,Y_res$State,mean,na.rm=T)
-tapply(Y_res$wind_speed,Y_res$State,mean,na.rm=T)
-#tapply(Y_res$wind_dir,Y_res$State,mean,na.rm=T)
-#tapply(Y_res$rainy,Y_res$State,Mode)
+# tapply(Y_res$air_temp,Y_res$State,mean,na.rm=T)
+# tapply(Y_res$rh,Y_res$State,mean,na.rm=T)
+# tapply(Y_res$rainfall,Y_res$State,mean,na.rm=T)
+# tapply(Y_res$wind_speed,Y_res$State,mean,na.rm=T)
+# tapply(Y_res$UTCI,Y_res$State,mean,na.rm=T)
+tapply(Y_res$air_temp,Y_res$State,median,na.rm=T)
+tapply(Y_res$rh,Y_res$State,median,na.rm=T)
+tapply(Y_res$rainfall,Y_res$State,median,na.rm=T)
+tapply(Y_res$wind_speed,Y_res$State,median,na.rm=T)
+tapply(Y_res$UTCI,Y_res$State,median,na.rm=T)
+
 tapply(Y_res$windy,Y_res$State,Mode)
 tapply(Y_res$hour,Y_res$State,Mode)
-tapply(Y_res$UTCI,Y_res$State,mean,na.rm=T)
 
 TY=unique(Y_6$t)
 timesY=unique(times)
