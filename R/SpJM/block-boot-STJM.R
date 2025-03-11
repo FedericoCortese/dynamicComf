@@ -3,24 +3,23 @@ STjumpDist_wide=function(Y,n_states,
                     jump_penalty=1e-5,
                     spatial_penalty=1e-5,
                     initial_states=NULL,
-                    max_iter=10, n_init=10, tol=1e-4, verbose=FALSE,timeflag=T){
+                    max_iter=10, n_init=10, tol=1e-4, verbose=FALSE,timeflag=F){
   
   
+  Y$t=1:nrow(Y)
   # Y is in wide format
   Y <- Y %>%
     mutate(across(-t, as.numeric))
   
   # Convert back to long format
-  Y_long <- Y %>%
+  Y <- Y %>%
     pivot_longer(cols = -t, 
                  names_to = c(".value", "m"), 
                  names_pattern = "(.+)_(\\d+)") %>%
     mutate(m = as.integer(m))
   
-  Y=Y_long
-  
-  Y$windy=as.factor(Y_long$windy)
-  Y$hour=as.factor(Y_long$hour)
+  Y$windy=as.factor(Y$windy)
+  Y$hour=as.factor(Y$hour)
   #
   Y=Y[order(Y$t,Y$m),]
   
@@ -99,12 +98,16 @@ STjumpDist_wide=function(Y,n_states,
   ###
   
   # State initialization through kmeans++
-  S=matrix(0,nrow=TT,ncol=M)
-  for(m in 1:M){
-    S[,m]=initialize_states(Y[which(Y$m==m),-(1:2)],n_states)
-  }
+  # S=matrix(0,nrow=TT,ncol=M)
+  # for(m in 1:M){
+  #   S[,m]=initialize_states(Y[which(Y$m==m),-(1:2)],n_states)
+  # }
   
   for (init in 1:n_init) {
+    S=matrix(0,nrow=TT,ncol=M)
+    for(m in 1:M){
+      S[,m]=initialize_states(Y[which(Y$m==m),-(1:2)],n_states)
+    }
     mu <- matrix(0, nrow=n_states, ncol=length(cont.indx))
     mo <- matrix(0, nrow=n_states, ncol=length(cat.indx))
     loss_old <- 1e10
@@ -207,9 +210,9 @@ STjumpDist_wide=function(Y,n_states,
       best_s <- S
     }
     
-    for(m in 1:M){
-      S[,m]=initialize_states(Y[which(Y$m==m),-(1:2)],n_states)
-    }
+    # for(m in 1:M){
+    #   S[,m]=initialize_states(Y[which(Y$m==m),-(1:2)],n_states)
+    # }
   }
   return(list(best_s=best_s,
               Y=Y,
@@ -240,15 +243,32 @@ STJM_blockboot=function(Y,K=3,D,lambda,gamma){
                  initial_states=NULL,
                  max_iter=10, n_init=10, 
                  tol=1e-4, 
-                 verbose=F,timeflag=T)
+                 verbose=F,timeflag=F)
   
-  M=length(unique(Y_long$m))
+  M=length(unique(fit$Y$m))
   State=c(t(fit$best_s))
-  State=order_states_condMean(Y_long$air_temp,State)
+  State=order_states_condMean(fit$Y$air_temp,State)
   
   S_est=matrix(State,ncol=M,byrow = T)
   
-  Y_res=data.frame(Y_long,State=State)
+  # Y is in wide format
+  Y <- Y %>%
+    mutate(across(-t, as.numeric))
+  
+  # Convert back to long format
+  Y <- Y %>%
+    pivot_longer(cols = -t, 
+                 names_to = c(".value", "m"), 
+                 names_pattern = "(.+)_(\\d+)") %>%
+    mutate(m = as.integer(m))
+  
+  Y$windy=as.factor(Y$windy)
+  Y$hour=as.factor(Y$hour)
+  #
+  Y=Y[order(Y$t,Y$m),]
+  
+  
+  Y_res=data.frame(Y,State=State)
   mumo=matrix(0,3,7)
   
   mumo=data.frame(
@@ -261,17 +281,19 @@ STJM_blockboot=function(Y,K=3,D,lambda,gamma){
     UTCI = tapply(Y_res$UTCI, Y_res$State, median, na.rm = TRUE)
   )
   
-  return(mumo)
+  return(unlist(mumo))
 }
 
+temp=STJM_blockboot(Y,K=3,D,lambda,gamma)
 
 TT=length(unique(Y_6$t))
 l1=round(TT^(2/3))
 #nboot=1000
-nboot=2
-
+nboot=10
+K=3
 library(boot)
-prova=tsboot(Y_6_wide, STJM_blockboot, R = nboot, l = l1, sim = "geom",
+prova=tsboot(Y_6_wide, STJM_blockboot, R = nboot, l = l1, sim = "fixed",
        parallel = "multicore", ncpus = detectCores()-1, n.sim=TT,
        lambda=lambda,gamma=gamma,D=D,K=K)
+
 
