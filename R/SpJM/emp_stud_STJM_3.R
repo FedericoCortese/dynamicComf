@@ -474,12 +474,39 @@ heatmap_stat_time <- ggplot(S_long, aes(x = t, y = Location, fill = as.factor(Co
         legend.position = "top")
 heatmap_stat_time
 
-
 png(width = 800, height = 600,filename="heatmap_stat_time.png")
 heatmap_stat_time
 dev.off()
 
+# Heatmap girata
+sz=15
+heatmap_time_stat <- ggplot(S_long, aes(x = Location, y = t, fill = as.factor(ComfortLevel))) +
+  geom_tile(alpha = 0.6) +
+  scale_fill_manual(values = c("lightblue", "lightgreen", "orange"), 
+                    name = "Comfort Regime") +
+  scale_y_datetime(
+    breaks = seq(as.POSIXct("2023-04-18 20:00:00"), 
+                 as.POSIXct("2023-04-26 07:00:00"), 
+                 by = "24 hours"),
+    labels = scales::date_format("%Y-%m-%d %H:%M"),
+    sec.axis = dup_axis(name = "Time")
+  ) +
+  # Add horizontal dotted lines at each break point
+  geom_hline(yintercept = seq(as.POSIXct("2023-04-18 12:00:00"), 
+                              as.POSIXct("2023-04-26 07:00:00"), 
+                              by = "24 hours"), 
+             color = "grey20", linetype = "dotted") +
+  labs(
+    x = "Station",
+    y = NULL) +  # Remove y-axis label on the left
+  theme_minimal() +
+  theme(text = element_text(size = sz),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        axis.text.y.right = element_blank(),
+        axis.text.y.left = element_text(angle = 0, hjust = 1),
+        legend.position = "top")
 
+heatmap_time_stat
 
 
 

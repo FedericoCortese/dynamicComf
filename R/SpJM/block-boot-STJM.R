@@ -90,10 +90,13 @@ library(boot)
 blockboot_singapore=tsboot(Y_6_wide, STJM_blockboot, R = nboot, l = l1, sim = "fixed",
              parallel = "multicore", ncpus = detectCores()-1, n.sim=TT,
              lambda=lambda,gamma=gamma,D=D,K=K)
-save(blockboot_singapore,file="blockboot_singapore.RData")
+#save(blockboot_singapore,file="blockboot_singapore.RData")
+load("blockboot_singapore.RData")
 
+apply(blockboot_singapore$t,2,median)
+apply(blockboot_singapore$t,2,sd)
 
-# BAC ---------------------------------------------------------------------
+## BAC ---------------------------------------------------------------------
 
 fit_ordered=function(Y,K,D,gamma,lambda){
   fit=STjumpDist(Y,3,D,
@@ -122,4 +125,83 @@ STJsim_BAC <- parallel::mclapply(1:nrow(hp),
                                 mc.cores = parallel::detectCores())
 end_BAC=Sys.time()
 elapsed_BAC=end_BAC-start_BAC
-save(STJsim_BAC,elapsed_BAC,file="STJsim_BAC.RData")
+#save(STJsim_BAC,elapsed_BAC,file="STJsim_BAC.RData")
+load("STJsim_BAC.RData")
+
+lambda=seq(0,0.25,by=.05)
+gamma=seq(0,0.25,by=.05)
+
+lambdas=unlist(lapply(STJsim_BAC,function(x) x$lambda))
+gammas=unlist(lapply(STJsim_BAC,function(x) x$gamma))
+
+
+
+BAC_lambdas=matrix(0,nrow=length(unique(lambda))*(length(unique(gamma))-1),ncol=4)
+
+lambda_bench=0
+for(i in 1:length(unique(lambdas))){
+  indx=which(lambdas==lambda_bench)
+  for(j in 1:(length(indx)-1)){
+    BAC_lambdas[indx[j],1]=lambda_bench
+    BAC_lambdas[indx[j],2]=STJsim_BAC[[indx[j+1]]]$gamma
+    BAC_lambdas[indx[j],3]=STJsim_BAC[[indx[j]]]$gamma
+    BAC_lambdas[indx[j],4]=
+      caret::confusionMatrix(STJsim_BAC[[indx[j]]]$State,STJsim_BAC[[indx[j+1]]]$State)$overall[1]
+  }
+  lambda_bench=lambda_bench+.05
+}
+
+BAC_lambdas=as.data.frame(BAC_lambdas)
+colnames(BAC_lambdas)=c("lambda","gamma","gamma_prec","BAC")
+
+
+BAC_gammas=matrix(NA,nrow=length(unique(gamma))*length(unique(lambda)),ncol=4)
+
+gamma_bench=0
+for(i in 1:length(unique(gammas))){
+  indx=which(gammas==gamma_bench)
+  for(j in 1:(length(indx)-1)){
+    BAC_gammas[indx[j],1]=gamma_bench
+    BAC_gammas[indx[j],2]=STJsim_BAC[[indx[j+1]]]$lambda
+    BAC_gammas[indx[j],3]=STJsim_BAC[[indx[j]]]$lambda
+    BAC_gammas[indx[j],4]=
+      caret::confusionMatrix(STJsim_BAC[[indx[j]]]$State,STJsim_BAC[[indx[j+1]]]$State)$overall[1]
+  }
+  gamma_bench=gamma_bench+.05
+}
+
+BAC_gammas=BAC_gammas[complete.cases(BAC_gammas),]
+
+BAC_gammas=as.data.frame(BAC_gammas)
+colnames(BAC_gammas)=c("gamma","lambda","lambda_prec","BAC")
+
+
+bac_lam=ggplot(BAC_lambdas, aes(x = gamma, y = BAC, color = as.factor(lambda), group = lambda)) +
+  geom_line(size = 1) +
+  geom_point(size = 2) +
+  labs(
+    #title = expression("BAC vs " * gamma * " for Different " * lambda * " Values"),
+    x = expression(gamma),
+    y = expression(BAC(gamma, gamma[prec])),
+    color = expression(lambda)
+  ) +
+  theme_minimal()+
+  theme(legend.position = "bottom")
+
+bac_lam
+
+bac_gamma=ggplot(BAC_gammas, aes(x = lambda, y = BAC, color = as.factor(gamma), group = gamma)) +
+  geom_line(size = 1) +
+  geom_point(size = 2) +
+  labs(
+    #title = expression("BAC vs " * gamma * " for Different " * lambda * " Values"),
+    x = expression(lambda),
+    y = expression(BAC(lambda, lambda[prec])),
+    color = expression(gamma)
+  ) +
+  theme_minimal()+
+  theme(legend.position = "bottom")
+
+bac_gamma
+
+ggpubr::ggarrange(bac_lam, bac_gamma, ncol = 2,common.legend = F)
