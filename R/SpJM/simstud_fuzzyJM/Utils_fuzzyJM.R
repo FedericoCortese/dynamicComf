@@ -818,6 +818,17 @@ generate_spatio_temporal_data <- function(M, TT, theta, beta, K = 3,
   )
 }
 
+dist_fun_exp_norm=function(D){
+  
+  dist_weights=exp(D)
+  for(m in 1:nrow(D)){
+    dist_weights[m,]=ifelse(D[m,] == 0, 0, exp(D[m,]))/sum(ifelse(D[m,] == 0, 0, exp(D[m,]))) 
+  }
+  
+  return(dist_weights)
+  
+}
+
 dist_fun_norm=function(D){
   
   dist_weights=D
@@ -1162,7 +1173,8 @@ simstud_fuzzySTJM=function(lambda,gamma,seed,M,TT,beta, theta,
   D=result$dist_matrix
   Y=result$Y.NA
   
-  dist_weights=dist_fun_norm(D)
+  #dist_weights=dist_fun_norm(D)
+  dist_weights=dist_fun_exp_norm(D)
   
   # tf=I(pg>0)
   prova=fuzzy_STJM(Y,K,dist_weights,lambda,gamma,verbose=F,tol=1e-6,
