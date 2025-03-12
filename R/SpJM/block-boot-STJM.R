@@ -79,7 +79,7 @@ D=distm(data_stat_number[,c("longitude","latitude")],
         data_stat_number[,c("longitude","latitude")], 
         fun = distGeo)/1000
 
-temp=STJM_blockboot(Y,K=3,D,lambda,gamma)
+#temp=STJM_blockboot(Y,K=3,D,lambda,gamma)
 
 TT=length(unique(Y_6$t))
 l1=round(TT^(2/3))
@@ -87,9 +87,10 @@ nboot=1000
 #nboot=10
 K=3
 library(boot)
-prova=tsboot(Y_6_wide, STJM_blockboot, R = nboot, l = l1, sim = "fixed",
+blockboot_singapore=tsboot(Y_6_wide, STJM_blockboot, R = nboot, l = l1, sim = "fixed",
              parallel = "multicore", ncpus = detectCores()-1, n.sim=TT,
              lambda=lambda,gamma=gamma,D=D,K=K)
+save(blockboot_singapore,file="blockboot_singapore.RData")
 
 
 # BAC ---------------------------------------------------------------------
