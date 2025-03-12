@@ -26,11 +26,11 @@ library(doParallel)
 library(MASS)  # For multivariate normal sampling
 library(spdep)  # For spatial correlation
 
-# Import the python module
- import("scipy")
-# 
-# # Import python functions for SJM estimation
- source_python('SJ.py')
+# # Import the python module
+#  import("scipy")
+# # 
+# # # Import python functions for SJM estimation
+#  source_python('SJ.py')
 
 order_states=function(states){
   
