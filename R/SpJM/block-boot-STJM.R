@@ -73,6 +73,8 @@ STJM_blockboot=function(Y,K=3,D,lambda,gamma){
   return(unlist(mumo))
 }
 
+lambda=.05
+gamma=.05
 temp=STJM_blockboot(Y,K=3,D,lambda,gamma)
 
 TT=length(unique(Y_6$t))
