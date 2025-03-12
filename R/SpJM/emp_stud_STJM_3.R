@@ -30,6 +30,7 @@ data_utci=data.frame(time=time_utci_8,UTCI=utci_sing[,1]-273.15)
 # SEE emp_stud_STJM_2 for Y_3.Rdata
 #load("D:/git/dynamicComf/dynamicComf/R/SpJM/Y_3.Rdata")
 load("Y_3.Rdata")
+load("data_utci.Rdata")
 
 # Merge with pre-existing data
 Y_4=Y_complete[,c("t","m","time")]%>%
@@ -41,6 +42,8 @@ Y_5=Y_4%>%
 Y_6=Y_5[-(1:56),]
 Y_6=subset(Y_6,select=-time)
 ###
+
+load("Y_6.Rdata")
 
 # leaflet map singapore ---------------------------------------------------
 
