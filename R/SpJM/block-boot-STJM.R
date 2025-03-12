@@ -104,6 +104,7 @@ fit_ordered=function(Y,K,D,gamma,lambda){
                  verbose=F,timeflag=T)
   State=c(t(fit$best_s))
   State=order_states_condMean(fit$Y$air_temp,State)
+  State=factor(State,levels=1:K)
   return(list(State=State,gamma=gamma,lambda=lambda))
 }
 
