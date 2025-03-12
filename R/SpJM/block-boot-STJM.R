@@ -75,6 +75,10 @@ STJM_blockboot=function(Y,K=3,D,lambda,gamma){
 
 lambda=.05
 gamma=.05
+D=distm(data_stat_number[,c("longitude","latitude")], 
+        data_stat_number[,c("longitude","latitude")], 
+        fun = distGeo)/1000
+
 temp=STJM_blockboot(Y,K=3,D,lambda,gamma)
 
 TT=length(unique(Y_6$t))
