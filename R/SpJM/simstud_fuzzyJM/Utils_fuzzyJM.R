@@ -461,7 +461,13 @@ fuzzy_jump <- function(Y,
       
       #S=t(apply(S,1,function(x) x/sum(x)))
       
-      loss <- min(V[1,])
+      # But this is not the true loss
+      #loss <- min(V[1,])
+      
+      S_prec=rbind(rep(0,n_states),S[-n_obs,])
+      Lambda=jump_penalty*(S-S_prec)^2
+      Lambda[1,]=0
+      loss=sum(S^2*V+Lambda)
       
       # M step
       for(k in 1:n_states){
