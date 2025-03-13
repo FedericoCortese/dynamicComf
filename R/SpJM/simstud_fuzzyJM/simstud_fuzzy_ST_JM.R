@@ -4,13 +4,13 @@ library(parallel)
 
 #source("Utils.R")
 
-lambda=seq(0,1,by=.05)
-gamma=seq(0,1,by=.05)
+lambda=seq(0,.5,by=.05)
+gamma=seq(0,.5,by=.05)
 TT=100
 #TT=c(50,100)
 #P=c(4,20)
 P=12
-M=20
+M=c(50,4)
 seeds=1:100
 
 hp=expand.grid(lambda=lambda,gamma=gamma,TT=TT,P=P,M=M,seed=seeds)
