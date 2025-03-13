@@ -93,8 +93,26 @@ blockboot_singapore=tsboot(Y_6_wide, STJM_blockboot, R = nboot, l = l1, sim = "f
 #save(blockboot_singapore,file="blockboot_singapore.RData")
 load("blockboot_singapore.RData")
 
-apply(blockboot_singapore$t,2,median)
-apply(blockboot_singapore$t,2,sd)
+blockboot_res=data.frame(blockboot_singapore$t)
+colnames(blockboot_res)=c("air_temp1","air_temp2","air_temp3",
+                          "rh1","rh2","rh3",
+                          "rainfall1","rainfall2","rainfall3",
+                          "wind_speed1","wind_speed2","wind_speed3",
+                          "windy1","windy2","windy3",
+                          "hour1","hour2","hour3",
+                          "UTCI1","UTCI2","UTCI3")
+
+apply(blockboot_res,2,median)
+apply(blockboot_res,2,Mode)
+apply(blockboot_res,2,sd)
+
+apply(blockboot_res,2,function(x){sum(x==2)/1000})
+apply(blockboot_res,2,function(x){sum(x==4)/1000})
+apply(blockboot_res,2,function(x){sum(x==3)/1000})
+
+apply(blockboot_res,2,function(x){sum(x==5)/1000})
+apply(blockboot_res,2,function(x){sum(x==7)/1000})
+apply(blockboot_res,2,function(x){sum(x==17)/1000})
 
 ## BAC ---------------------------------------------------------------------
 
@@ -180,28 +198,38 @@ bac_lam=ggplot(BAC_lambdas, aes(x = gamma, y = BAC, color = as.factor(lambda), g
   geom_line(size = 1) +
   geom_point(size = 2) +
   labs(
-    #title = expression("BAC vs " * gamma * " for Different " * lambda * " Values"),
     x = expression(gamma),
     y = expression(BAC(gamma, gamma[prec])),
     color = expression(lambda)
   ) +
-  theme_minimal()+
-  theme(legend.position = "bottom")
-
+  theme_minimal() +
+  theme(
+    legend.position = c(0.85, 0.15),  # Bottom right corner inside the plot
+    legend.direction = "vertical",   # Two-level format
+    legend.background = element_rect(fill = alpha("white", 0.7)),  # Slight transparency for better readability
+    legend.box.background = element_rect(colour = "black")  # Border around legend
+  ) +
+  guides(color = guide_legend(ncol = 2))  # Splits the legend into two columns
 bac_lam
 
-bac_gamma=ggplot(BAC_gammas, aes(x = lambda, y = BAC, color = as.factor(gamma), group = gamma)) +
+bac_gamma <- ggplot(BAC_gammas, aes(x = lambda, y = BAC, color = as.factor(gamma), group = gamma)) +
   geom_line(size = 1) +
   geom_point(size = 2) +
   labs(
-    #title = expression("BAC vs " * gamma * " for Different " * lambda * " Values"),
     x = expression(lambda),
     y = expression(BAC(lambda, lambda[prec])),
     color = expression(gamma)
   ) +
-  theme_minimal()+
-  theme(legend.position = "bottom")
+  theme_minimal() +
+  theme(
+    legend.position = c(0.85, 0.15),  # Bottom right corner inside the plot
+    legend.direction = "vertical",   # Two-level format
+    legend.background = element_rect(fill = alpha("white", 0.7)),  # Slight transparency for readability
+    legend.box.background = element_rect(colour = "black")  # Border around legend
+  ) +
+  guides(color = guide_legend(ncol = 2))  # Splits the legend into two columns
 
 bac_gamma
+
 
 ggpubr::ggarrange(bac_lam, bac_gamma, ncol = 2,common.legend = F)

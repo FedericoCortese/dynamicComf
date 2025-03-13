@@ -1177,7 +1177,9 @@ simstud_fuzzySTJM=function(lambda,gamma,seed,M,TT,beta, theta,
   dist_weights=dist_fun_exp_norm(D)
   
   # tf=I(pg>0)
-  prova=fuzzy_STJM(Y,K,dist_weights,lambda,gamma,verbose=F,tol=1e-6,
+  prova=fuzzy_STJM(Y,K,dist_weights,
+                   lambda=lambda,gamma=gamma,
+                   verbose=F,tol=1e-6,
                    ncores_M=ncores_M,
                    n_init = 5)
   
@@ -1185,7 +1187,7 @@ simstud_fuzzySTJM=function(lambda,gamma,seed,M,TT,beta, theta,
   
   MAP=data.frame(t=Y$t,m=Y$m,
     MAP=apply(best_S[,-c(1,2)],1,which.max))
-  
+  MAP$MAP=factor(MAP$MAP,levels=1:K)
   
   df <- as.data.frame(result$S)
   colnames(df) <- paste0("m", 1:ncol(df))
@@ -1195,6 +1197,7 @@ simstud_fuzzySTJM=function(lambda,gamma,seed,M,TT,beta, theta,
                                  values_to = "true_state")
   df_long$m <- as.numeric(gsub("m", "", df_long$m))
   df_long=as.data.frame(df_long)
+  df_long$true_state=factor(df_long$true_state,levels=1:K)
   
   # TY=unique(Y$t)
   # S_true=result$S[TY,]
@@ -1204,8 +1207,10 @@ simstud_fuzzySTJM=function(lambda,gamma,seed,M,TT,beta, theta,
   # }
   # 
   ARI=adj.rand.index(df_long$true_state,MAP$MAP)
-  ARI
+  BAC=caret::confusionMatrix(MAP$MAP,df_long$true_state)$overall[1]
+  
   return(list(ARI=ARI,
+              BAC=BAC,
               S_true=df_long,
               best_S=best_S,
               lambda=lambda,
