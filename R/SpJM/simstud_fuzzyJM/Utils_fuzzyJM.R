@@ -878,12 +878,23 @@ simstud_fuzzyJM_m=function(seed,lambda,TT,P,
   
   Y=simDat$SimData.complete
   
-  est <- fuzzy_jump_m(Y, 
-                        K = K, lambda = lambda, 
-                      m=m,
-                        initial_states = NULL,
-                        max_iter = 10, n_init = 10, tol = NULL, 
-                        verbose = FALSE)
+  success <- FALSE
+  trials=1
+  while (!success&trials<10) {
+    est <- try(fuzzy_jump_m(Y=Y, 
+                            K = K, lambda = lambda, 
+                            m=m,
+                            initial_states = NULL,
+                            max_iter = 10, n_init = 10, tol = NULL, 
+                            verbose = FALSE), silent = TRUE)
+    trials=trials+1
+    
+    if (!inherits(est, "try-error")) {
+      success <- TRUE  # Exit the loop if no error
+    } else {
+      message("Retrying fuzzy_jump() due to an error...")
+    }
+  }
   
   #matplot(est$best_S,type='l',main=paste0("m = ", m))
   
