@@ -12,9 +12,9 @@ m=c(1.01,2)
 
 hp=expand.grid(TT=TT,P=P,lambda=lambda,seed=seeds,m=m)
 
-# nrow_hp=nrow(hp)
-# n_chunks=10
-# chunk_length=nrow_hp/n_chunks
+nrow_hp=nrow(hp)
+n_chunks=10
+chunk_length=nrow_hp/n_chunks
 
 source("Utils_fuzzyJM.R")
 
@@ -22,45 +22,45 @@ source("Utils_fuzzyJM.R")
 # mu=1, pers=.95 ----------------------------------------------------------
 
 
-#fuzzyJM_sim=list()
+fuzzyJM_sim_m=list()
 
 start_=Sys.time()
-  fuzzyJM_sim_m=
-    parallel::mclapply(1:nrow(hp),
+  # fuzzyJM_sim_m=
+  #   parallel::mclapply(1:nrow(hp),
+  #                      function(x)
+  #                        simstud_fuzzyJM_m(seed=hp[x,]$seed,
+  #                                        lambda=hp[x,]$lambda,
+  #                                        TT=hp[x,]$TT,
+  #                                        P=hp[x,]$P,
+  #                                        m=hp[x,]$m,
+  #                                        K=3,mu=1,
+  #                                        phi=.8,rho=0,
+  #                                        Pcat=NULL,
+  #                                        pers=.95
+  #                        ),
+  #                      mc.cores = parallel::detectCores()-1)
+for(i in 1:n_chunks){
+  hp_chunk=hp[(1+(i-1)*chunk_length):(chunk_length*i),]
+  fuzzyJM_sim_m[(1+(i-1)*chunk_length):(chunk_length*i)]=
+    parallel::mclapply(1:nrow(hp_chunk),
                        function(x)
-                         simstud_fuzzyJM_m(seed=hp[x,]$seed,
-                                         lambda=hp[x,]$lambda,
-                                         TT=hp[x,]$TT,
-                                         P=hp[x,]$P,
-                                         m=hp[x,]$m,
-                                         K=3,mu=1,
-                                         phi=.8,rho=0,
-                                         Pcat=NULL,
-                                         pers=.95
+                         simstud_fuzzyJM_m(seed=hp_chunk[x,]$seed,
+                                           lambda=hp_chunk[x,]$lambda,
+                                           TT=hp_chunk[x,]$TT,
+                                           P=hp_chunk[x,]$P,
+                                           m=hp_chunk[x,]$m,
+                                           K=3,mu=1,
+                                           phi=.8,rho=0,
+                                           Pcat=NULL,
+                                           pers=.95
                          ),
                        mc.cores = parallel::detectCores()-1)
-# for(i in 1:n_chunks){
-#   hp_chunk=hp[(1+(i-1)*chunk_length):(chunk_length*i),]
-#   fuzzyJM_sim[(1+(i-1)*chunk_length):(chunk_length*i)]=
-#     parallel::mclapply(1:nrow(hp_chunk),
-#                        function(x)
-#                          simstud_fuzzyJM_m(seed=hp_chunk[x,]$seed,
-#                                          lambda=hp_chunk[x,]$lambda,
-#                                          TT=hp_chunk[x,]$TT,
-#                                          P=hp_chunk[x,]$P,
-#                                          m=hp_chunk[x,]$m,
-#                                          K=3,mu=1,
-#                                          phi=.8,rho=0,
-#                                          Pcat=NULL,
-#                                          pers=.95
-#                          ),
-#                        mc.cores = parallel::detectCores()-1)
-#   print(i)
-#   
-# }
+  print(i)
+
+}
 end_=Sys.time()
 elapsed_=end_-start_
-save(fuzzyJM_sim,elapsed_,file="fuzzyJM_sim_m.RData")
+save(fuzzyJM_sim_m,elapsed_,file="fuzzyJM_sim_m.RData")
 
 complete_res_sim_fuzzyJM <- do.call(rbind, lapply(fuzzyJM_sim_m, function(x) {
   data.frame(lambda = x[6],
