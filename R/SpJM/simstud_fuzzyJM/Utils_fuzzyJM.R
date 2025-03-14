@@ -885,6 +885,7 @@ simstud_fuzzyJM_m=function(seed,lambda,TT,P,
                         max_iter = 10, n_init = 10, tol = NULL, 
                         verbose = FALSE)
   
+  #matplot(est$best_S,type='l',main=paste0("m = ", m))
   
   est$MAP=factor(relabel_clusters(est$MAP,simDat$mchain),levels=1:K)
   simDat$mchain=factor(simDat$mchain,levels=1:K)

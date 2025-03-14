@@ -8,13 +8,13 @@ lambda=seq(0,1,by=.05)
 TT=c(50,100,500)
 P=c(4,20,50)
 seeds=1:100
-m=c(1.01,2,5)
+m=c(1.01,2)
 
 hp=expand.grid(TT=TT,P=P,lambda=lambda,seed=seeds,m=m)
 
-nrow_hp=nrow(hp)
-n_chunks=10
-chunk_length=nrow_hp/n_chunks
+# nrow_hp=nrow(hp)
+# n_chunks=10
+# chunk_length=nrow_hp/n_chunks
 
 source("Utils_fuzzyJM.R")
 
@@ -22,69 +22,63 @@ source("Utils_fuzzyJM.R")
 # mu=1, pers=.95 ----------------------------------------------------------
 
 
-fuzzyJM_sim=list()
+#fuzzyJM_sim=list()
 
 start_=Sys.time()
-
-for(i in 1:n_chunks){
-  hp_chunk=hp[(1+(i-1)*chunk_length):(chunk_length*i),]
-  fuzzyJM_sim[(1+(i-1)*chunk_length):(chunk_length*i)]=
-    parallel::mclapply(1:nrow(hp_chunk),
+  fuzzyJM_sim_m=
+    parallel::mclapply(1:nrow(hp),
                        function(x)
-                         simstud_fuzzyJM_m(seed=hp_chunk[x,]$seed,
-                                         lambda=hp_chunk[x,]$lambda,
-                                         TT=hp_chunk[x,]$TT,
-                                         P=hp_chunk[x,]$P,
-                                         m=hp_chunk[x,]$m,
+                         simstud_fuzzyJM_m(seed=hp[x,]$seed,
+                                         lambda=hp[x,]$lambda,
+                                         TT=hp[x,]$TT,
+                                         P=hp[x,]$P,
+                                         m=hp[x,]$m,
                                          K=3,mu=1,
                                          phi=.8,rho=0,
                                          Pcat=NULL,
                                          pers=.95
                          ),
                        mc.cores = parallel::detectCores()-1)
-  print(i)
-  
-}
-
-# source("Utils_fuzzyJM.R")
-# cl<-makeCluster(parallel::detectCores(),type="SOCK")
-# parallel::clusterExport(cl,ls())
-# parallel::clusterEvalQ(cl,{
-#   library(cluster)
-#   library(StatMatch)
-# })
-# fuzzyJM_sim <- clusterApply(cl,
-#                             1:nrow(hp),
-#                             function(x)
-#                               simstud_fuzzyJM(seed=hp[x,]$seed,
-#                                               lambda=hp[x,]$lambda,
-#                                               TT=hp[x,]$TT,
-#                                               P=hp[x,]$P,
-#                                               K=3,mu=1,
-#                                               phi=.8,rho=0,
-#                                               Pcat=NULL,pers=.95)
-# )
-# stopCluster(cl)
-
-
+# for(i in 1:n_chunks){
+#   hp_chunk=hp[(1+(i-1)*chunk_length):(chunk_length*i),]
+#   fuzzyJM_sim[(1+(i-1)*chunk_length):(chunk_length*i)]=
+#     parallel::mclapply(1:nrow(hp_chunk),
+#                        function(x)
+#                          simstud_fuzzyJM_m(seed=hp_chunk[x,]$seed,
+#                                          lambda=hp_chunk[x,]$lambda,
+#                                          TT=hp_chunk[x,]$TT,
+#                                          P=hp_chunk[x,]$P,
+#                                          m=hp_chunk[x,]$m,
+#                                          K=3,mu=1,
+#                                          phi=.8,rho=0,
+#                                          Pcat=NULL,
+#                                          pers=.95
+#                          ),
+#                        mc.cores = parallel::detectCores()-1)
+#   print(i)
+#   
+# }
 end_=Sys.time()
 elapsed_=end_-start_
-save(fuzzyJM_sim_m,elapsed_,file="fuzzyJM_sim_m.RData")
+save(fuzzyJM_sim,elapsed_,file="fuzzyJM_sim_m.RData")
 
 complete_res_sim_fuzzyJM <- do.call(rbind, lapply(fuzzyJM_sim_m, function(x) {
   data.frame(lambda = x[6],
              TT = x[7], 
              P = x[8], 
+             m=x[9],
              seed = x[5], 
              BAC = x[4], 
              ARI = x[3])
 }))
 
 complete_res_sim_fuzzyJM=apply(complete_res_sim_fuzzyJM,2,as.numeric)
-complete_res_sim_fuzzyJM=as.data.frame(complete_res_sim_fuzzyJM_2)
-colnames(complete_res_sim_fuzzyJM) <- c("lambda", "TT", "P", "seed", "BAC", "ARI")
+complete_res_sim_fuzzyJM=as.data.frame(complete_res_sim_fuzzyJM)
+colnames(complete_res_sim_fuzzyJM) <- c("lambda", "TT", "P","m", "seed", "BAC", "ARI")
 
 rownames(complete_res_sim_fuzzyJM) <- NULL
+
+# m=1.01
 
 aggregated_results_fuzzyJM <- aggregate(cbind(BAC, ARI) ~ lambda + TT + P, 
                                         data = complete_res_sim_fuzzyJM, 
