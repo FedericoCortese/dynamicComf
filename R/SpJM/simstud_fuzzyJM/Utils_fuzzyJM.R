@@ -898,19 +898,21 @@ simstud_fuzzyJM_m=function(seed,lambda,TT,P,
   
   #matplot(est$best_S,type='l',main=paste0("m = ", m))
   
+  MAP=as.vector(unlist(est[2]))
+  S=matrix(unlist(est[1]),ncol=K,nrow=TT,byrow=F)
   #est$MAP=factor(relabel_clusters(est$MAP,simDat$mchain),levels=1:K)
-  est[2]=factor(relabel_clusters(est[2],simDat$mchain),levels=1:K)
+  MAP=factor(relabel_clusters(MAP,simDat$mchain),levels=1:K)
   
   simDat$mchain=factor(simDat$mchain,levels=1:K)
   
-  BAC=caret::confusionMatrix(est[2],simDat$mchain)$overall[1]
+  BAC=caret::confusionMatrix(MAP,simDat$mchain)$overall[1]
   
-  ARI=adj.rand.index(est[2],simDat$mchain)
+  ARI=adj.rand.index(MAP,simDat$mchain)
   
   # Return
   return(list(
-    S=est[1],
-    MAP=est[2] ,
+    S=S,
+    MAP=MAP ,
     ARI=ARI,
     BAC=BAC,
     #,
