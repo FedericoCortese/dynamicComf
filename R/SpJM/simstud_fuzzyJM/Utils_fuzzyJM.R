@@ -438,26 +438,30 @@ fuzzy_jump <- function(Y,
 
       # E step
       V=gower.dist(Y,mumo)^2
-      # if(!is.null(alpha)){
-      #   V=V-alpha
-      # }
       V1=1/V
       V1_lambda=1/(V+jump_penalty)
       S_til=V1_lambda/rowSums(V1_lambda)
       S=matrix(0,nrow=n_obs,ncol=n_states)
       # FUZZY
-      S[n_obs,]=V1[n_obs,]/sum(V1[n_obs,])
-      for(t in (n_obs-1):1){
-        
-        # beta=(2*(1-jump_penalty*sum(S[(t+1),]/(V[t,]+jump_penalty))))/
-        #   (sum(V1_lambda[t,]))
-        # S[t,]=(beta+2*jump_penalty*S[(t+1),])/(2*V[t,]+2*jump_penalty)
-        
+      S[1,]=V1[1,]/sum(V1[1,])
+      for(t in 2:n_obs){
         S[t,]=S_til[t,]-
-          jump_penalty*sum(S[(t+1),]/(V[t,]+jump_penalty))*S_til[t,]+
-          jump_penalty*S[(t+1),]/(V[t,]+jump_penalty)
+          jump_penalty*sum(S[(t-1),]/(V[t,]+jump_penalty))*S_til[t,]+
+          jump_penalty*S[(t-1),]/(V[t,]+jump_penalty)
         
       }
+      # S[n_obs,]=V1[n_obs,]/sum(V1[n_obs,])
+      # for(t in (n_obs-1):1){
+      #   
+      #   # beta=(2*(1-jump_penalty*sum(S[(t+1),]/(V[t,]+jump_penalty))))/
+      #   #   (sum(V1_lambda[t,]))
+      #   # S[t,]=(beta+2*jump_penalty*S[(t+1),])/(2*V[t,]+2*jump_penalty)
+      #   
+      #   S[t,]=S_til[t,]-
+      #     jump_penalty*sum(S[(t+1),]/(V[t,]+jump_penalty))*S_til[t,]+
+      #     jump_penalty*S[(t+1),]/(V[t,]+jump_penalty)
+      #   
+      # }
       
       #S=t(apply(S,1,function(x) x/sum(x)))
       
@@ -530,6 +534,257 @@ fuzzy_jump <- function(Y,
               condMM=mumo))
 }
 
+objective_function <- function(s, g_values, lambda, s_t_prev,m) {
+  sum(s^m * g_values^2) + lambda * sum((s_t_prev - s)^2)
+}
+
+gradient_function <- function(s, g_values, lambda, s_t_prev, m) {
+  m * s^(m-1) * g_values^2 - 2 * lambda * (s_t_prev - s)
+}
+
+optimize_s <- function(g_values, lambda, s_t_prev, m) {
+  K <- length(g_values)
+  s_init <- rep(1/K, K)  # Initial guess (uniform)
+  
+  result <- nloptr::nloptr(
+    x0 = s_init,
+    eval_f = function(s) objective_function(s, g_values, lambda, s_t_prev, m),
+    eval_grad_f = function(s) gradient_function(s, g_values, lambda, s_t_prev, m),
+    lb = rep(0, K), 
+    ub = rep(1, K),
+    eval_g_eq = function(s) sum(s) - 1,  # Constraint: sum(s) = 1
+    eval_jac_g_eq = function(s) rep(1, K),  # Jacobian of equality constraint
+    opts = list("algorithm"="NLOPT_LD_SLSQP", "xtol_rel"=1e-6)
+  )
+  
+  return(result$solution)
+}
+fuzzy_jump_m <- function(Y, 
+                         K, lambda=1e-5, 
+                         m=2,
+                         initial_states=NULL,
+                         max_iter=10, n_init=10, tol=NULL, 
+                         verbose=FALSE
+                         # ,
+                         # alpha=NULL
+                         # # ,
+                         #        time_vec=NULL
+                         
+) {
+  # Fit jump model for mixed type data 
+  
+  # Arguments:
+  # Y: data.frame with mixed data types. Categorical variables must be factors.
+  # K: number of states
+  # lambda: penalty for the number of jumps
+  # initial_states: initial state sequence
+  # max_iter: maximum number of iterations
+  # n_init: number of initializations
+  # tol: tolerance for convergence
+  # verbose: print progress
+  # time_vec is a vector of time points, needed if times are not equally sampled
+  
+  # Value:
+  # best_s: estimated state sequence
+  # Y: imputed data
+  # Y.orig: original data
+  # condMM: state-conditional medians and modes
+  
+  # timeflag=FALSE
+  # if(!is.null(time_vec)){
+  #   timeflag=TRUE
+  #   if(length(time_vec)!=nrow(Y)){
+  #     stop("time_vec must have the same length of the number of observations")
+  #   }
+  #   else{
+  #     time=sort(unique(time_vec))
+  #     dtime=diff(time)
+  #     dtime=dtime/as.numeric(min(dtime))
+  #     dtime=as.numeric(dtime)
+  #   }
+  # }
+  
+  K=as.integer(K)
+  
+  TT <- nrow(Y)
+  P <- ncol(Y)
+  best_loss <- NULL
+  best_S <- NULL
+  
+  # Which vars are categorical and which are numeric
+  cat_flag=any(sapply(Y, is.factor))
+  
+  if(cat_flag){
+    cat.indx=which(sapply(Y, is.factor))
+    cont.indx=which(sapply(Y, is.numeric))
+    Ycont=Y[,cont.indx]
+    Ycont=apply(Ycont,2,scale)
+    Y[,cont.indx]=Ycont
+    Ycat=Y[,cat.indx]
+    
+    if(length(cat.indx)==1){
+      n_levs=length(levels(Ycat))
+    }
+    else{
+      n_levs=apply(Ycat, 2, function(x)length(unique(x[!is.na(x)])))
+    }
+    
+    n_cat=length(cat.indx)
+    n_cont=P-n_cat
+    
+  }
+  else{
+    cont.indx=1:P
+    Ycont=Y
+    Ycont=apply(Ycont,2,scale)
+    Y[,cont.indx]=Ycont
+    n_cont=dim(Y)[2]
+    n_cat=0
+  }
+  
+  
+  
+  
+  for (init in 1:n_init) {
+    
+    # State initialization through kmeans++
+    if (!is.null(initial_states)) {
+      s <- initial_states
+    } else {
+      s=initialize_states(Y,K)
+    }
+    
+    S <- matrix(0, nrow = TT, ncol = K)
+    row_indices <- rep(1:TT)  # Row positions in SS
+    # Assign 1s in a single step
+    S[cbind(row_indices, s)] <- 1 
+    
+    mu <- matrix(0, nrow=K, ncol=length(cont.indx))
+    if(cat_flag){
+      mo <- matrix(0, nrow=K, ncol=length(cat.indx))
+    }
+    
+    for (i in unique(s)) {
+      # substitute with medians
+      mu[i,] <- apply(Ycont[s==i,], 2, median, na.rm = TRUE)
+      if(cat_flag){
+        if(length(cat.indx)==1){
+          mo[i,]=Mode(Ycat[s==i])
+        }
+        else{
+          mo[i,]=apply(Ycat[s==i,],2,Mode)
+        }
+      }
+    }
+    
+    mu=data.frame(mu)
+    mumo=data.frame(matrix(0,nrow=K,ncol=P))
+    
+    if(cat_flag){
+      mo=data.frame(mo,stringsAsFactors=TRUE)
+      for(i in 1:n_cat){
+        if(length(cat.indx)==1){
+          mo[,i]=factor(mo[,i],levels=levels(Ycat[i]))
+        }
+        else{
+          mo[,i]=factor(mo[,i],levels=levels(Ycat[,i]))
+        }
+      }
+      mumo=data.frame(matrix(0,nrow=K,ncol=P))
+      mumo[,cat.indx]=mo
+    }
+    
+    mumo[,cont.indx]=mu
+    colnames(mumo)=colnames(Y)
+    
+    S_old=S
+    loss_old <- 1e10
+    for (it in 1:max_iter) {
+      
+      
+      # E step
+      V=gower.dist(Y,mumo)
+      V1=1/V
+      S=matrix(0,nrow=TT,ncol=K)
+      # FUZZY
+      S[1,]=(V1[1,])^(2/(m-1))/sum((V1[1,])^(2/(m-1)))
+      for(t in 2:TT){
+        S[t,]=optimize_s(g_values=V[t,], lambda=lambda, s_t_prev=S[t-1,],m=m)
+        
+      }
+      #matplot(S,type='l',main="m=1.01")
+      
+      #S=t(apply(S,1,function(x) x/sum(x)))
+      
+      # But this is not the true loss
+      #loss <- min(V[1,])
+      
+      S_prec=rbind(rep(0,K),S[-TT,])
+      Lambda=lambda*(S-S_prec)^2
+      Lambda[1,]=0
+      loss=sum(S^2*V+Lambda)
+      
+      # M step
+      for(k in 1:K){
+        #mu[k,]=apply(Ycont, 2, function(x) weighted_median(x, weights = S[,k]))
+        #mu[k,]=apply(Ycont,2,function(x){poliscidata::wtd.median(x,weights=S[,k])})
+        mu[k,]=apply(Ycont,2,function(x){poliscidata::wtd.median(x,weights=S[,k]^2)})
+        if(cat_flag){
+          if(n_cat==1){
+            #mo[k,]=poliscidata::wtd.mode(Ycat,weights=S[,k])
+            mo[k,]=poliscidata::wtd.mode(Ycat,weights=S[,k]^2)
+            
+          }
+          else{
+            #mo[k,]=apply(Ycat,2,function(x){poliscidata::wtd.mode(x,weights=S[,k])})
+            mo[k,]=apply(Ycat,2,function(x){poliscidata::wtd.mode(x,weights=S[,k]^2)})
+            
+          }
+          #mo[k,]=apply(Ycat,2,function(x)weighted_mode(x,weights=S[,k]))
+        }
+      }
+      
+      if(cat_flag){
+        mumo[,cat.indx]=mo
+      }
+      
+      mumo[,cont.indx]=mu
+      colnames(mumo)=colnames(Y)
+      
+      
+      if (verbose) {
+        cat(sprintf('Iteration %d: %.6e\n', it, loss))
+      }
+      if (!is.null(tol)) {
+        epsilon <- loss_old - loss
+        if (epsilon < tol) {
+          break
+        }
+      } else if (all(S == S_old)) {
+        break
+      }
+      loss_old <- loss
+      S_old=S
+    }
+    if (is.null(best_S) || (loss_old < best_loss)) {
+      best_loss <- loss_old
+      best_S <- S
+    }
+    s=initialize_states(Y,K)
+  }
+  
+  MAP=apply(best_S,1,which.max)
+  res_Y=data.frame(Y,MAP=MAP)
+  col_sort=as.integer(names(sort(tapply(res_Y[,cont.indx[1]],res_Y$MAP,mean))))
+  mumo=mumo[col_sort,]
+  best_S=best_S[,col_sort]
+  
+  return(list(best_S=best_S,
+              MAP=MAP,
+              Y=Y,
+              condMM=mumo))
+}
+
 relabel_clusters <- function(predicted, true) {
   mapping <- apply(table(predicted, true), 1, which.max)
   sapply(predicted, function(x) mapping[x])
@@ -539,7 +794,7 @@ simstud_fuzzyJM=function(seed,lambda,TT,P,
                          K=3,mu=1,
                          phi=.8,rho=0,
                          Pcat=NULL,pers=.95,
-                         pNAs=0,typeNA=2){
+                         pNAs=0,typeNA=2,m=1.01){
   # Simulate
   simDat=sim_data_mixed(seed=seed,
                         TT=TT,
@@ -601,6 +856,56 @@ simstud_fuzzyJM=function(seed,lambda,TT,P,
     # pers=pers,
     true_seq=simDat$mchain
     # est_seq=MAP
+  ))
+  
+}
+
+simstud_fuzzyJM_m=function(seed,lambda,TT,P,
+                         K=3,mu=1,
+                         phi=.8,rho=0,
+                         Pcat=NULL,pers=.95,
+                         pNAs=0,typeNA=2,m=1.01){
+  # Simulate
+  simDat=sim_data_mixed(seed=seed,
+                        TT=TT,
+                        P=P,
+                        Ktrue=K,
+                        mu=mu,
+                        phi=phi,
+                        rho=rho,
+                        Pcat=Pcat,
+                        pers=pers)
+  
+  Y=simDat$SimData.complete
+  
+  est <- fuzzy_jump_m(Y, 
+                        K = K, lambda = lambda, 
+                      m=m,
+                        initial_states = NULL,
+                        max_iter = 10, n_init = 10, tol = NULL, 
+                        verbose = FALSE)
+  
+  
+  est$MAP=factor(relabel_clusters(est$MAP,simDat$mchain),levels=1:K)
+  simDat$mchain=factor(simDat$mchain,levels=1:K)
+  
+  BAC=caret::confusionMatrix(est$MAP,simDat$mchain)$overall[1]
+  
+  ARI=adj.rand.index(est$MAP,simDat$mchain)
+  
+  # Return
+  return(list(
+    S=est$best_S,
+    MAP=est$MAP ,
+    ARI=ARI,
+    BAC=BAC,
+    #,
+    seed=seed,
+    lambda=lambda,
+    TT=TT,
+    P=P,
+    m=m,
+    true_seq=simDat$mchain
   ))
   
 }
@@ -1219,8 +1524,6 @@ simstud_fuzzySTJM=function(lambda,gamma,seed,M,TT,beta, theta,
               BAC=BAC,
               S_true=df_long,
               best_S=best_S,
-              lambda=lambda,
-              gamma=gamma,
               seed=seed,
               M=M,TT=TT,P=P,
               lambda=lambda,

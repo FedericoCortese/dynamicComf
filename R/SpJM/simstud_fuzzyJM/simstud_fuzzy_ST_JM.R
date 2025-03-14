@@ -49,3 +49,29 @@ fuzzy_STJM_sim=parallel::mclapply(1:nrow(hp),
 end_=Sys.time()
 elapsed_=end_-start_
 save(fuzzy_STJM_sim,elapsed_,file="fuzzy_STJM_sim.RData")
+
+
+#load("OneDrive - CNR/Comfort - HMM/simres_fuzzyJM_fuzzySTJM/fuzzy_STJM_sim.RData")
+
+complete_res_sim_fuzzySTJM <- do.call(rbind, lapply(fuzzy_STJM_sim, function(x) {
+  data.frame(lambda = x$lambda, 
+             gamma = x$gamma, 
+             M = x$M, 
+             TT = x$TT, 
+             P = x$P, 
+             seed = x$seed, 
+             BAC = x$BAC, 
+             ARI = x$ARI)
+}))
+rownames(complete_res_sim_fuzzySTJM) <- NULL
+
+head(complete_res_sim_fuzzySTJM)
+
+aggregated_results <- aggregate(cbind(BAC, ARI) ~ lambda + gamma + TT + P + M, 
+                                data = complete_res_sim_fuzzySTJM, 
+                                FUN = mean)
+
+library(dplyr)
+aggregated_results <- complete_res_sim_fuzzySTJM %>%
+  group_by(lambda, gamma, TT, P, M) %>%
+  summarise(avg_BAC = mean(BAC), avg_ARI = mean(ARI), .groups = "drop")

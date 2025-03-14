@@ -69,57 +69,80 @@ end_=Sys.time()
 elapsed_=end_-start_
 save(fuzzyJM_sim,elapsed_,file="fuzzyJM_sim.RData")
 
-
-
-# Results -----------------------------------------------------------------
-
-ARI_fuzzyJM=unlist(lapply(fuzzyJM_sim, function(x) {
-  if (is.list(x) && !is.null(x$ARI)) {
-    return(x$ARI)
-  } else {
-    return(NA)  # Return NA if structure is invalid
-  }
+complete_res_sim_fuzzyJM <- do.call(rbind, lapply(fuzzyJM_sim, function(x) {
+  data.frame(lambda = x[6],
+             TT = x[7], 
+             P = x[8], 
+             seed = x[5], 
+             BAC = x[4], 
+             ARI = x[3])
 }))
 
-BAC_fuzzyJM=unlist(lapply(fuzzyJM_sim, function(x) {
-  if (is.list(x) && !is.null(x$BAC)) {
-    return(x$BAC)
-  } else {
-    return(NA)  # Return NA if structure is invalid
-  }
-}))
+complete_res_sim_fuzzyJM=apply(complete_res_sim_fuzzyJM,2,as.numeric)
+complete_res_sim_fuzzyJM=as.data.frame(complete_res_sim_fuzzyJM_2)
+colnames(complete_res_sim_fuzzyJM) <- c("lambda", "TT", "P", "seed", "BAC", "ARI")
 
-res=data.frame(hp,ARI_fuzzyJM,BAC_fuzzyJM)
+rownames(complete_res_sim_fuzzyJM) <- NULL
 
-# BAC
-average_bac <- aggregate(BAC_fuzzyJM ~ TT + P + lambda, data = res, FUN = mean)
-average_bac
+aggregated_results_fuzzyJM <- aggregate(cbind(BAC, ARI) ~ lambda + TT + P, 
+                                data = complete_res_sim_fuzzyJM, 
+                                FUN = mean)
 
-best_lambda <- average_bac[with(average_bac, ave(BAC_fuzzyJM, 
-                                                 TT, P, FUN = max) == BAC_fuzzyJM), 
-                           c("TT", "P", "lambda", "BAC_fuzzyJM")]
-best_lambda
-
-
-ggplot(average_bac, aes(x = lambda, y = BAC_fuzzyJM)) +
+library(ggplot2)
+ggplot(aggregated_results_fuzzyJM, aes(x = lambda, y = BAC)) +
   geom_line() +
   facet_grid(TT ~ P) +
-  labs(x = "Lambda", y = "Average BAC", title = "BAC") +
+  labs(x = "Lambda", y = "Average BAC") +
   theme_minimal()
 
-# ARI
-average_ari <- aggregate(ARI_fuzzyJM ~ TT + P + lambda, data = res, FUN = mean)
-average_ari
 
-best_lambda <- average_ari[with(average_ari, ave(ARI_fuzzyJM, TT, P, FUN = max) == ARI_fuzzyJM), c("TT", "P", "lambda", "ARI_fuzzyJM")]
-best_lambda
-
-
-ggplot(average_ari, aes(x = lambda, y = ARI_fuzzyJM)) +
-  geom_line() +
-  facet_grid(TT ~ P) +
-  labs(x = "Lambda", y = "Average ARI", title = "ARI") +
-  theme_minimal()
+# ARI_fuzzyJM=unlist(lapply(fuzzyJM_sim, function(x) {
+#   if (is.list(x) && !is.null(x$ARI)) {
+#     return(x$ARI)
+#   } else {
+#     return(NA)  # Return NA if structure is invalid
+#   }
+# }))
+# 
+# BAC_fuzzyJM=unlist(lapply(fuzzyJM_sim, function(x) {
+#   if (is.list(x) && !is.null(x$BAC)) {
+#     return(x$BAC)
+#   } else {
+#     return(NA)  # Return NA if structure is invalid
+#   }
+# }))
+# 
+# res=data.frame(hp,ARI_fuzzyJM,BAC_fuzzyJM)
+# 
+# # BAC
+# average_bac <- aggregate(BAC_fuzzyJM ~ TT + P + lambda, data = res, FUN = mean)
+# average_bac
+# 
+# best_lambda <- average_bac[with(average_bac, ave(BAC_fuzzyJM, 
+#                                                  TT, P, FUN = max) == BAC_fuzzyJM), 
+#                            c("TT", "P", "lambda", "BAC_fuzzyJM")]
+# best_lambda
+# 
+# 
+# ggplot(average_bac, aes(x = lambda, y = BAC_fuzzyJM)) +
+#   geom_line() +
+#   facet_grid(TT ~ P) +
+#   labs(x = "Lambda", y = "Average BAC", title = "BAC") +
+#   theme_minimal()
+# 
+# # ARI
+# average_ari <- aggregate(ARI_fuzzyJM ~ TT + P + lambda, data = res, FUN = mean)
+# average_ari
+# 
+# best_lambda <- average_ari[with(average_ari, ave(ARI_fuzzyJM, TT, P, FUN = max) == ARI_fuzzyJM), c("TT", "P", "lambda", "ARI_fuzzyJM")]
+# best_lambda
+# 
+# 
+# ggplot(average_ari, aes(x = lambda, y = ARI_fuzzyJM)) +
+#   geom_line() +
+#   facet_grid(TT ~ P) +
+#   labs(x = "Lambda", y = "Average ARI", title = "ARI") +
+#   theme_minimal()
 
 
 # mu=.5 pers=.99 ----------------------------------------------------------
@@ -169,60 +192,84 @@ elapsed_=end_-start_
 save(fuzzyJM_sim_scen2,elapsed_,file="fuzzyJM_sim_scen2.RData")
 
 
-
-# Results -----------------------------------------------------------------
-
-ARI_fuzzyJM_scen2=unlist(lapply(fuzzyJM_sim_scen2, function(x) {
-  if (is.list(x) && !is.null(x$ARI)) {
-    return(x$ARI)
-  } else {
-    return(NA)  # Return NA if structure is invalid
-  }
+complete_res_sim_fuzzyJM_scen2 <- do.call(rbind, lapply(fuzzyJM_sim_scen2, function(x) {
+  data.frame(lambda = x[6],
+             TT = x[7], 
+             P = x[8], 
+             seed = x[5], 
+             BAC = x[4], 
+             ARI = x[3])
 }))
 
-BAC_fuzzyJM_scen2=unlist(lapply(fuzzyJM_sim_scen2, function(x) {
-  if (is.list(x) && !is.null(x$BAC)) {
-    return(x$BAC)
-  } else {
-    return(NA)  # Return NA if structure is invalid
-  }
-}))
+complete_res_sim_fuzzyJM_scen2=apply(complete_res_sim_fuzzyJM_scen2,2,as.numeric)
+complete_res_sim_fuzzyJM_scen2=as.data.frame(complete_res_sim_fuzzyJM_scen2)
+colnames(complete_res_sim_fuzzyJM_scen2) <- c("lambda", "TT", "P", "seed", "BAC", "ARI")
 
-res_scen2=data.frame(hp,ARI_fuzzyJM_scen2,BAC_fuzzyJM_scen2)
+rownames(complete_res_sim_fuzzyJM) <- NULL
 
-# BAC
-average_bac <- aggregate(BAC_fuzzyJM_scen2 ~ TT + P + lambda, 
-                         data = res_scen2, FUN = mean)
-average_bac
+aggregated_results_fuzzyJM_scen2 <- aggregate(cbind(BAC, ARI) ~ lambda + TT + P, 
+                                        data = complete_res_sim_fuzzyJM_scen2, 
+                                        FUN = mean)
 
-best_lambda <- average_bac[with(average_bac, ave(BAC_fuzzyJM_scen2, 
-                                                 TT, P, FUN = max) == 
-                                  BAC_fuzzyJM_scen2), 
-                           c("TT", "P", "lambda", "BAC_fuzzyJM_scen2")]
-best_lambda
-
-
-ggplot(average_bac, aes(x = lambda, y = BAC_fuzzyJM_scen2)) +
+library(ggplot2)
+ggplot(aggregated_results_fuzzyJM_scen2, aes(x = lambda, y = BAC)) +
   geom_line() +
   facet_grid(TT ~ P) +
-  labs(x = "Lambda", y = "Average BAC", title = "BAC") +
+  labs(x = "Lambda", y = "Average BAC") +
   theme_minimal()
 
-# ARI
-average_ari <- aggregate(ARI_fuzzyJM_scen2 ~ TT + P + lambda, 
-                         data = res_scen2, FUN = mean)
-average_ari
 
-best_lambda <- average_ari[with(average_ari,
-                                ave(ARI_fuzzyJM_scen2, TT, P, 
-                                    FUN = max) == ARI_fuzzyJM_scen2), 
-                           c("TT", "P", "lambda", "ARI_fuzzyJM_scen2")]
-best_lambda
-
-
-ggplot(average_ari, aes(x = lambda, y = ARI_fuzzyJM_scen2)) +
-  geom_line() +
-  facet_grid(TT ~ P) +
-  labs(x = "Lambda", y = "Average ARI", title = "ARI") +
-  theme_minimal()
+# ARI_fuzzyJM_scen2=unlist(lapply(fuzzyJM_sim_scen2, function(x) {
+#   if (is.list(x) && !is.null(x$ARI)) {
+#     return(x$ARI)
+#   } else {
+#     return(NA)  # Return NA if structure is invalid
+#   }
+# }))
+# 
+# BAC_fuzzyJM_scen2=unlist(lapply(fuzzyJM_sim_scen2, function(x) {
+#   if (is.list(x) && !is.null(x$BAC)) {
+#     return(x$BAC)
+#   } else {
+#     return(NA)  # Return NA if structure is invalid
+#   }
+# }))
+# 
+# res_scen2=data.frame(hp,ARI_fuzzyJM_scen2,BAC_fuzzyJM_scen2)
+# 
+# # BAC
+# average_bac <- aggregate(BAC_fuzzyJM_scen2 ~ TT + P + lambda, 
+#                          data = res_scen2, FUN = mean)
+# average_bac
+# 
+# best_lambda <- average_bac[with(average_bac, ave(BAC_fuzzyJM_scen2, 
+#                                                  TT, P, FUN = max) == 
+#                                   BAC_fuzzyJM_scen2), 
+#                            c("TT", "P", "lambda", "BAC_fuzzyJM_scen2")]
+# best_lambda
+# 
+# 
+# ggplot(average_bac, aes(x = lambda, y = BAC_fuzzyJM_scen2)) +
+#   geom_line() +
+#   facet_grid(TT ~ P) +
+#   labs(x = "Lambda", y = "Average BAC", title = "BAC") +
+#   theme_minimal()
+# 
+# # ARI
+# average_ari <- aggregate(ARI_fuzzyJM_scen2 ~ TT + P + lambda, 
+#                          data = res_scen2, FUN = mean)
+# average_ari
+# 
+# best_lambda <- average_ari[with(average_ari,
+#                                 ave(ARI_fuzzyJM_scen2, TT, P, 
+#                                     FUN = max) == ARI_fuzzyJM_scen2), 
+#                            c("TT", "P", "lambda", "ARI_fuzzyJM_scen2")]
+# best_lambda
+# 
+# 
+# ggplot(average_ari, aes(x = lambda, y = ARI_fuzzyJM_scen2)) +
+#   geom_line() +
+#   facet_grid(TT ~ P) +
+#   labs(x = "Lambda", y = "Average ARI", title = "ARI") +
+#   theme_minimal()
 
