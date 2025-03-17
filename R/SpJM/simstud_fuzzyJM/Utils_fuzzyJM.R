@@ -672,9 +672,6 @@ fuzzy_jump_m <- function(Y,
       s <- initial_states
     } else {
       s=initialize_states(Y,K)
-      while(length(unique(s))!=K){
-        s=initialize_states(Y,K)
-      }
     }
     
     S <- matrix(0, nrow = TT, ncol = K)
@@ -682,23 +679,50 @@ fuzzy_jump_m <- function(Y,
     # Assign 1s in a single step
     S[cbind(row_indices, s)] <- 1 
     
-    mu <- matrix(0, nrow=K, ncol=length(cont.indx))
+    mu <- matrix(NA, nrow=K, ncol=length(cont.indx))
     if(cat_flag){
-      mo <- matrix(0, nrow=K, ncol=length(cat.indx))
+      mo <- matrix(NA, nrow=K, ncol=length(cat.indx))
     }
-    
+    us=unique(s)
+    tab_s=as.vector(table(s))
+    # for (i in unique(s)) {
+    #   # substitute with medians
+    #   mu[i,] <- apply(Ycont[s==i,], 2, median, na.rm = TRUE)
+    #   if(cat_flag){
+    #     if(length(cat.indx)==1){
+    #       mo[i,]=Mode(Ycat[s==i])
+    #     }
+    #     else{
+    #       mo[i,]=apply(Ycat[s==i,],2,Mode)
+    #     }
+    #   }
+    # }
     for (i in unique(s)) {
-      # substitute with medians
-      mu[i,] <- apply(Ycont[s==i,], 2, median, na.rm = TRUE)
-      if(cat_flag){
-        if(length(cat.indx)==1){
-          mo[i,]=Mode(Ycat[s==i])
-        }
-        else{
-          mo[i,]=apply(Ycat[s==i,],2,Mode)
+      # Ensure that Ycont[s == i, ] remains a matrix
+      subset_Ycont <- Ycont[s == i, , drop = FALSE]
+      
+      # Substitute with medians, ensuring it works for a single row
+      if (nrow(subset_Ycont) > 1) {
+        mu[i, ] <- apply(subset_Ycont, 2, median, na.rm = TRUE)
+      } else {
+        mu[i, ] <- as.vector(subset_Ycont)  # Direct assignment for single row
+      }
+      
+      if (cat_flag) {
+        subset_Ycat <- Ycat[s == i, , drop = FALSE]  # Ensure it's a matrix
+        
+        if (length(cat.indx) == 1) {
+          mo[i, ] <- Mode(subset_Ycat)
+        } else {
+          if (nrow(subset_Ycat) > 1) {
+            mo[i, ] <- apply(subset_Ycat, 2, Mode)
+          } else {
+            mo[i, ] <- as.vector(subset_Ycat)  # Direct assignment for single row
+          }
         }
       }
     }
+    
     
     mu=data.frame(mu)
     mumo=data.frame(matrix(0,nrow=K,ncol=P))
@@ -901,7 +925,7 @@ simstud_fuzzyJM_m=function(seed,lambda,TT,P,
                          K=3,mu=1,
                          phi=.8,rho=0,
                          Pcat=NULL,pers=.95,
-                         pNAs=0,typeNA=2,m=1.01){
+                         pNAs=0,typeNA=2,m){
   # Simulate
   simDat=sim_data_mixed(seed=seed,
                         TT=TT,
