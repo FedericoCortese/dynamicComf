@@ -535,11 +535,13 @@ fuzzy_jump <- function(Y,
 }
 
 objective_function <- function(s, g_values, lambda, s_t_prev,m) {
-  sum(s^m * g_values^2) + lambda * sum((s_t_prev - s)^2)
+  #sum(s^m * g_values^2) + lambda * sum((s_t_prev - s)^2)
+  sum(s^m * g_values) + lambda * sum((s_t_prev - s)^2)
 }
 
 gradient_function <- function(s, g_values, lambda, s_t_prev, m) {
-  m * s^(m-1) * g_values^2 - 2 * lambda * (s_t_prev - s)
+  #m * s^(m-1) * g_values^2 - 2 * lambda * (s_t_prev - s)
+  m * s^(m-1) * g_values - 2 * lambda * (s_t_prev - s)
 }
 
 optimize_s <- function(g_values, lambda, s_t_prev, m) {
@@ -707,7 +709,8 @@ fuzzy_jump_m <- function(Y,
       V1=1/V
       S=matrix(0,nrow=TT,ncol=K)
       # FUZZY
-      S[1,]=(V1[1,])^(2/(m-1))/sum((V1[1,])^(2/(m-1)))
+      S[1,]=(V1[1,])^(1/(m-1))/sum((V1[1,])^(1/(m-1)))
+      #S[1,]=(V1[1,])^(2/(m-1))/sum((V1[1,])^(2/(m-1)))
       for(t in 2:TT){
         S[t,]=optimize_s(g_values=V[t,], lambda=lambda, s_t_prev=S[t-1,],m=m)
         
