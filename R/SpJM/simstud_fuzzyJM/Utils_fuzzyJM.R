@@ -136,6 +136,22 @@ order_states_condMean=function(y,s){
   return(states_temp)
 }
 
+order_states_condMed=function(y,s){
+  
+  # This function organizes states by assigning 1 to the state with the smallest conditional median for vector y
+  # and sequentially numbering each new state as 2, 3, etc., incrementing by 1 for each newly observed state.
+  
+  #Slong=c(t(S))
+  # condMeans=sort(tapply(y,Slong,mean,na.rm=T))
+  condMed=sort(tapply(y,s,median,na.rm=T))
+  
+  states_temp=match(s,names(condMed))
+  
+  #states_temp=matrix(states_temp,nrow=nrow(S),byrow = T)
+  
+  return(states_temp)
+}
+
 punct=function(x,pNAs,typeNA){
   
   # x is a vector (column of the dataset)
@@ -776,16 +792,28 @@ fuzzy_jump_m <- function(Y,
     s=initialize_states(Y,K)
   }
   
-  MAP=apply(best_S,1,which.max)
-  res_Y=data.frame(Y,MAP=MAP)
-  col_sort=as.integer(names(sort(tapply(res_Y[,cont.indx[1]],res_Y$MAP,mean))))
-  mumo=mumo[col_sort,]
-  best_S=best_S[,col_sort]
+  old_MAP=apply(best_S,1,which.max)
+  MAP=order_states_condMed(Y[,cont.indx[1]],old_MAP)
+  
+  tab <- table(MAP, old_MAP)
+  new_order <- apply(tab, 1, which.max)
+  
+  # Reorder the columns of S accordingly
+  best_S <- best_S[, new_order]
+  
+  
+  # res_Y=data.frame(Y,MAP=MAP)
+  # col_sort=as.integer(names(sort(tapply(res_Y[,cont.indx[1]],
+  #                                       res_Y$MAP,mean))))
+  #mumo=mumo[col_sort,]
+  # best_S=best_S[,col_sort]
   
   return(list(best_S=best_S,
               MAP=MAP,
-              Y=Y,
-              condMM=mumo))
+              Y=Y
+              # ,
+              # condMM=mumo
+              ))
 }
 
 relabel_clusters <- function(predicted, true) {
@@ -902,16 +930,16 @@ simstud_fuzzyJM_m=function(seed,lambda,TT,P,
   
   #matplot(est$best_S,type='l',main=paste0("m = ", m))
   
-  MAP=factor(as.vector(unlist(est[2])),levels=1:K)
-  true_states=factor(simDat$mchain,levels=1:K)
-  #MAP=factor(MAP,levels=1:K)
-  S=matrix(unlist(est[1]),ncol=K,nrow=TT,byrow=F)
-  #est$MAP=factor(relabel_clusters(est$MAP,simDat$mchain),levels=1:K)
-  MAP=factor(relabel_clusters(MAP,true_states),levels=1:K)
+  true_states=simDat$mchain
+  true_states=order_states_condMed(Y[,(Pcat+1)],true_states)
+  
+  MAP=factor(est$MAP,levels=1:K)
+  true_states=factor(true_states,levels=1:K)
   
   BAC=caret::confusionMatrix(MAP,true_states)$overall[1]
-  
   ARI=adj.rand.index(MAP,true_states)
+  
+  S=matrix(unlist(est[1]),ncol=K,nrow=TT,byrow=F)
   
   # Return
   return(list(
