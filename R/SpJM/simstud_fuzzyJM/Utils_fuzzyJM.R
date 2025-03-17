@@ -683,8 +683,8 @@ fuzzy_jump_m <- function(Y,
     if(cat_flag){
       mo <- matrix(NA, nrow=K, ncol=length(cat.indx))
     }
-    us=unique(s)
-    tab_s=as.vector(table(s))
+    # us=unique(s)
+    # tab_s=as.vector(table(s))
     # for (i in unique(s)) {
     #   # substitute with medians
     #   mu[i,] <- apply(Ycont[s==i,], 2, median, na.rm = TRUE)
@@ -757,7 +757,9 @@ fuzzy_jump_m <- function(Y,
       S[1,]=(V1[1,])^(1/(m-1))/sum((V1[1,])^(1/(m-1)))
       #S[1,]=(V1[1,])^(2/(m-1))/sum((V1[1,])^(2/(m-1)))
       for(t in 2:TT){
-        S[t,]=optimize_s(g_values=V[t,], lambda=lambda, s_t_prev=S[t-1,],m=m)
+        S[t,]=optimize_s(g_values=V[t,], 
+                         lambda=lambda, 
+                         s_t_prev=S[t-1,],m=m)
         
       }
       #matplot(S,type='l',main="m=1.01")
@@ -973,7 +975,9 @@ simstud_fuzzyJM_m=function(seed,lambda,TT,P,
   MAP=factor(est$MAP,levels=1:K)
   true_states=factor(true_states,levels=1:K)
   
-  BAC=caret::confusionMatrix(MAP,true_states)$overall[1]
+  BAC=as.numeric(
+    caret::confusionMatrix(MAP,true_states)$overall[1]
+  )
   ARI=adj.rand.index(MAP,true_states)
   
   S=matrix(unlist(est[1]),ncol=K,nrow=TT,byrow=F)
