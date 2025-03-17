@@ -305,7 +305,9 @@ sim_data_mixed=function(seed=123,
     P=P,
     Ktrue=Ktrue,
     pers=pers, 
-    seed=seed))
+    seed=seed,
+    P=P,
+    Pcat=Pcat))
   
 }
 
@@ -910,28 +912,36 @@ simstud_fuzzyJM_m=function(seed,lambda,TT,P,
   
   Y=simDat$SimData.complete
   
-  success <- FALSE
-  trials=1
-  while (!success&trials<10) {
-    est <- try(fuzzy_jump_m(Y=Y, 
+  # success <- FALSE
+  # trials=1
+  # while (!success&trials<10) {
+    est <- 
+      #try(
+      fuzzy_jump_m(Y=Y, 
                             K = K, lambda = lambda, 
                             m=m,
                             initial_states = NULL,
                             max_iter = 10, n_init = 10, tol = NULL, 
-                            verbose = FALSE), silent = TRUE)
-    trials=trials+1
+                            verbose = FALSE)
+      #, silent = TRUE)
+    #trials=trials+1
     
-    if (!inherits(est, "try-error")) {
-      success <- TRUE  # Exit the loop if no error
-    } else {
-      message("Retrying fuzzy_jump() due to an error...")
-    }
-  }
+    # if (!inherits(est, "try-error")) {
+    #   success <- TRUE  # Exit the loop if no error
+    # } else {
+    #   message("Retrying fuzzy_jump() due to an error...")
+    # }
+  #}
   
   #matplot(est$best_S,type='l',main=paste0("m = ", m))
   
   true_states=simDat$mchain
-  true_states=order_states_condMed(Y[,(Pcat+1)],true_states)
+  if(is.null(simDat$Pcat)){
+    true_states=order_states_condMed(Y[,1],true_states)
+  }
+  else{
+    true_states=order_states_condMed(Y[,simDat$Pcat+1],true_states)
+  }
   
   MAP=factor(est$MAP,levels=1:K)
   true_states=factor(true_states,levels=1:K)
