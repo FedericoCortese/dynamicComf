@@ -788,6 +788,7 @@ fuzzy_jump_m <- function(Y,
 relabel_clusters <- function(predicted, true) {
   mapping <- apply(table(predicted, true), 1, which.max)
   sapply(predicted, function(x) mapping[x])
+  #return(as.factor(predicted))
 }
 
 simstud_fuzzyJM=function(seed,lambda,TT,P,
@@ -898,16 +899,16 @@ simstud_fuzzyJM_m=function(seed,lambda,TT,P,
   
   #matplot(est$best_S,type='l',main=paste0("m = ", m))
   
-  MAP=as.vector(unlist(est[2]))
+  MAP=factor(as.vector(unlist(est[2])),levels=1:K)
+  true_states=factor(simDat$mchain,levels=1:K)
+  #MAP=factor(MAP,levels=1:K)
   S=matrix(unlist(est[1]),ncol=K,nrow=TT,byrow=F)
   #est$MAP=factor(relabel_clusters(est$MAP,simDat$mchain),levels=1:K)
-  MAP=factor(relabel_clusters(MAP,simDat$mchain),levels=1:K)
+  MAP=factor(relabel_clusters(MAP,true_states),levels=1:K)
   
-  simDat$mchain=factor(simDat$mchain,levels=1:K)
+  BAC=caret::confusionMatrix(MAP,true_states)$overall[1]
   
-  BAC=caret::confusionMatrix(MAP,simDat$mchain)$overall[1]
-  
-  ARI=adj.rand.index(MAP,simDat$mchain)
+  ARI=adj.rand.index(MAP,true_states)
   
   # Return
   return(list(
@@ -921,7 +922,7 @@ simstud_fuzzyJM_m=function(seed,lambda,TT,P,
     TT=TT,
     P=P,
     m=m,
-    true_seq=simDat$mchain
+    true_seq=true_states
   ))
   
 }
