@@ -672,6 +672,9 @@ fuzzy_jump_m <- function(Y,
       s <- initial_states
     } else {
       s=initialize_states(Y,K)
+      while(length(unique(s))!=K){
+        s=initialize_states(Y,K)
+      }
     }
     
     S <- matrix(0, nrow = TT, ncol = K)
