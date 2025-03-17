@@ -562,23 +562,66 @@ gradient_function <- function(s, g_values, lambda, s_t_prev, m) {
   m * s^(m-1) * g_values - 2 * lambda * (s_t_prev - s)
 }
 
-optimize_s <- function(g_values, lambda, s_t_prev, m) {
+# optimize_s <- function(g_values, lambda, s_t_prev, m) {
+#   K <- length(g_values)
+#   #s_init <- rep(1/K, K)  # Initial guess (uniform)
+#   s_init=runif(K)
+#   s_init=s_init/sum(s_init)
+#   
+#   result <- nloptr::nloptr(
+#     x0 = s_init,
+#     eval_f = function(s) objective_function(s, g_values, lambda, s_t_prev, m),
+#     eval_grad_f = function(s) gradient_function(s, g_values, lambda, s_t_prev, m),
+#     lb = rep(0, K), 
+#     ub = rep(1, K),
+#     eval_g_eq = function(s) sum(s) - 1,  # Constraint: sum(s) = 1
+#     eval_jac_g_eq = function(s) rep(1, K),  # Jacobian of equality constraint
+#     opts = list("algorithm"="NLOPT_LD_SLSQP", "xtol_rel"=1e-6)
+#   )
+#   
+#   return(result$solution)
+# }
+
+optimize_s <- function(g_values, lambda, s_t_prev, m, max_attempts = 10) {
   K <- length(g_values)
-  s_init <- rep(1/K, K)  # Initial guess (uniform)
   
-  result <- nloptr::nloptr(
-    x0 = s_init,
-    eval_f = function(s) objective_function(s, g_values, lambda, s_t_prev, m),
-    eval_grad_f = function(s) gradient_function(s, g_values, lambda, s_t_prev, m),
-    lb = rep(0, K), 
-    ub = rep(1, K),
-    eval_g_eq = function(s) sum(s) - 1,  # Constraint: sum(s) = 1
-    eval_jac_g_eq = function(s) rep(1, K),  # Jacobian of equality constraint
-    opts = list("algorithm"="NLOPT_LD_SLSQP", "xtol_rel"=1e-6)
-  )
+  attempt <- 1
+  while (attempt <= max_attempts) {
+    # Random initialization ensuring sum(s) = 1
+    s_init <- runif(K)
+    s_init <- s_init / sum(s_init)
+    
+    # Try optimizing
+    result <- tryCatch(
+      {
+        nloptr::nloptr(
+          x0 = s_init,
+          eval_f = function(s) objective_function(s, g_values, lambda, s_t_prev, m),
+          eval_grad_f = function(s) gradient_function(s, g_values, lambda, s_t_prev, m),
+          lb = rep(0, K), 
+          ub = rep(1, K),
+          eval_g_eq = function(s) sum(s) - 1,  # Constraint: sum(s) = 1
+          eval_jac_g_eq = function(s) rep(1, K),  # Jacobian of equality constraint
+          opts = list("algorithm"="NLOPT_LD_SLSQP", "xtol_rel"=1e-6)
+        )
+      },
+      error = function(e) NULL  # If error occurs, return NULL
+    )
+    
+    # Check if optimization was successful
+    if (!is.null(result) && !is.null(result$solution) && all(!is.na(result$solution))) {
+      return(result$solution)  # Return solution if valid
+    }
+    
+    attempt <- attempt + 1
+  }
   
-  return(result$solution)
+  # If all attempts fail, return a fallback solution (e.g., uniform distribution)
+  warning("Optimization failed after ", max_attempts, " attempts. Returning uniform distribution.")
+  return(rep(1/K, K))  # Return uniform distribution as a last resort
 }
+
+
 fuzzy_jump_m <- function(Y, 
                          K, lambda=1e-5, 
                          m=2,
