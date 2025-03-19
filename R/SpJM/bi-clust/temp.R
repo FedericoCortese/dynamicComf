@@ -40,7 +40,7 @@ head(tmp)
 library(ggplot2)
 library(reshape2)
 
-map_counts <- data %>%
+map_counts <- tmp %>%
   group_by(m) %>%
   summarise(
     count_1 = sum(MAP == 1),
