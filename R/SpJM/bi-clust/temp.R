@@ -39,6 +39,20 @@ head(tmp)
 
 library(ggplot2)
 library(reshape2)
+
+map_counts <- data %>%
+  group_by(m) %>%
+  summarise(
+    count_1 = sum(MAP == 1),
+    count_2 = sum(MAP == 2),
+    count_3 = sum(MAP == 3)
+  )
+
+# Ordinamento delle colonne: prima MAP = 1, poi MAP = 2, poi MAP = 3
+map_counts <- map_counts %>%
+  arrange(desc(count_1), desc(count_2), desc(count_3))
+
+
 data_melted <- dcast(tmp, t ~ m, value.var = "MAP")
 
 # Convertiamo in formato matrice (escludendo la colonna t)
