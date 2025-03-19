@@ -53,7 +53,15 @@ map_counts <- map_counts %>%
   arrange(desc(count_1), desc(count_2), desc(count_3))
 
 
-data_melted <- dcast(tmp, t ~ m, value.var = "MAP")
+# Creiamo una tabella pivot con t sulle righe e m sulle colonne
+data_matrix <- dcast(data, t ~ m, value.var = "MAP")
+
+# Riordinamento delle colonne secondo il criterio stabilito
+ordered_cols <- c("t", as.character(map_counts$m))  # Manteniamo la colonna t
+data_matrix <- data_matrix[, ordered_cols]
+
+# Convertiamo il dataframe in formato lungo per ggplot
+data_melted <- melt(data_matrix, id.vars = "t")
 
 # Convertiamo in formato matrice (escludendo la colonna t)
 rownames(data_melted) <- data_melted$t
@@ -61,10 +69,10 @@ data_melted$t <- NULL
 data_matrix <- as.matrix(data_melted)
 
 # Creazione della heatmap con ggplot2
-heatmap_plot <- ggplot(melt(data_matrix), aes(x = Var2, y = Var1, fill = value)) +
+heatmap_plot <- ggplot(data_melted, aes(x = variable, y = factor(t), fill = value)) +
   geom_tile() +
-  #scale_fill_gradient(low = "white", high = "red") + 
-  labs(title = "Heatmap di MAP", x = "m", y = "t", fill = "MAP") +
+ # scale_fill_gradient(low = "white", high = "red") + 
+  labs(title = "Heatmap di MAP con colonne riordinate", x = "m (riordinato)", y = "t", fill = "MAP") +
   theme_minimal()
 
 # Visualizziamo il grafico
