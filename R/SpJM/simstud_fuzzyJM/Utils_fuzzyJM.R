@@ -890,6 +890,244 @@ fuzzy_jump_m <- function(Y,
               ))
 }
 
+fuzzy_jump_coord <- function(Y, 
+                         K, 
+                         lambda=1e-5, 
+                         m=1,
+                         initial_states=NULL,
+                         max_iter=10, n_init=10, tol=NULL, 
+                         verbose=FALSE
+                         # ,
+                         # alpha=NULL
+                         # # ,
+                         #        time_vec=NULL
+                         
+) {
+  # Fit jump model for mixed type data 
+  
+  # Arguments:
+  # Y: data.frame with mixed data types. Categorical variables must be factors.
+  # K: number of states
+  # lambda: penalty for the number of jumps
+  # initial_states: initial state sequence
+  # max_iter: maximum number of iterations
+  # n_init: number of initializations
+  # tol: tolerance for convergence
+  # verbose: print progress
+  # time_vec is a vector of time points, needed if times are not equally sampled
+  
+  # Value:
+  # best_s: estimated state sequence
+  # Y: imputed data
+  # Y.orig: original data
+  # condMM: state-conditional medians and modes
+  
+  K=as.integer(K)
+  
+  TT <- nrow(Y)
+  P <- ncol(Y)
+  best_loss <- NULL
+  best_S <- NULL
+  
+  # Which vars are categorical and which are numeric
+  cat_flag=any(sapply(Y, is.factor))
+  
+  if(cat_flag){
+    cat.indx=which(sapply(Y, is.factor))
+    cont.indx=which(sapply(Y, is.numeric))
+    Ycont=Y[,cont.indx]
+    Ycont=apply(Ycont,2,scale)
+    Y[,cont.indx]=Ycont
+    Ycat=Y[,cat.indx]
+    
+    if(length(cat.indx)==1){
+      n_levs=length(levels(Ycat))
+    }
+    else{
+      n_levs=apply(Ycat, 2, function(x)length(unique(x[!is.na(x)])))
+    }
+    
+    n_cat=length(cat.indx)
+    n_cont=P-n_cat
+    
+  }
+  else{
+    cont.indx=1:P
+    Ycont=Y
+    Ycont=apply(Ycont,2,scale)
+    Y[,cont.indx]=Ycont
+    n_cont=dim(Y)[2]
+    n_cat=0
+  }
+  
+  
+  
+  
+  for (init in 1:n_init) {
+    
+    # State initialization through kmeans++
+    if (!is.null(initial_states)) {
+      s <- initial_states
+    } else {
+      s=initialize_states(Y,K)
+    }
+    
+    S <- matrix(0, nrow = TT, ncol = K)
+    row_indices <- rep(1:TT)  # Row positions in SS
+    # Assign 1s in a single step
+    S[cbind(row_indices, s)] <- 1 
+    
+    mu <- matrix(NA, nrow=K, ncol=length(cont.indx))
+    if(cat_flag){
+      mo <- matrix(NA, nrow=K, ncol=length(cat.indx))
+    }
+    
+    for (i in unique(s)) {
+      # Ensure that Ycont[s == i, ] remains a matrix
+      subset_Ycont <- Ycont[s == i, , drop = FALSE]
+      
+      # Substitute with medians, ensuring it works for a single row
+      if (nrow(subset_Ycont) > 1) {
+        mu[i, ] <- apply(subset_Ycont, 2, median, na.rm = TRUE)
+      } else {
+        mu[i, ] <- as.vector(subset_Ycont)  # Direct assignment for single row
+      }
+      
+      if (cat_flag) {
+        subset_Ycat <- Ycat[s == i, , drop = FALSE]  # Ensure it's a matrix
+        
+        if (length(cat.indx) == 1) {
+          mo[i, ] <- Mode(subset_Ycat)
+        } else {
+          if (nrow(subset_Ycat) > 1) {
+            mo[i, ] <- apply(subset_Ycat, 2, Mode)
+          } else {
+            mo[i, ] <- as.vector(subset_Ycat)  # Direct assignment for single row
+          }
+        }
+      }
+    }
+    
+    
+    mu=data.frame(mu)
+    mumo=data.frame(matrix(0,nrow=K,ncol=P))
+    
+    if(cat_flag){
+      mo=data.frame(mo,stringsAsFactors=TRUE)
+      for(i in 1:n_cat){
+        if(length(cat.indx)==1){
+          mo[,i]=factor(mo[,i],levels=levels(Ycat[i]))
+        }
+        else{
+          mo[,i]=factor(mo[,i],levels=levels(Ycat[,i]))
+        }
+      }
+      mumo=data.frame(matrix(0,nrow=K,ncol=P))
+      mumo[,cat.indx]=mo
+    }
+    
+    mumo[,cont.indx]=mu
+    colnames(mumo)=colnames(Y)
+    
+    S_old=S
+    loss_old <- 1e10
+    for (it in 1:max_iter) {
+      
+      V=gower.dist(Y,mumo)
+      
+      
+      
+      for(t in 2:TT){
+        S[t,]=optimize_s(g_values=V[t,], 
+                         lambda=lambda, 
+                         s_t_prev=S[t-1,],m=m)
+        
+      }
+      #matplot(S,type='l',main="m=1.01")
+      
+      #S=t(apply(S,1,function(x) x/sum(x)))
+      
+      # But this is not the true loss
+      #loss <- min(V[1,])
+      
+      #???
+      S_prec=rbind(rep(0,K),S[-TT,])
+      Lambda=lambda*(S-S_prec)^2
+      Lambda[1,]=0
+      loss=sum(S^2*V+Lambda)
+      
+      for(k in 1:K){
+        #mu[k,]=apply(Ycont, 2, function(x) weighted_median(x, weights = S[,k]))
+        #mu[k,]=apply(Ycont,2,function(x){poliscidata::wtd.median(x,weights=S[,k])})
+        mu[k,]=apply(Ycont,2,function(x){poliscidata::wtd.median(x,weights=S[,k]^2)})
+        if(cat_flag){
+          if(n_cat==1){
+            #mo[k,]=poliscidata::wtd.mode(Ycat,weights=S[,k])
+            mo[k,]=poliscidata::wtd.mode(Ycat,weights=S[,k]^2)
+            
+          }
+          else{
+            #mo[k,]=apply(Ycat,2,function(x){poliscidata::wtd.mode(x,weights=S[,k])})
+            mo[k,]=apply(Ycat,2,function(x){poliscidata::wtd.mode(x,weights=S[,k]^2)})
+            
+          }
+          #mo[k,]=apply(Ycat,2,function(x)weighted_mode(x,weights=S[,k]))
+        }
+      }
+      
+      if(cat_flag){
+        mumo[,cat.indx]=mo
+      }
+      
+      mumo[,cont.indx]=mu
+      colnames(mumo)=colnames(Y)
+      
+      
+      if (verbose) {
+        cat(sprintf('Iteration %d: %.6e\n', it, loss))
+      }
+      if (!is.null(tol)) {
+        epsilon <- loss_old - loss
+        if (epsilon < tol) {
+          break
+        }
+      } else if (all(S == S_old)) {
+        break
+      }
+      loss_old <- loss
+      S_old=S
+    }
+    if (is.null(best_S) || (loss_old < best_loss)) {
+      best_loss <- loss_old
+      best_S <- S
+    }
+    s=initialize_states(Y,K)
+  }
+  
+  old_MAP=apply(best_S,1,which.max)
+  MAP=order_states_condMed(Y[,cont.indx[1]],old_MAP)
+  
+  tab <- table(MAP, old_MAP)
+  new_order <- apply(tab, 1, which.max)
+  
+  # Reorder the columns of S accordingly
+  best_S <- best_S[, new_order]
+  
+  
+  # res_Y=data.frame(Y,MAP=MAP)
+  # col_sort=as.integer(names(sort(tapply(res_Y[,cont.indx[1]],
+  #                                       res_Y$MAP,mean))))
+  #mumo=mumo[col_sort,]
+  # best_S=best_S[,col_sort]
+  
+  return(list(best_S=best_S,
+              MAP=MAP,
+              Y=Y
+              # ,
+              # condMM=mumo
+  ))
+}
+
 relabel_clusters <- function(predicted, true) {
   mapping <- apply(table(predicted, true), 1, which.max)
   sapply(predicted, function(x) mapping[x])
