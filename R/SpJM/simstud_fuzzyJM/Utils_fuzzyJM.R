@@ -552,35 +552,33 @@ fuzzy_jump <- function(Y,
               condMM=mumo))
 }
 
-objective_function <- function(s, g_values, lambda, s_t_prev,m) {
-  #sum(s^m * g_values^2) + lambda * sum((s_t_prev - s)^2)
-  sum(s^m * g_values) + lambda * sum((s_t_prev - s)^2)
+# objective_function <- function(s, g_values, lambda, s_t_prev,m) {
+#   #sum(s^m * g_values^2) + lambda * sum((s_t_prev - s)^2)
+#   sum(s^m * g_values) + lambda * sum((s_t_prev - s)^2)
+# }
+# 
+# gradient_function <- function(s, g_values, lambda, s_t_prev, m) {
+#   #m * s^(m-1) * g_values^2 - 2 * lambda * (s_t_prev - s)
+#   m * s^(m-1) * g_values - 2 * lambda * (s_t_prev - s)
+# }
+
+######
+objective_function <- function(s, g_values, lambda, s_t_prec,s_t_succ,m) {
+  #sum(s^m * g_values) + lambda * sum((s_t_prec - s)^2+(s_t_succ - s)^2) 
+  sum(s^m * g_values) + lambda *( sum(abs(s_t_prec - s))^2+sum(abs(s_t_succ - s))^2) 
 }
+
+objective_function_1T <- function(s, g_values, lambda, s_t_1,m) {
+  #sum(s^m * g_values) + lambda * sum((s_t_1 - s)^2) 
+  sum(s^m * g_values) + lambda * sum(abs(s_t_1 - s))^2 
+}
+
+#####
 
 gradient_function <- function(s, g_values, lambda, s_t_prev, m) {
   #m * s^(m-1) * g_values^2 - 2 * lambda * (s_t_prev - s)
   m * s^(m-1) * g_values - 2 * lambda * (s_t_prev - s)
 }
-
-# optimize_s <- function(g_values, lambda, s_t_prev, m) {
-#   K <- length(g_values)
-#   #s_init <- rep(1/K, K)  # Initial guess (uniform)
-#   s_init=runif(K)
-#   s_init=s_init/sum(s_init)
-#   
-#   result <- nloptr::nloptr(
-#     x0 = s_init,
-#     eval_f = function(s) objective_function(s, g_values, lambda, s_t_prev, m),
-#     eval_grad_f = function(s) gradient_function(s, g_values, lambda, s_t_prev, m),
-#     lb = rep(0, K), 
-#     ub = rep(1, K),
-#     eval_g_eq = function(s) sum(s) - 1,  # Constraint: sum(s) = 1
-#     eval_jac_g_eq = function(s) rep(1, K),  # Jacobian of equality constraint
-#     opts = list("algorithm"="NLOPT_LD_SLSQP", "xtol_rel"=1e-6)
-#   )
-#   
-#   return(result$solution)
-# }
 
 optimize_s <- function(g_values, lambda, s_t_prev, m, max_attempts = 10) {
   K <- length(g_values)
@@ -620,6 +618,27 @@ optimize_s <- function(g_values, lambda, s_t_prev, m, max_attempts = 10) {
   warning("Optimization failed after ", max_attempts, " attempts. Returning uniform distribution.")
   return(rep(1/K, K))  # Return uniform distribution as a last resort
 }
+
+# optimize_s <- function(g_values, lambda, s_t_prev, m) {
+#   K <- length(g_values)
+#   #s_init <- rep(1/K, K)  # Initial guess (uniform)
+#   s_init=runif(K)
+#   s_init=s_init/sum(s_init)
+#   
+#   result <- nloptr::nloptr(
+#     x0 = s_init,
+#     eval_f = function(s) objective_function(s, g_values, lambda, s_t_prev, m),
+#     eval_grad_f = function(s) gradient_function(s, g_values, lambda, s_t_prev, m),
+#     lb = rep(0, K), 
+#     ub = rep(1, K),
+#     eval_g_eq = function(s) sum(s) - 1,  # Constraint: sum(s) = 1
+#     eval_jac_g_eq = function(s) rep(1, K),  # Jacobian of equality constraint
+#     opts = list("algorithm"="NLOPT_LD_SLSQP", "xtol_rel"=1e-6)
+#   )
+#   
+#   return(result$solution)
+# }
+
 
 
 fuzzy_jump_m <- function(Y, 
@@ -890,17 +909,14 @@ fuzzy_jump_m <- function(Y,
               ))
 }
 
+######
 fuzzy_jump_coord <- function(Y, 
                          K, 
                          lambda=1e-5, 
                          m=1,
-                         initial_states=NULL,
-                         max_iter=10, n_init=10, tol=NULL, 
+                         max_iter=5, 
+                         n_init=10, tol=1e-16, 
                          verbose=FALSE
-                         # ,
-                         # alpha=NULL
-                         # # ,
-                         #        time_vec=NULL
                          
 ) {
   # Fit jump model for mixed type data 
@@ -965,110 +981,118 @@ fuzzy_jump_coord <- function(Y,
   
   for (init in 1:n_init) {
     
-    # State initialization through kmeans++
-    if (!is.null(initial_states)) {
-      s <- initial_states
-    } else {
-      s=initialize_states(Y,K)
-    }
-    
+    # k-prot++
+    s=initialize_states(Y,K)
     S <- matrix(0, nrow = TT, ncol = K)
-    row_indices <- rep(1:TT)  # Row positions in SS
-    # Assign 1s in a single step
+    row_indices <- rep(1:TT)  
     S[cbind(row_indices, s)] <- 1 
     
+    
+    # initialize mumo
     mu <- matrix(NA, nrow=K, ncol=length(cont.indx))
     if(cat_flag){
       mo <- matrix(NA, nrow=K, ncol=length(cat.indx))
     }
     
-    for (i in unique(s)) {
-      # Ensure that Ycont[s == i, ] remains a matrix
-      subset_Ycont <- Ycont[s == i, , drop = FALSE]
-      
-      # Substitute with medians, ensuring it works for a single row
-      if (nrow(subset_Ycont) > 1) {
-        mu[i, ] <- apply(subset_Ycont, 2, median, na.rm = TRUE)
-      } else {
-        mu[i, ] <- as.vector(subset_Ycont)  # Direct assignment for single row
-      }
-      
-      if (cat_flag) {
-        subset_Ycat <- Ycat[s == i, , drop = FALSE]  # Ensure it's a matrix
-        
-        if (length(cat.indx) == 1) {
-          mo[i, ] <- Mode(subset_Ycat)
-        } else {
-          if (nrow(subset_Ycat) > 1) {
-            mo[i, ] <- apply(subset_Ycat, 2, Mode)
-          } else {
-            mo[i, ] <- as.vector(subset_Ycat)  # Direct assignment for single row
-          }
+    for(k in 1:K){
+      mu[k,]=apply(Ycont,2,function(x){poliscidata::wtd.median(x,weights=S[,k]^m)})
+      if(cat_flag){
+        if(n_cat==1){
+          mo[k,]=poliscidata::wtd.mode(Ycat,weights=S[,k]^m)
+          
+        }
+        else{
+          mo[k,]=apply(Ycat,2,function(x){poliscidata::wtd.mode(x,weights=S[,k]^m)})
         }
       }
     }
     
-    
-    mu=data.frame(mu)
     mumo=data.frame(matrix(0,nrow=K,ncol=P))
-    
     if(cat_flag){
-      mo=data.frame(mo,stringsAsFactors=TRUE)
-      for(i in 1:n_cat){
-        if(length(cat.indx)==1){
-          mo[,i]=factor(mo[,i],levels=levels(Ycat[i]))
-        }
-        else{
-          mo[,i]=factor(mo[,i],levels=levels(Ycat[,i]))
-        }
-      }
-      mumo=data.frame(matrix(0,nrow=K,ncol=P))
       mumo[,cat.indx]=mo
     }
     
     mumo[,cont.indx]=mu
     colnames(mumo)=colnames(Y)
     
+    if(cat_flag){
+      for(p in 1:n_cat){
+        mumo[,cat.indx[p]]=factor(mumo[,cat.indx[p]],levels=levels(Ycat[,p]))
+      }
+    }
+    
     S_old=S
-    loss_old <- 1e10
+    V=gower.dist(Y,mumo)
+    loss_old=sum(V*S^m)+lambda*sum(S[1:(TT-1),]-S[2:TT,])^2
+    
     for (it in 1:max_iter) {
       
-      V=gower.dist(Y,mumo)
+      # S(1)
       
+      result <- Rsolnp::solnp(#pars = S[1,],
+        pars = rep(1/K,K),
+                      fun = function(s) objective_function_1T(s, 
+                                                              g_values=V[1,], 
+                                                              lambda=lambda, 
+                                                              s_t_1=S[2,], 
+                                                              m=m),
+                      eqfun = function(s) sum(s),
+                      eqB = 1,
+                      LB = rep(0, K),
+                      control = list(trace = 0))
       
+      S[1,] <- result$pars
       
-      for(t in 2:TT){
-        S[t,]=optimize_s(g_values=V[t,], 
-                         lambda=lambda, 
-                         s_t_prev=S[t-1,],m=m)
+      # S(2) to S(T-1)
+      
+      for(t in 2:(TT-1)){
+        result=Rsolnp::solnp(
+          #pars = S[t,],
+          pars = rep(1/K,K),
+                             fun = function(s) objective_function(s, 
+                                                                  g_values=V[t,], 
+                                                                  lambda=lambda, 
+                                                                  s_t_prec=S[t-1,],
+                                                                  s_t_succ=S[t+1,],
+                                                                  m=m),
+                             eqfun = function(s) sum(s),
+                             eqB = 1,
+                             LB = rep(0, K),
+                             control = list(trace = 0))
+        S[t,]=result$pars
         
       }
-      #matplot(S,type='l',main="m=1.01")
       
-      #S=t(apply(S,1,function(x) x/sum(x)))
+      # S(T)
+      result <- Rsolnp::solnp(
+        #pars = S[TT,],
+        pars = rep(1/K,K),
+                              fun = function(s) objective_function_1T(s, 
+                                                                      g_values=V[TT,], 
+                                                                      lambda=lambda, 
+                                                                      s_t_1=S[TT-1,], 
+                                                                      m=m),
+                              eqfun = function(s) sum(s),
+                              eqB = 1,
+                              LB = rep(0, K),
+                              control = list(trace = 0))
       
-      # But this is not the true loss
-      #loss <- min(V[1,])
+      S[TT,] <- result$pars
       
-      #???
-      S_prec=rbind(rep(0,K),S[-TT,])
-      Lambda=lambda*(S-S_prec)^2
-      Lambda[1,]=0
-      loss=sum(S^2*V+Lambda)
       
       for(k in 1:K){
         #mu[k,]=apply(Ycont, 2, function(x) weighted_median(x, weights = S[,k]))
         #mu[k,]=apply(Ycont,2,function(x){poliscidata::wtd.median(x,weights=S[,k])})
-        mu[k,]=apply(Ycont,2,function(x){poliscidata::wtd.median(x,weights=S[,k]^2)})
+        mu[k,]=apply(Ycont,2,function(x){poliscidata::wtd.median(x,weights=S[,k]^m)})
         if(cat_flag){
           if(n_cat==1){
             #mo[k,]=poliscidata::wtd.mode(Ycat,weights=S[,k])
-            mo[k,]=poliscidata::wtd.mode(Ycat,weights=S[,k]^2)
+            mo[k,]=poliscidata::wtd.mode(Ycat,weights=S[,k]^m)
             
           }
           else{
             #mo[k,]=apply(Ycat,2,function(x){poliscidata::wtd.mode(x,weights=S[,k])})
-            mo[k,]=apply(Ycat,2,function(x){poliscidata::wtd.mode(x,weights=S[,k]^2)})
+            mo[k,]=apply(Ycat,2,function(x){poliscidata::wtd.mode(x,weights=S[,k]^m)})
             
           }
           #mo[k,]=apply(Ycat,2,function(x)weighted_mode(x,weights=S[,k]))
@@ -1081,7 +1105,14 @@ fuzzy_jump_coord <- function(Y,
       
       mumo[,cont.indx]=mu
       colnames(mumo)=colnames(Y)
+      if(cat_flag){
+        for(p in 1:n_cat){
+          mumo[,cat.indx[p]]=factor(mumo[,cat.indx[p]],levels=levels(Ycat[,p]))
+        }
+      }
       
+      V=gower.dist(Y,mumo)
+      loss=sum(V*S^m)+lambda*sum(S[1:(TT-1),]-S[2:TT,])^2
       
       if (verbose) {
         cat(sprintf('Iteration %d: %.6e\n', it, loss))
@@ -1101,7 +1132,6 @@ fuzzy_jump_coord <- function(Y,
       best_loss <- loss_old
       best_S <- S
     }
-    s=initialize_states(Y,K)
   }
   
   old_MAP=apply(best_S,1,which.max)
@@ -1112,8 +1142,7 @@ fuzzy_jump_coord <- function(Y,
   
   # Reorder the columns of S accordingly
   best_S <- best_S[, new_order]
-  
-  
+
   # res_Y=data.frame(Y,MAP=MAP)
   # col_sort=as.integer(names(sort(tapply(res_Y[,cont.indx[1]],
   #                                       res_Y$MAP,mean))))
