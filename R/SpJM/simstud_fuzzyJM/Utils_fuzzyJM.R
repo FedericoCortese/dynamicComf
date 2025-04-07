@@ -1017,13 +1017,18 @@ fuzzy_jump_coord <- function(Y,
     
     if(cat_flag){
       for(p in 1:n_cat){
-        mumo[,cat.indx[p]]=factor(mumo[,cat.indx[p]],levels=levels(Ycat[,p]))
+        if(n_cat==1){
+          mumo[,cat.indx[p]]=factor(mumo[,cat.indx[p]],levels=levels(Ycat[p]))
+        }
+        else{
+          mumo[,cat.indx[p]]=factor(mumo[,cat.indx[p]],levels=levels(Ycat[,p]))
+        }
       }
     }
     
     S_old=S
     V=gower.dist(Y,mumo)
-    loss_old=sum(V*S^m)+lambda*sum(S[1:(TT-1),]-S[2:TT,])^2
+    loss_old=sum(V*S^m)+lambda*sum(abs(S[1:(TT-1),]-S[2:TT,]))^2
     
     for (it in 1:max_iter) {
       
@@ -1107,12 +1112,17 @@ fuzzy_jump_coord <- function(Y,
       colnames(mumo)=colnames(Y)
       if(cat_flag){
         for(p in 1:n_cat){
+          if(n_cat==1){
+            mumo[,cat.indx[p]]=factor(mumo[,cat.indx[p]],levels=levels(Ycat[p]))
+          }
+          else{
           mumo[,cat.indx[p]]=factor(mumo[,cat.indx[p]],levels=levels(Ycat[,p]))
+          }
         }
       }
       
       V=gower.dist(Y,mumo)
-      loss=sum(V*S^m)+lambda*sum(S[1:(TT-1),]-S[2:TT,])^2
+      loss=sum(V*S^m)+lambda*sum(abs(S[1:(TT-1),]-S[2:TT,]))^2
       
       if (verbose) {
         cat(sprintf('Iteration %d: %.6e\n', it, loss))
@@ -1154,6 +1164,231 @@ fuzzy_jump_coord <- function(Y,
               Y=Y
               # ,
               # condMM=mumo
+  ))
+}
+
+fuzzy_jump_coord_par <- function(Y, 
+                             K, 
+                             lambda=1e-5, 
+                             m=1,
+                             max_iter=5, 
+                             n_init=10, tol=1e-16, 
+                             verbose=FALSE,
+                             n_cores=NULL
+                             
+) {
+  # Fit jump model for mixed type data 
+  
+  # Arguments:
+  # Y: data.frame with mixed data types. Categorical variables must be factors.
+  # K: number of states
+  # lambda: penalty for the number of jumps
+  # initial_states: initial state sequence
+  # max_iter: maximum number of iterations
+  # n_init: number of initializations
+  # tol: tolerance for convergence
+  # verbose: print progress
+  # time_vec is a vector of time points, needed if times are not equally sampled
+  
+  # Value:
+  # best_s: estimated state sequence
+  # Y: imputed data
+  # Y.orig: original data
+  # condMM: state-conditional medians and modes
+  
+  K=as.integer(K)
+  
+  TT <- nrow(Y)
+  P <- ncol(Y)
+  best_loss <- NULL
+  best_S <- NULL
+  
+  # Which vars are categorical and which are numeric
+  cat_flag=any(sapply(Y, is.factor))
+  
+  if(cat_flag){
+    cat.indx=which(sapply(Y, is.factor))
+    cont.indx=which(sapply(Y, is.numeric))
+    Ycont=Y[,cont.indx]
+    Ycont=apply(Ycont,2,scale)
+    Y[,cont.indx]=Ycont
+    Ycat=Y[,cat.indx]
+    
+    if(length(cat.indx)==1){
+      n_levs=length(levels(Ycat))
+    }
+    else{
+      n_levs=apply(Ycat, 2, function(x)length(unique(x[!is.na(x)])))
+    }
+    
+    n_cat=length(cat.indx)
+    n_cont=P-n_cat
+    
+  }
+  else{
+    cont.indx=1:P
+    Ycont=Y
+    Ycont=apply(Ycont,2,scale)
+    Y[,cont.indx]=Ycont
+    n_cont=dim(Y)[2]
+    n_cat=0
+  }
+  
+  
+  # Imposta i core da usare
+  if(is.null(n_cores)){
+    n_cores <- parallel::detectCores() - 1
+  }
+  cl <- makeCluster(n_cores)
+  registerDoParallel(cl)
+  
+  # Esegui le inizializzazioni in parallelo
+  results <- foreach(init = 1:n_init, .packages = c("poliscidata", "Rsolnp",
+                                                    "cluster","StatMatch"),
+                     .export = c("initialize_states",
+                                 "objective_function_1T",
+                                 "objective_function")) %dopar% {
+    
+    s = initialize_states(Y, K)
+    S <- matrix(0, nrow = TT, ncol = K)
+    row_indices <- rep(1:TT)
+    S[cbind(row_indices, s)] <- 1
+    
+    mu <- matrix(NA, nrow=K, ncol=length(cont.indx))
+    if(cat_flag){
+      mo <- matrix(NA, nrow=K, ncol=length(cat.indx))
+    }
+    
+    for(k in 1:K){
+      mu[k,] = apply(Ycont, 2, function(x) poliscidata::wtd.median(x, weights = S[,k]^m))
+      if(cat_flag){
+        if(n_cat == 1){
+          mo[k,] = poliscidata::wtd.mode(Ycat, weights = S[,k]^m)
+        } else {
+          mo[k,] = apply(Ycat, 2, function(x) poliscidata::wtd.mode(x, weights = S[,k]^m))
+        }
+      }
+    }
+    
+    mumo <- data.frame(matrix(0, nrow=K, ncol=P))
+    if(cat_flag){
+      mumo[,cat.indx] <- mo
+    }
+    mumo[,cont.indx] <- mu
+    colnames(mumo) <- colnames(Y)
+    if(cat_flag){
+      for(p in 1:n_cat){
+        if(n_cat==1){
+          mumo[,cat.indx[p]] <- factor(mumo[,cat.indx[p]], levels=levels(Ycat[p]))
+        }
+        else{
+          mumo[,cat.indx[p]] <- factor(mumo[,cat.indx[p]], levels=levels(Ycat[,p]))
+        }
+      }
+    }
+    
+    S_old <- S
+    V <- gower.dist(Y, mumo)
+    loss_old <- sum(V * S^m) + lambda * sum(abs(S[1:(TT-1), ] - S[2:TT, ]))^2
+    
+    for (it in 1:max_iter) {
+      result <- Rsolnp::solnp(
+        pars = rep(1/K, K),
+        fun = function(s) objective_function_1T(s, g_values=V[1,], lambda=lambda, s_t_1=S[2,], m=m),
+        eqfun = function(s) sum(s),
+        eqB = 1,
+        LB = rep(0, K),
+        control = list(trace = 0)
+      )
+      S[1,] <- result$pars
+      
+      for(t in 2:(TT-1)){
+        result <- Rsolnp::solnp(
+          pars = rep(1/K, K),
+          fun = function(s) objective_function(s, g_values=V[t,], lambda=lambda, s_t_prec=S[t-1,], s_t_succ=S[t+1,], m=m),
+          eqfun = function(s) sum(s),
+          eqB = 1,
+          LB = rep(0, K),
+          control = list(trace = 0)
+        )
+        S[t,] <- result$pars
+      }
+      
+      result <- Rsolnp::solnp(
+        pars = rep(1/K, K),
+        fun = function(s) objective_function_1T(s, g_values=V[TT,], lambda=lambda, s_t_1=S[TT-1,], m=m),
+        eqfun = function(s) sum(s),
+        eqB = 1,
+        LB = rep(0, K),
+        control = list(trace = 0)
+      )
+      S[TT,] <- result$pars
+      
+      for(k in 1:K){
+        mu[k,] = apply(Ycont, 2, function(x) poliscidata::wtd.median(x, weights = S[,k]^m))
+        if(cat_flag){
+          if(n_cat == 1){
+            mo[k,] = poliscidata::wtd.mode(Ycat, weights = S[,k]^m)
+          } else {
+            mo[k,] = apply(Ycat, 2, function(x) poliscidata::wtd.mode(x, weights = S[,k]^m))
+          }
+        }
+      }
+      
+      if(cat_flag){
+        mumo[,cat.indx] <- mo
+      }
+      mumo[,cont.indx] <- mu
+      colnames(mumo) <- colnames(Y)
+      if(cat_flag){
+        for(p in 1:n_cat){
+          if(n_cat==1){
+            mumo[,cat.indx[p]] <- factor(mumo[,cat.indx[p]], levels=levels(Ycat[p]))
+          }
+          else{
+            mumo[,cat.indx[p]] <- factor(mumo[,cat.indx[p]], levels=levels(Ycat[,p]))
+          }
+        }
+      }
+      
+      V <- gower.dist(Y, mumo)
+      loss <- sum(V * S^m) + lambda * sum(abs(S[1:(TT-1), ] - S[2:TT, ]))^2
+      
+      if(!is.null(tol)){
+        if((loss_old - loss) < tol) break
+      } else if(all(S == S_old)) {
+        break
+      }
+      loss_old <- loss
+      S_old <- S
+    }
+    
+    list(S = S, loss = loss_old)
+  }
+  
+  # Trova il migliore
+  losses <- sapply(results, function(res) res$loss)
+  best_index <- which.min(losses)
+  best_S <- results[[best_index]]$S
+  best_loss <- losses[best_index]
+  
+  # Ferma il cluster
+  stopCluster(cl)
+  
+  
+  
+  old_MAP=apply(best_S,1,which.max)
+  MAP=order_states_condMed(Y[,cont.indx[1]],old_MAP)
+  
+  tab <- table(MAP, old_MAP)
+  new_order <- apply(tab, 1, which.max)
+  
+  # Reorder the columns of S accordingly
+  best_S <- best_S[, new_order]
+  
+  return(list(best_S=best_S,
+              MAP=MAP,
+              Y=Y
   ))
 }
 
