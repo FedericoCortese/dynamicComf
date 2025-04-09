@@ -563,6 +563,107 @@ fuzzy_jump <- function(Y,
 # }
 
 ######
+get_cat_t <- function(y, mc, mu_val, phi, df = 5) {
+  # y: vettore continuo (una variabile)
+  # mc: stati latenti (valori da 1 a K)
+  # mu_val: vettore di K valori medi (es. c(-mu, 0, mu))
+  # phi: probabilità condizionata
+  # df: gradi di libertà della t-Student
+  
+  TT <- length(y)
+  K <- length(mu_val)
+  phi1 <- (1 - phi) / (K - 1)  # non serve direttamente, solo se vuoi usare probabilità
+  
+  for (i in 1:TT) {
+    k <- mc[i]
+    mu_k <- mu_val[k]
+    
+    # Calcola l'intervallo centrato in mu_k che contiene prob = phi sotto la t-Student
+    half_width <- qt((1 + phi) / 2, df = df)
+    lower <- mu_k - half_width
+    upper <- mu_k + half_width
+    
+    # Verifica se y[i] cade nell'intervallo
+    if (y[i] >= lower && y[i] <= upper) {
+      y[i] <- k  # corretto: valore coerente con lo stato
+    } else {
+      # Scegli casualmente un altro k tra gli altri K-1
+      y[i] <- sample(setdiff(1:K, k), 1)
+    }
+  }
+  return(y)
+}
+
+sim_data_stud_t=function(seed=123,
+                         TT,
+                         P,
+                         Pcat,
+                         Ktrue=3,
+                         mu=1.5,
+                         rho=0,
+                         nu=4,
+                         phi=.8,
+                         pers=.95){
+  
+  
+  MU=seq(mu, -mu, length.out=Ktrue)
+  
+  # Markov chain simulation
+  x <- numeric(TT)
+  Q <- matrix(rep((1-pers)/(Ktrue-1),Ktrue*Ktrue), 
+              ncol = Ktrue,
+              byrow = TRUE)
+  diag(Q)=rep(pers,Ktrue)
+  init <- rep(1/Ktrue,Ktrue)
+  set.seed(seed)
+  x[1] <- sample(1:Ktrue, 1, prob = init)
+  for(i in 2:TT){
+    x[i] <- sample(1:Ktrue, 1, prob = Q[x[i - 1], ])
+  }
+  
+  # Continuous variables simulation
+  Sigma <- matrix(rho,ncol=P,nrow=P)
+  diag(Sigma)=1
+  
+  Sim = matrix(0, TT, P * Ktrue)
+  SimData = matrix(0, TT, P)
+  
+  set.seed(seed)
+  for(k in 1:Ktrue){
+    # u = MASS::mvrnorm(TT,rep(mu[k],P),Sigma)
+    u = mvtnorm::rmvt(TT, sigma = (nu-2)*Sigma/nu, df = nu, delta = rep(MU[k],P))
+    Sim[, (P * k - P + 1):(k * P)] = u
+  }
+  
+  for (i in 1:TT) {
+    k = x[i]
+    SimData[i, ] = Sim[i, (P * k - P + 1):(P * k)]
+    #SimDataCat[i, ] = SimCat[i, (Pcat * k - Pcat + 1):(Pcat * k)]
+  }
+  
+  SimData=data.frame(SimData)
+  
+  if(!is.null(Pcat)){
+    for (j in 1:Pcat) {
+      SimData[, j] <- get_cat_t(SimData[, j], x, MU, phi=phi, df = nu)
+      SimData[, j]=factor(SimData[, j],levels=1:Ktrue)
+    }  
+  }
+  
+  
+  
+  return(list(
+    SimData=SimData,
+    mchain=x,
+    TT=TT,
+    P=P,
+    K=Ktrue,
+    Ktrue=Ktrue,
+    pers=pers, 
+    seed=seed))
+  
+}
+
 objective_function <- function(s, g_values, lambda, s_t_prec,s_t_succ,m) {
   #sum(s^m * g_values) + lambda * sum((s_t_prec - s)^2+(s_t_succ - s)^2) 
   sum(s^m * g_values) + lambda *( sum(abs(s_t_prec - s))^2+sum(abs(s_t_succ - s))^2) 
@@ -1392,11 +1493,87 @@ fuzzy_jump_coord_par <- function(Y,
   ))
 }
 
+simstud_fuzzyJM_coord=function(seed,
+                               lambda,
+                               TT,
+                               P,
+                               K,
+                               mu=1.5,
+                               phi=.8,
+                               rho=0,
+                               Pcat=NULL,
+                               pers=.9,
+                               m=1.5,
+                               nu=4){
+  # Simulate
+  simDat=sim_data_stud_t(seed=123,
+                         TT=TT,
+                         P=P,
+                         Pcat=Pcat,
+                         Ktrue=K,
+                         mu=mu,
+                         rho=rho,
+                         nu=nu,
+                         phi=phi,
+                         pers=pers)
+  
+  Y=simDat$SimData
+  
+  success <- FALSE
+  trials=1
+  while (!success&trials<10) {
+    est <- try(fuzzy_jump_coord(Y=Y, 
+                                K=K, 
+                                lambda=lambda, 
+                                m=m,
+                                max_iter=6, 
+                                n_init=8, tol=1e-8, 
+                                verbose=FALSE
+                                
+    ), silent = TRUE)
+    trials=trials+1
+    
+    if (!inherits(est, "try-error")) {
+      success <- TRUE  # Exit the loop if no error
+    } else {
+      message("Retrying fuzzy_jump() due to an error...")
+    }
+  }
+  
+  est$MAP=factor(relabel_clusters(est$MAP,simDat$mchain),levels=1:K)
+  simDat$mchain=factor(simDat$mchain,levels=1:K)
+  
+  BAC=caret::confusionMatrix(est$MAP,simDat$mchain)$overall[1]
+  ARI=adj.rand.index(est$MAP,simDat$mchain)
+  
+  fRI=fclus::RI.F(simDat$mchain,est$best_S)
+  
+  # Return
+  return(list(
+    S=est$best_S,
+    MAP=est$MAP ,
+    ARI=ARI,
+    BAC=BAC,
+    fRI=fRI,
+    seed=seed,
+    lambda=lambda,
+    TT=TT,
+    P=P,
+    K=K,
+    Pcat=Pcat,
+    true_seq=simDat$mchain
+  ))
+  
+}
+
+######
+
 relabel_clusters <- function(predicted, true) {
   mapping <- apply(table(predicted, true), 1, which.max)
   sapply(predicted, function(x) mapping[x])
   #return(as.factor(predicted))
 }
+
 
 simstud_fuzzyJM=function(seed,lambda,TT,P,
                          K=3,mu=1,
