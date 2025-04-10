@@ -1,9 +1,7 @@
-
 library(cluster)
 library(StatMatch)
 library(poliscidata) # for weighted mode 
 library(pdfCluster) # for ARI
-
 library(parallel)
 library(foreach)
 library(doParallel)
@@ -28,7 +26,6 @@ weighted_median <- function(x, weights) {
   
   return(weighted_median)
 }
-
 
 
 weighted_mode <- function(x, weights) {
@@ -715,7 +712,6 @@ optimize_s <- function(g_values, lambda, s_t_prev, m, max_attempts = 10) {
     attempt <- attempt + 1
   }
   
-  # If all attempts fail, return a fallback solution (e.g., uniform distribution)
   warning("Optimization failed after ", max_attempts, " attempts. Returning uniform distribution.")
   return(rep(1/K, K))  # Return uniform distribution as a last resort
 }
@@ -1526,8 +1522,8 @@ simstud_fuzzyJM_coord=function(seed,
                                 K=K, 
                                 lambda=lambda, 
                                 m=m,
-                                max_iter=6, 
-                                n_init=8, tol=1e-8, 
+                                max_iter=10, 
+                                n_init=10, tol=1e-8, 
                                 verbose=FALSE
                                 
     ), silent = TRUE)
@@ -1540,18 +1536,26 @@ simstud_fuzzyJM_coord=function(seed,
     }
   }
   
-  est$MAP=factor(relabel_clusters(est$MAP,simDat$mchain),levels=1:K)
+  
+  
+  old_MAP=factor(est$MAP,levels=1:K)
+  MAP=factor(relabel_clusters(est$MAP,simDat$mchain),levels=1:K)
+  #est$MAP=factor(relabel_clusters(est$MAP,simDat$mchain),levels=1:K)
   simDat$mchain=factor(simDat$mchain,levels=1:K)
   
-  BAC=caret::confusionMatrix(est$MAP,simDat$mchain)$overall[1]
-  ARI=adj.rand.index(est$MAP,simDat$mchain)
+  BAC=caret::confusionMatrix(MAP,simDat$mchain)$overall[1]
+  ARI=adj.rand.index(MAP,simDat$mchain)
   
-  fRI=fclus::RI.F(simDat$mchain,est$best_S)
+  tab <- table(MAP, old_MAP)
+  new_order <- apply(tab, 1, which.max)
+  best_S=est$best_S[, new_order]
+  
+  fRI=fclust::ARI.F(simDat$mchain,best_S)
   
   # Return
   return(list(
-    S=est$best_S,
-    MAP=est$MAP ,
+    S=best_S,
+    MAP=MAP ,
     ARI=ARI,
     BAC=BAC,
     fRI=fRI,
@@ -1718,6 +1722,354 @@ simstud_fuzzyJM_m=function(seed,lambda,TT,P,
     true_seq=true_states
   ))
   
+}
+
+
+# Cont JM -----------------------------------------------------------------
+
+discretize_prob_simplex <- function(n_c, grid_size) {
+  # Sample grid points on a probability simplex.
+  N <- as.integer(1 / grid_size)
+  
+  # Generate all combinations and filter those that sum to N
+  tuples <- expand.grid(rep(list(0:N), n_c))
+  valid_tuples <- tuples[rowSums(tuples) == N, ]
+  
+  # Reverse the order and scale to get the simplex points
+  lst <- as.matrix(valid_tuples[nrow(valid_tuples):1, ]) / N
+  rownames(lst) <- NULL
+  return(lst)
+}
+
+onerun_contJM=function(Y,K,
+                       jump_penalty,alpha,grid_size,mode_loss=T,
+                       max_iter,tol,initial_states,M){
+  tryCatch({
+    TT=nrow(Y)
+    loss_old <- 1e10
+    
+    S_old=matrix(0,nrow=TT,ncol=K)
+    
+    # State initialization through kmeans++
+    if (!is.null(initial_states)) {
+      s <- initial_states
+    } else {
+      #s <- initialize_states_jumpR(Y, K)
+      s=maotai::kmeanspp(Y,k=K)
+    }
+    mu=matrix(NA,nrow=K,ncol=P)
+    for (i in unique(s)) {
+      
+      if(sum(s==i)>1){
+        mu[i,] <- colMeans(Y[s==i,])
+      }
+      else{
+        mu[i,]=mean(Y[s==i,])
+      }
+    }
+    
+    for (it in 1:max_iter) {
+      
+      # E Step
+      
+      # Compute loss matrix
+      loss_mx <- matrix(NA, nrow(Y), nrow(mu))
+      for (t in 1:nrow(Y)) {
+        for (k in 1:nrow(mu)) {
+          loss_mx[t, k] <- .5*sqrt(sum((Y[t, ] - mu[k, ])^2))
+        }
+      }
+      
+      # Continuous model
+      prob_vecs <- discretize_prob_simplex(K, grid_size)
+      pairwise_l1_dist <- as.matrix(dist(prob_vecs, method = "manhattan")) / 2
+      jump_penalty_mx <- jump_penalty * (pairwise_l1_dist ^ alpha)
+      
+      if (mode_loss) {
+        # Adding mode loss
+        m_loss <- log(rowSums(exp(-jump_penalty_mx)))
+        m_loss <- m_loss - m_loss[1]  # Offset a constant
+        jump_penalty_mx <- jump_penalty_mx + m_loss
+      }
+      
+      LARGE_FLOAT=1e1000
+      # Handle continuous model with probability vectors
+      if (!is.null(prob_vecs)) {
+        loss_mx[is.nan(loss_mx)] <- LARGE_FLOAT
+        loss_mx <- loss_mx %*% t(prob_vecs)
+      }
+      
+      
+      N <- ncol(loss_mx)
+      
+      loss_mx[is.nan(loss_mx)] <- Inf
+      
+      # DP algorithm initialization
+      values <- matrix(NA, TT, N)
+      assign <- integer(TT)
+      
+      # Initial step
+      values[1, ] <- loss_mx[1, ]
+      
+      # DP iteration (bottleneck)
+      for (t in 2:TT) {
+        values[t, ] <- loss_mx[t, ] + apply(values[t - 1, ] + jump_penalty_mx, 2, min)
+      }
+      
+      S=matrix(NA,nrow=TT,ncol=K)
+      
+      # Find optimal path backwards
+      assign[TT] <- which.min(values[TT, ])
+      value_opt <- values[TT, assign[TT]]
+      
+      S[TT,]=prob_vecs[assign[TT],]
+      
+      # Traceback
+      for (t in (TT - 1):1) {
+        assign[t] <- which.min(values[t, ] + jump_penalty_mx[, assign[t + 1]])
+        S[t,]=prob_vecs[assign[t],]
+      }
+      
+      # M Step
+      
+      for(k in 1:K){
+        # What if the denominator is 0??
+        mu[k,]=apply(Y, 2, function(x) weighted.mean(x, w = S[,k]))
+      }
+      
+      # Re-fill-in missings
+      for(i in 1:P){
+        Y[,i]=ifelse(M[,i],mu[apply(S,1,which.max),i],Y[,i])
+      }
+      
+      if (!is.null(tol)) {
+        epsilon <- loss_old - value_opt
+        if (epsilon < tol) {
+          break
+        }
+      } 
+      
+      else if (all(S == S_old)) {
+        break
+      }
+      
+      S_old=S
+      
+      loss_old <- value_opt
+    }
+    
+    
+    
+    return(list(S=S,value_opt=value_opt))}, error = function(e) {
+      # Return a consistent placeholder on error
+      return(list(S = NA, value_opt = Inf))
+    })
+}
+
+cont_jumpR <- function(Y, 
+                       K, 
+                       jump_penalty=1e-5, 
+                       alpha=2,
+                       initial_states=NULL,
+                       max_iter=10, 
+                       n_init=10, 
+                       tol=NULL, 
+                       mode_loss=T,
+                       #method="euclidean",
+                       grid_size=.03,
+                       prll=F,
+                       n_cores=NULL
+) {
+  # Fit jump model using framework of Bemporad et al. (2018)
+  
+  Y=as.matrix(Y)
+  K=as.integer(K)
+  
+  TT <- nrow(Y)
+  P <- ncol(Y)
+  
+  # Initialize mu
+  mu <- colMeans(Y,na.rm = T)
+  
+  # Track missings with 0 1 matrix
+  M=ifelse(is.na(Y),T,F)
+  
+  
+  Ytil=Y
+  # Impute missing values with mean of observed states
+  for(i in 1:P){
+    Y[,i]=ifelse(M[,i],mu[i],Y[,i])
+  }
+  
+  
+  if(prll){
+    if(is.null(n_cores)){
+      n_cores=parallel::detectCores()-1
+    }
+    hp_init=expand.grid(init=1:n_init)
+    jms <- parallel::mclapply(1:nrow(hp_init),
+                              function(x)
+                                onerun_contJM(Y=Y,K=K,
+                                              jump_penalty=jump_penalty,
+                                              alpha=alpha,grid_size=grid_size,
+                                              mode_loss=mode_loss,
+                                              max_iter=max_iter,tol=tol,
+                                              initial_states=initial_states,
+                                              M=M),
+                              mc.cores = n_cores)
+  }
+  else{
+    jms=list()
+    for (init in 1:n_init) {
+      
+      jms[[init]]=onerun_contJM(Y,K,
+                                jump_penalty,alpha,grid_size,mode_loss,
+                                max_iter,tol,initial_states,M=M)
+      
+      # #mu <- matrix(0, nrow=K, ncol=P)
+      # loss_old <- 1e10
+      # 
+      # S_old=matrix(0,nrow=TT,ncol=K)
+      # 
+      # # State initialization through kmeans++
+      # if (!is.null(initial_states)) {
+      #   s <- initial_states
+      # } else {
+      #   #s <- initialize_states_jumpR(Y, K)
+      #   s=maotai::kmeanspp(Y,k=K)
+      # }
+      # mu=matrix(NA,nrow=K,ncol=P)
+      # for (i in unique(s)) {
+      #   
+      #   if(sum(s==i)>1){
+      #     mu[i,] <- colMeans(Y[s==i,])
+      #   }
+      #   else{
+      #     mu[i,]=mean(Y[s==i,])
+      #   }
+      # }
+      # 
+      # for (it in 1:max_iter) {
+      #   
+      #   # E Step
+      #   
+      #   # Compute loss matrix
+      #   loss_mx <- matrix(NA, nrow(Y), nrow(mu))
+      #   for (t in 1:nrow(Y)) {
+      #     for (k in 1:nrow(mu)) {
+      #       loss_mx[t, k] <- .5*sqrt(sum((Y[t, ] - mu[k, ])^2))
+      #     }
+      #   }
+      #   
+      #   # Continuous model
+      #   prob_vecs <- discretize_prob_simplex(K, grid_size)
+      #   pairwise_l1_dist <- as.matrix(dist(prob_vecs, method = "manhattan")) / 2
+      #   jump_penalty_mx <- jump_penalty * (pairwise_l1_dist ^ alpha)
+      #   
+      #   if (mode_loss) {
+      #     # Adding mode loss
+      #     m_loss <- log(rowSums(exp(-jump_penalty_mx)))
+      #     m_loss <- m_loss - m_loss[1]  # Offset a constant
+      #     jump_penalty_mx <- jump_penalty_mx + m_loss
+      #   }
+      #   
+      #   LARGE_FLOAT=1e1000
+      #   # Handle continuous model with probability vectors
+      #   if (!is.null(prob_vecs)) {
+      #     loss_mx[is.nan(loss_mx)] <- LARGE_FLOAT
+      #     loss_mx <- loss_mx %*% t(prob_vecs)
+      #   }
+      #   
+      #   
+      #   N <- ncol(loss_mx)
+      #   
+      #   loss_mx[is.nan(loss_mx)] <- Inf
+      #   
+      #   # DP algorithm initialization
+      #   values <- matrix(NA, TT, N)
+      #   assign <- integer(TT)
+      #   
+      #   # Initial step
+      #   values[1, ] <- loss_mx[1, ]
+      # 
+      #   # DP iteration (bottleneck)
+      #   for (t in 2:TT) {
+      #     values[t, ] <- loss_mx[t, ] + apply(values[t - 1, ] + jump_penalty_mx, 2, min)
+      #   }
+      #   
+      #   S=matrix(NA,nrow=TT,ncol=K)
+      #   
+      #   # Find optimal path backwards
+      #   assign[TT] <- which.min(values[TT, ])
+      #   value_opt <- values[TT, assign[TT]]
+      #   
+      #   S[TT,]=prob_vecs[assign[TT],]
+      #   
+      #   # Traceback
+      #   for (t in (TT - 1):1) {
+      #     assign[t] <- which.min(values[t, ] + jump_penalty_mx[, assign[t + 1]])
+      #     S[t,]=prob_vecs[assign[t],]
+      #   }
+      #   
+      #   # M Step
+      #   
+      #   for(k in 1:K){
+      #     # What if the denominator is 0??
+      #     mu[k,]=apply(Y, 2, function(x) weighted.mean(x, w = S[,k]))
+      #   }
+      #   
+      #   # Re-fill-in missings
+      #   for(i in 1:P){
+      #     Y[,i]=ifelse(M[,i],mu[apply(S,1,which.max),i],Y[,i])
+      #   }
+      # 
+      #   
+      #   # if (length(unique(S)) == 1) {
+      #   #   break
+      #   # }
+      #   
+      #   #loss <- min(V[1,])
+      #   if (verbose) {
+      #     cat(sprintf('Iteration %d: %.6e\n', it, value_opt))
+      #   }
+      #   if (!is.null(tol)) {
+      #     epsilon <- loss_old - value_opt
+      #     if (epsilon < tol) {
+      #       break
+      #     }
+      #   } 
+      #   else if (all(S == S_old)) {
+      #     break
+      #   }
+      #   
+      #   S_old=S
+      #   
+      #   loss_old <- value_opt
+      # }
+      
+      # if (is.null(best_S) || (loss_old < best_loss)) {
+      #   best_loss <- loss_old
+      #   best_S <- S
+      # }
+      #s <- initialize_states_jumpR(Y, K)
+      
+    }
+  }
+  
+  best_init=which.min(unlist(lapply(jms,function(x)x$value_opt)))
+  best_S=jms[[best_init]]$S
+  
+  # old_lab=apply(best_S,1,which.max)
+  # 
+  # new_lab=order_states_condMean(
+  #   Y[,1],old_lab
+  #   )
+  # 
+  # mapping <- tapply(old_lab, new_lab, function(x) unique(x))
+  # mapping <- as.integer(unlist(mapping))
+  # best_S <- best_S[, mapping]
+  
+  return(best_S)
 }
 
 
