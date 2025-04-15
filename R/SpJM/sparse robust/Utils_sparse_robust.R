@@ -184,10 +184,10 @@ sparse_robust_fit=function(Y,K,lambda,zeta0,alpha=.1,verbose=F,tol=1e-16,
       for( init in 1:n_init){
       s=initialize_states(Y,K)
       # Compute distances as in (33)-(34) of Friedman(2004) or (14) of Kampert (2017)
+      DW=weight_inv_exp_dist(Y,s,W,zeta)
 
       loss_old <- 1e10
       for(inner in 1:n_inner){
-        DW=weight_inv_exp_dist(Y,s,W,zeta)
         
         # JM clustering
         # M-Step
@@ -266,6 +266,193 @@ sparse_robust_fit=function(Y,K,lambda,zeta0,alpha=.1,verbose=F,tol=1e-16,
     #   best_W = W
     #   best_init=init
     # }
+  
+  
+  return(list(W=W,best_s=best_s,best_medoids=best_medoids))
+}
+
+JM=function(Y,K,W,zeta,lambda,n_inner,tol,n_cores=NULL){
+  Gamma <- lambda * (1 - diag(K))
+  TT=nrow(Y)
+  P=ncol(Y)
+  if(is.null(n_cores)){
+    for( init in 1:n_init){
+      s=initialize_states(Y,K)
+      # Compute distances as in (33)-(34) of Friedman(2004) or (14) of Kampert (2017)
+      DW=weight_inv_exp_dist(Y,s,W,zeta)
+      
+      loss_old <- 1e10
+      for(inner in 1:n_inner){
+        
+        # JM clustering
+        # M-Step
+        medoids=cluster::pam(x=DW,k=K,diss=TRUE)
+        Ymedoids=Y[medoids$medoids,]
+        
+        # E-Step
+        
+        #dist_Y_to_medoids <- proxy::dist(Y, Ymedoids, method = "Manhattan")
+        dist_Y_to_medoids <- StatMatch::gower.dist(Y, Ymedoids)
+        loss_by_state <- as.matrix(dist_Y_to_medoids)
+        
+        V <- loss_by_state
+        for (t in (TT-1):1) {
+          V[t-1,] <- loss_by_state[t-1,] + apply(V[t,] + Gamma, 2, min)
+        }
+        s_old=s
+        s[1] <- which.min(V[1,])
+        for (t in 2:TT) {
+          s[t] <- which.min(V[t,] + Gamma[s[t-1],])
+        }
+        loss <- min(V[1,])
+        # if (length(unique(s)) < K) {
+        #   break
+        # }
+        
+        if (length(unique(s)) < K) {
+          s=s_old
+          break
+        }
+        
+        if (verbose) {
+          cat(sprintf('Init %d | Inner iteration %d: %.6e\n', init, inner, loss))
+        }
+        if (!is.null(tol)) {
+          epsilon <- loss_old - loss
+          if (epsilon < tol) {
+            break
+          }
+        } else if (all(s == s_old)) {
+          break
+        }
+        loss_old <- loss
+        
+      }
+      
+      if (is.null(best_s) || (loss_old < best_loss)) {
+        best_loss <- loss_old
+        best_s <- s
+        best_medoids = Ymedoids
+      }
+    }
+  }
+  else{
+    
+    library(foreach)
+    library(doParallel)
+    
+    # Set up parallel backend
+    cl <- makeCluster(n_cores)
+    registerDoParallel(cl)
+    
+    results <- foreach(init = 1:n_init, .packages = c("cluster", "StatMatch"),
+                       .export = c("initialize_states",
+                                   "weight_inv_exp_dist")) %dopar% {
+                                     s <- initialize_states(Y, K)
+                                     DW <- weight_inv_exp_dist(Y, s, W, zeta)
+                                     
+                                     loss_old <- 1e10
+                                     for (inner in 1:n_inner) {
+                                       medoids <- cluster::pam(x = DW, k = K, diss = TRUE)
+                                       Ymedoids <- Y[medoids$medoids, ]
+                                       
+                                       dist_Y_to_medoids <- StatMatch::gower.dist(Y, Ymedoids)
+                                       loss_by_state <- as.matrix(dist_Y_to_medoids)
+                                       
+                                       V <- loss_by_state
+                                       for (t in (TT - 1):1) {
+                                         V[t - 1, ] <- loss_by_state[t - 1, ] + apply(V[t, ] + Gamma, 2, min)
+                                       }
+                                       s_old <- s
+                                       s[1] <- which.min(V[1, ])
+                                       for (t in 2:TT) {
+                                         s[t] <- which.min(V[t, ] + Gamma[s[t - 1], ])
+                                       }
+                                       loss <- min(V[1, ])
+                                       
+                                       if (length(unique(s)) < K) {
+                                         s <- s_old
+                                         break
+                                       }
+                                       
+                                       if (!is.null(tol)) {
+                                         epsilon <- loss_old - loss
+                                         if (epsilon < tol) break
+                                       } else if (all(s == s_old)) {
+                                         break
+                                       }
+                                       
+                                       loss_old <- loss
+                                     }
+                                     
+                                     list(loss = loss_old, s = s, Ymedoids = Ymedoids)
+                                   }
+    
+    stopCluster(cl)
+    
+    # Select the best result
+    best_result <- results[[which.min(sapply(results, function(r) r$loss))]]
+    best_s <- best_result$s
+    best_medoids <- best_result$Ymedoids
+    best_loss <- best_result$loss
+    
+  }
+  
+  return(list(best_s=best_s, best_medoids=best_medoids,best_loss=best_loss))
+}
+
+
+sparse_robust_fit_2=function(Y,K,lambda,zeta0,alpha=.1,verbose=F,tol=1e-16,
+                           n_init=10,n_inner=10,n_outer=10,n_cores=NULL){
+  
+  P=ncol(Y)
+  TT=nrow(Y)
+  
+  best_loss <- NULL
+  best_s <- NULL
+  best_W = NULL
+  
+  W=matrix(1/P,nrow=K,ncol=P)
+  W_old=W
+  Gamma <- lambda * (1 - diag(K))
+  
+  zeta=zeta0
+  
+  for (outer in 1:n_outer){
+    
+    # JM estimation
+    est=JM(Y=Y,K=K,W=W,zeta=zeta,lambda=lambda,n_inner=n_inner,tol=tol,n_cores=n_cores)
+    
+    s=est$best_s
+    loss=est$best_loss
+    best_medoids=est$best_medoids
+  
+    wcd=exp(-WCD(s,Y,K)/zeta0)
+    W=wcd/rowSums(wcd)
+    
+    eps_W=mean((W-W_old)^2)
+    
+    if (!is.null(tol)) {
+      if (eps_W < tol) {
+        break
+      }
+    }
+    
+    W_old=W
+    zeta=zeta+alpha*zeta0
+    
+    if (verbose) {
+      cat(sprintf('Outer iteration %d: %.6e\n', outer, eps_W))
+    }
+    
+  }
+  # if (is.null(best_s) || is.null(best_W) || (loss_old < best_loss)) {
+  #   best_loss <- loss_old
+  #   best_s <- s
+  #   best_medoids = Ymedoids
+  #   best_W = W
+  #   best_init=init
+  # }
   
   
   return(list(W=W,best_s=best_s,best_medoids=best_medoids))
@@ -391,4 +578,26 @@ apply_noise_by_cluster <- function(Y, s, feat_list) {
   return(Y_noised)
 }
 
-
+simstud_sparse_robust=function(lambda,zeta0,seed,TT,P,Pcat=NULL,
+                               K,mu,rho,nu,phi,pers,
+                               feat_list){
+  simDat=sim_data_stud_t(seed=123,
+                         TT=TT,
+                         P=P,
+                         Pcat=Pcat,
+                         Ktrue=K,
+                         mu=mu,
+                         rho=rho,
+                         nu=nu,
+                         phi=phi,
+                         pers=pers)
+  Y_noised=apply_noise_by_cluster(Y,simDat$mchain,feat_list)
+  
+  Y=Y_noised
+  fit=sparse_robust_fit(Y=Y,K=K,
+                        lambda=lambda,
+                        zeta0=zeta0,
+                        alpha=.2,verbose=T,tol=1e-4,
+                        n_init=5,n_outer=10)
+  
+}
