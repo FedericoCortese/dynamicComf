@@ -671,6 +671,29 @@ objective_function_1T <- function(s, g_values, lambda, s_t_1,m) {
   sum(s^m * g_values) + lambda * sum(abs(s_t_1 - s))^2 
 }
 
+objective_function_m=function(m,S,g){
+  sum(S^m*g)
+}
+
+# optimize_fuzzifier <- function(s, g, m_range = c(1.01, 5)) {
+#   # Clip s to avoid log(0)
+#   s <- pmax(s, 1e-8)
+#   
+#   # Objective function: f(m)
+#   f_m <- function(m) {
+#     sum(s^m * g)
+#   }
+#   
+#   # Derivative: f'(m), optional if using gradient-based methods
+#   # grad_f_m <- function(m) {
+#   #   sum(log(s) * s^m * g)
+#   # }
+#   
+#   # Use 1D minimization over m ∈ [1.01, 5]
+#   result <- optimize(f_m, interval = m_range)
+#   return(result$minimum)
+# }
+
 #####
 
 gradient_function <- function(s, g_values, lambda, s_t_prev, m) {
@@ -1181,7 +1204,7 @@ fuzzy_jump_coord <- function(Y,
       
       S[TT,] <- result$pars
       
-      
+
       for(k in 1:K){
         #mu[k,]=apply(Ycont, 2, function(x) weighted_median(x, weights = S[,k]))
         #mu[k,]=apply(Ycont,2,function(x){poliscidata::wtd.median(x,weights=S[,k])})
@@ -1267,7 +1290,7 @@ fuzzy_jump_coord <- function(Y,
 fuzzy_jump_coord_par <- function(Y, 
                              K, 
                              lambda=1e-5, 
-                             m=1,
+                             m=1.01,
                              max_iter=5, 
                              n_init=10, tol=1e-16, 
                              verbose=FALSE,
@@ -1421,6 +1444,7 @@ fuzzy_jump_coord_par <- function(Y,
       )
       S[TT,] <- result$pars
       
+      
       for(k in 1:K){
         mu[k,] = apply(Ycont, 2, function(x) poliscidata::wtd.median(x, weights = S[,k]^m))
         if(cat_flag){
@@ -1449,6 +1473,7 @@ fuzzy_jump_coord_par <- function(Y,
       }
       
       V <- gower.dist(Y, mumo)
+      
       loss <- sum(V * S^m) + lambda * sum(abs(S[1:(TT-1), ] - S[2:TT, ]))^2
       
       if(!is.null(tol)){
