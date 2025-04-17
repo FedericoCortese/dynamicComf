@@ -30,7 +30,7 @@
 #   return(mat)
 # }
 
-weight_inv_exp_dist_old <- function(Y, s, W, zeta) {
+weight_inv_exp_dist_1 <- function(Y, s, W, zeta) {
   TT <- nrow(Y)
   P <- ncol(Y)
   
@@ -74,7 +74,7 @@ weight_inv_exp_dist <- function(Y, s, W, zeta) {
     r <- max(col) - min(col)
     if (r == 0) 1 else r
   })
-  Y_scaled <- sweep(Y, 2, range_Y, FUN = "/")
+  #Y_scaled <- sweep(Y, 2, range_Y, FUN = "/")
   
   # 2. Genera indici delle coppie (i < j)
   pairs <- combn(TT, 2)
@@ -83,9 +83,12 @@ weight_inv_exp_dist <- function(Y, s, W, zeta) {
   n_pairs <- ncol(pairs)
   
   # 3. Estrai le righe corrispondenti
-  Yi <- Y_scaled[i_idx, , drop = FALSE]
-  Yj <- Y_scaled[j_idx, , drop = FALSE]
+  # Yi <- Y_scaled[i_idx, , drop = FALSE]
+  # Yj <- Y_scaled[j_idx, , drop = FALSE]
+  Yi <- Y[i_idx, , drop = FALSE]
+  Yj <- Y[j_idx, , drop = FALSE]
   diff <- abs(Yi - Yj)
+  diff=sweep(diff, 2, range_Y, FUN = "/")
   
   # 4. Estrai direttamente i pesi W[si, ] e W[sj, ] in blocco
   W_si <- W[s[i_idx], , drop = FALSE]
