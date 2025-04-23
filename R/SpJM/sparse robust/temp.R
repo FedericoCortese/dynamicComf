@@ -41,11 +41,11 @@ Y=Y_noised
 zeta0=.25
 lambda=.25
 
-fit=sparse_robust_fit(Y=Y,K=K,
+fit=sparse_robust_fit_2(Y=Y,K=K,
                       lambda=lambda,
                       zeta0=zeta0,
                       alpha=.1,verbose=T,tol=1e-4,
-                      n_init=5,n_outer=20)
+                      n_init=5,n_outer=20,n_cores=15)
 
 round(fit$W,2)
 mclust::adjustedRandIndex(simDat$mchain,fit$best_s)
