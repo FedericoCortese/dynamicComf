@@ -70,6 +70,21 @@ max_min_feat=function(data,tt_thres_maxmin=2.5,l=5){
                "mean_osc")]
 }
 
+a_feat=function(data,l=5){
+  cust_fun=function(x){
+    all(x==T)
+  }
+  
+  ind_a=I(data$a<1)
+  ind_a2=I(data$a>1)
+  
+  ind_a_mov <- runner::runner(ind_a, k = l, f = cust_fun, na_pad = TRUE)
+  ind_a2_mov <- runner::runner(ind_a2, k = l, f = cust_fun, na_pad = TRUE)
+  #data$ind_a_short=as.factor(as.numeric(ind_a_mov+ind_a2_mov))
+  data$ind_a_short=as.numeric(ind_a_mov+ind_a2_mov)
+  return(data[,c("t","ind_a_short")])
+}
+
 # max_min_feat=function(data,tt_thres_maxmin=3,
 #                       #tt_thres_diffmaxmin=pi/4,
 #                       l=5

@@ -4220,7 +4220,8 @@ simstud_STJump_dist=function(lambda,gamma,seed,M,TT,beta, theta,
   Y=result$Y.NA
   
   tf=I(pg>0)
-  prova=STjumpDist(Y,K,D,jump_penalty = lambda,spatial_penalty = gamma,verbose = T,timeflag = tf)
+  prova=STjumpDist(Y,K,D,jump_penalty = lambda,
+                   spatial_penalty = gamma,verbose = T,timeflag = tf)
   best_s=prova$best_s
   
   TY=unique(Y$t)

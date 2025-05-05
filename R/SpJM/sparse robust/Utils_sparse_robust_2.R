@@ -22,13 +22,26 @@ initialize_states <- function(Y, K) {
   return(init_stats)
 }
 
+Mode <- function(x,na.rm=T) {
+  if(na.rm){
+    x <- x[!is.na(x)]
+  }
+  ux <- unique(x)
+  ux[which.max(tabulate(match(x, ux)))]
+  
+}
+
 weight_inv_exp_dist <- function(Y,
                                 #Ymedoids,
                                 #index_medoids, 
                                 s, 
                                 W, zeta) {
+  
+  indx_num=sapply(Y,is.numeric)
+  
   TT <- nrow(Y)
   P <- ncol(Y)
+  Y_orig=Y
   
   # 1. Normalizzazione Gower
   # range_Y <- apply(Y, 2, function(col) {
@@ -36,6 +49,8 @@ weight_inv_exp_dist <- function(Y,
   #   if (r == 0) 1 else r
   # })
   
+  # continuous vars
+  Y=Y[,indx_num]
   sk=apply(Y,2,function(x)IQR(x)/1.35)
   
   # 2. Genera indici delle coppie (i < j)
@@ -44,14 +59,42 @@ weight_inv_exp_dist <- function(Y,
   j_idx <- pairs[2, ]
   n_pairs <- ncol(pairs)
   
+  diff=matrix(0,ncol=P,nrow=n_pairs)
+  
   # 3. Estrai le righe corrispondenti
   Yi <- Y[i_idx, , drop = FALSE]
   Yj <- Y[j_idx, , drop = FALSE]
-  diff <- abs(Yi - Yj)
+  
+  diff_cont <- abs(Yi - Yj)
   #sk=apply(diff,2,function(x)sum(x)/TT^2)
   
-  diff=sweep(diff, 2, sk, FUN = "/")
+  diff_cont=sweep(diff_cont, 2, sk, FUN = "/")
+  diff[,indx_num]=as.matrix(diff_cont[, names(indx_num)[indx_num]])
   #diff=sweep(diff, 2, range_Y, FUN = "/")
+  
+  # Categorical vars
+  if(sum(indx_num)!=P){
+    
+    # FUNZIONA SOLO SE LE VARIABILI CATEGORIALI SONO ALMENO DUE
+    
+    Y=Y_orig[,!indx_num]
+    
+    # 2. Genera indici delle coppie (i < j)
+    # pairs <- combn(TT, 2)
+    # i_idx <- pairs[1, ]
+    # j_idx <- pairs[2, ]
+    # n_pairs <- ncol(pairs)
+    
+    # 3. Estrai le righe corrispondenti
+    Yi <- Y[i_idx, , drop = FALSE]
+    Yj <- Y[j_idx, , drop = FALSE]
+    diff_cat <- apply(Yi != Yj, 2, as.numeric)
+    #sk=apply(diff,2,function(x)sum(x)/TT^2)
+    
+    diff[,!indx_num]=as.matrix(diff_cat[, names(!indx_num)[!indx_num]])
+    
+    
+  }
   
   
   # 4. Estrai direttamente i pesi W[si, ] e W[sj, ] in blocco
@@ -92,16 +135,21 @@ WCD=function(s,Y,K){
   #TT <- nrow(Y)
   P <- ncol(Y)
   
+  Y_orig=Y
+  
   wcd=matrix(0,nrow=K,ncol=P)
+  
+  indx_num=sapply(Y,is.numeric)
   
   # 1. Normalizzazione Gower
   # range_Y <- apply(Y, 2, function(col) {
   #   r <- max(col) - min(col)
   #   if (r == 0) 1 else r
   # })
-  sk=apply(Y,2,function(x)IQR(x)/1.35)
+  sk=apply(Y[,indx_num],2,function(x)IQR(x)/1.35)
   
   for(i in 1:K){
+    Y=Y_orig[,indx_num]
     Ys=Y[s==i,]
     TTk <- nrow(Ys)
     pairs <- combn(TTk, 2)
@@ -109,13 +157,35 @@ WCD=function(s,Y,K){
     j_idx <- pairs[2, ]
     n_pairs <- ncol(pairs)
     
+    diff=matrix(0,ncol=P,nrow=n_pairs)
+    
     Yi <- Ys[i_idx, , drop = FALSE]
     Yj <- Ys[j_idx, , drop = FALSE]
-    diff <- abs(Yi - Yj)
-    #sk=apply(diff,2,function(x)sum(x)/TTk^2)
     
-    diff=sweep(diff, 2, sk, FUN = "/")
-    # diff=sweep(diff, 2, range_Y, FUN = "/")
+    diff_cont <- abs(Yi - Yj)
+    #sk=apply(diff,2,function(x)sum(x)/TT^2)
+    
+    diff_cont=sweep(diff_cont, 2, sk, FUN = "/")
+    diff[,indx_num]=as.matrix(diff_cont[, names(indx_num)[indx_num]])
+    
+    
+    if(sum(indx_num)!=P){
+      
+      # FUNZIONA SOLO SE LE VARIABILI CATEGORIALI SONO ALMENO DUE
+      
+      Y=Y_orig[,!indx_num]
+      
+      # 3. Estrai le righe corrispondenti
+      Yi <- Y[i_idx, , drop = FALSE]
+      Yj <- Y[j_idx, , drop = FALSE]
+      diff_cat <- apply(Yi != Yj, 2, as.numeric)
+      #sk=apply(diff,2,function(x)sum(x)/TT^2)
+      
+      diff[,!indx_num]=as.matrix(diff_cat[, names(!indx_num)[!indx_num]])
+      
+      
+    }
+    
     
     for(p in 1:P){
       mat <- matrix(0, TTk, TTk)
@@ -220,80 +290,66 @@ sim_data_stud_t=function(seed=123,
 #   return(Y_noised)
 # }
 
-zeta0=0.2
-alpha=.1
-K=2
-tol=1e-9
-n_outer=15
-verbose=T
+# zeta0=0.1
+# alpha=.1
+# K=2
+# tol=1e-16
+# n_outer=15
+# verbose=T
+# lambda=.25
+# 
+# TT=1000
+# P=10
 
-TT=500
-P=10
+# simDat=sim_data_stud_t(seed=123,
+#                        TT=TT,
+#                        P=P,
+#                        Pcat=NULL,
+#                        Ktrue=2,
+#                        mu=1,
+#                        rho=0,
+#                        nu=100,
+#                        phi=.8,
+#                        pers=0.95)
 
-simDat=sim_data_stud_t(seed=123,
-                       TT=TT,
-                       P=P,
-                       Pcat=NULL,
-                       Ktrue=2,
-                       mu=1,
-                       rho=0,
-                       nu=100,
-                       phi=.8,
-                       pers=0.95)
+# Y=simDat$SimData
+# true_stat=simDat$mchain
 
-Y=simDat$SimData
-true_stat=simDat$mchain
-
-plot(Y[,2],col=true_stat,pch=19)
-
-# feat_list=list()
-# feat_list[[1]]=1:10
-# feat_list[[2]]=5:15
-# feat_list[[3]]=10:20
-# Y_noised=apply_noise_by_cluster(Y,simDat$mchain,feat_list)
-# Y=Y_noised
+#plot(Y[,2],col=true_stat,pch=19)
 
 
-nu=4
-# State 1, only features 1,2 and 3 are relevant
-indx=which(true_stat!=1)
-Sigma <- matrix(0,ncol=P-3,nrow=P-3)
-diag(Sigma)=5
-Y[indx,-(1:3)]=mvtnorm::rmvt(length(indx), 
-                             sigma = (nu-2)*Sigma/nu, 
-                             df = nu, delta = rep(0,P-3))
 
-# State 2, only features 3,4 and 5 are relevant
-indx=which(true_stat!=2)
-Y[indx,-(3:5)]=mvtnorm::rmvt(length(indx), 
-                             sigma = (nu-2)*Sigma/nu, 
-                             df = nu, delta = rep(0,P-3))
 
-# # State 3, only features 5,6 and 7 are relevant
-# indx=which(true_stat!=3)
-# Y[indx,-(5:7)]=mvtnorm::rmvt(length(indx), 
+# nu=4
+# # State 1, only features 1,2 and 3 are relevant
+# indx=which(true_stat!=1)
+# Sigma <- matrix(0,ncol=P-3,nrow=P-3)
+# diag(Sigma)=5
+# Y[indx,-(1:3)]=mvtnorm::rmvt(length(indx), 
 #                              sigma = (nu-2)*Sigma/nu, 
 #                              df = nu, delta = rep(0,P-3))
-
-# Other features are not relevant
-# Sigma <- matrix(0,ncol=5,nrow=5)
+# 
+# # State 2, only features 3,4 and 5 are relevant
+# indx=which(true_stat!=2)
+# Y[indx,-(3:5)]=mvtnorm::rmvt(length(indx), 
+#                              sigma = (nu-2)*Sigma/nu, 
+#                              df = nu, delta = rep(0,P-3))
+# 
+# 
+# Sigma <- matrix(0,ncol=P-5,nrow=P-5)
 # diag(Sigma)=5
-# Y[,6:10]=mvtnorm::rmvt(TT, 
-#                        sigma = (nu-2)*Sigma/nu, 
-#                        df = nu, delta = rep(0,5))
+# Y[,6:P]=mvtnorm::rmvt(TT, 
+#                       sigma = (nu-2)*Sigma/nu, 
+#                       df = nu, delta = rep(0,P-5))
+# 
+# x11()
+# par(mfrow=c(4,3))
+# for (i in 1:P) {
+#   plot(Y[, i], col=simDat$mchain, pch=19,ylab=i)
+# }
 
-Sigma <- matrix(0,ncol=P-5,nrow=P-5)
-diag(Sigma)=5
-Y[,6:P]=mvtnorm::rmvt(TT, 
-                      sigma = (nu-2)*Sigma/nu, 
-                      df = nu, delta = rep(0,P-5))
-
-x11()
-par(mfrow=c(4,3))
-for (i in 1:P) {
-  plot(Y[, i], col=simDat$mchain, pch=19,ylab=i)
-}
-
+# Y$X1=factor(round(Y$X1))
+# Y$X2=factor(round(Y$X2))
 
 COSA=function(Y,zeta0,K,tol,n_outer=20,alpha=.1,verbose=F){
   P=ncol(Y)
@@ -359,7 +415,7 @@ COSA=function(Y,zeta0,K,tol,n_outer=20,alpha=.1,verbose=F){
   return(list(W=W,s=s,medoids=medoids))
 }
 
-JM_COSA=function(Y,zeta0,lambda,K,tol,n_outer=20,n_inner=10,alpha=.1,verbose=F){
+JM_COSA=function(Y,zeta0,lambda,K,tol,n_outer=20,alpha=.1,verbose=F){
   P=ncol(Y)
   TT=nrow(Y)
   
@@ -372,19 +428,20 @@ JM_COSA=function(Y,zeta0,lambda,K,tol,n_outer=20,n_inner=10,alpha=.1,verbose=F){
   
   zeta=zeta0
   
-  #s=initialize_states(Y,K)
+  s=initialize_states(Y,K)
   # Ymedoids=cluster::pam(Y,k=K)
   # s=Ymedoids$clustering
   # Ymedoids=Ymedoids$medoids
-  s=sample(1:K,TT,replace = T)
+  #s=sample(1:K,TT,replace = T)
+  
+  loss_old=1e10
   
   for (outer in 1:n_outer){
     
     ## Clustering
     #for(inner in 1:n_inner){
-    loss_old=1e10
     #Compute distances
-    for(inner in 1:n_inner){
+    #for(inner in 1:n_inner){
       DW=weight_inv_exp_dist(Y,
                              s,
                              W,zeta)
@@ -415,7 +472,7 @@ JM_COSA=function(Y,zeta0,lambda,K,tol,n_outer=20,n_inner=10,alpha=.1,verbose=F){
         break
       }
       loss_old <- loss
-    }
+    #}
     
     # Compute weights
     
@@ -442,8 +499,8 @@ JM_COSA=function(Y,zeta0,lambda,K,tol,n_outer=20,n_inner=10,alpha=.1,verbose=F){
     # print(range(DW))
     
     if (verbose) {
-      #cat(sprintf('Outer iteration %d: %.6e\n', outer, eps_W))
-      cat(sprintf('Out iteration %d (# inn iterations %d): %.6e\n', outer, inner, eps_W))
+      cat(sprintf('Outer iteration %d: %.6e\n', outer, eps_W))
+      #cat(sprintf('Out iteration %d (# inn iterations %d): %.6e\n', outer, inner, eps_W))
     }
     
   }
