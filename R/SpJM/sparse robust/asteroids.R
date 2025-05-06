@@ -138,6 +138,8 @@ plotly::plot_ly(
   hoverinfo = "text"
 )
 
+plot(df100011836$theta[1:100],type='l')
+
 plotly::plot_ly(
   data = df100011836,
   x = ~t,
@@ -325,16 +327,126 @@ ggarrange(p_a_100011836,p_theta_100011836,nrow=2,common.legend = T)
 load("C:/Users/federico/OneDrive - CNR/SJM-for_ACOMC/cleaned data for analysis in Nonlinear Dynamics/100006174_cleaned.Rdata")
 
 
-Y$I_CP=factor(Y$I_CP)
-Y$I_HS=factor(Y$I_HS)
-Y$I_QS=factor(Y$I_QS)
-Y$ I_TP =factor(Y$I_TP)
-Y$ind_a_short=factor(Y$ind_a_short)
+df100006174$theta=trans_theta(df100006174$theta)
+
+df100006174$da=c(NA,diff(df100006174$a))
+df100006174$dtheta=c(NA,diff(df100006174$theta))
+df100006174$de=c(NA,diff(df100006174$e))
+df100006174$domega=c(NA,diff(df100006174$omega))
+
+#l=5
+l=10
+
+df100006174$sd_theta=zoo::rollapply(df100006174$theta, l, sd, fill=NA)
+df100006174$sd_dtheta=zoo::rollapply(df100006174$dtheta, l, sd, fill=NA)
+
+df100006174$sd_a=zoo::rollapply(df100006174$a, l, sd, fill=NA)
+df100006174$sd_da=zoo::rollapply(df100006174$da, l, sd, fill=NA)
+
+df100006174$sd_e=zoo::rollapply(df100006174$e, l, sd, fill=NA)
+df100006174$sd_de=zoo::rollapply(df100006174$de, l, sd, fill=NA)
+
+df100006174$sd_omega=zoo::rollapply(df100006174$omega, l, sd, fill=NA)
+df100006174$sd_domega=zoo::rollapply(df100006174$domega, l, sd, fill=NA)
+
+df100006174_maxmin_theta=max_min_feat(df100006174,
+                                      tt_thres_maxmin=2.5,l=l)
+
+df100006174=merge(df100006174,df100006174_maxmin_theta,by='t')
+
+df100006174$maxmins=ifelse(df100006174$maxs==1,2,0)
+df100006174$maxmins=df100006174$maxmins+ifelse(df100006174$mins==1,1,0)
+
+df100006174_ind_a=a_feat(df100006174,l=l)
+
+df100006174=merge(df100006174,df100006174_ind_a,by='t')
+
+
+plotly::plot_ly(
+  data = df100006174,
+  x = ~t,
+  y = ~as.numeric(theta),
+  type = 'scatter',
+  mode = 'markers',
+  marker = list(size = 8),
+  color = ~maxmins+1,         # Colore basato su 'truth'
+  # colors = c("red", "blue"),  # Palette colori personalizzabile
+  #text = ~paste("Time:", time, "<br>Theta:", theta, "<br>State:", MAP),
+  hoverinfo = "text"
+)
+
+plot(df100006174$theta[1:100],type='l')
+
+plotly::plot_ly(
+  data = df100006174,
+  x = ~t,
+  y = ~as.numeric(theta),
+  type = 'scatter',
+  mode = 'markers',
+  marker = list(size = 8),
+  color = ~I_CP+1,         # Colore basato su 'truth'
+  # colors = c("red", "blue"),  # Palette colori personalizzabile
+  #text = ~paste("Time:", time, "<br>Theta:", theta, "<br>State:", MAP),
+  hoverinfo = "text"
+)
+
+
+plotly::plot_ly(
+  data = df100006174,
+  x = ~t,
+  y = ~as.numeric(a),
+  type = 'scatter',
+  mode = 'markers',
+  marker = list(size = 8),
+  color = ~ind_a_l,         # Colore basato su 'truth'
+  # colors = c("red", "blue"),  # Palette colori personalizzabile
+  #text = ~paste("Time:", time, "<br>Theta:", theta, "<br>State:", MAP),
+  hoverinfo = "text"
+)
+
+# QS feature is not well defined
+
+Y=df100006174[,c("t",
+                 "a",
+                 "da",
+                 "theta",
+                 "dtheta",
+                 "e",
+                 "de",
+                 "omega",
+                 "domega",
+                 "sd_theta",
+                 "sd_dtheta",
+                 "sd_a",
+                 "sd_da",
+                 "sd_e",
+                 "sd_de",
+                 "sd_omega",
+                 "sd_domega"
+                 #"I_TP","I_HS",
+                 #"I_QS",
+                 # "I_CP",
+                 #"ind_a_l",
+                 #"mean_osc"
+                 )]
+
+Y=Y[complete.cases(Y),]
+
+timesY=Y$t
+Y=Y[,-1]
 
 str(Y)
+
+# Y$I_CP=factor(Y$I_CP)
+# Y$I_TP=factor(Y$I_TP)
+# Y$I_HS=factor(Y$I_HS)
+# Y$I_QS=factor(Y$I_QS)
+# Y$ind_a_l=factor(Y$ind_a_l)
+
 dim(Y)
 
-zoom=300:1600
+TT=dim(Y)[1]
+zoom=400:(TT/3)
 Y=Y[zoom,]
 
 fit_100006174=JM_COSA(Y,zeta0=.2,lambda=.25,
@@ -343,15 +455,17 @@ fit_100006174=JM_COSA(Y,zeta0=.2,lambda=.25,
 W_100006174=fit_100006174$W
 colnames(W_100006174)=colnames(Y)
 
-W_100006174
+round(W_100006174,3)
 
 s_100006174=fit_100006174$s
 medoids_100006174=fit_100006174$medoids
 
-df_res_100006174=data.frame(t=1:nrow(Y),
+df_res_100006174=data.frame(t=timesY[zoom],
                             Y,
                             State=s_100006174
 )
+
+label_size=18
 
 df_res_100006174 <- df_res_100006174 %>%
   mutate(Segment = cumsum(State != lag(State, default = first(State))))
@@ -389,8 +503,7 @@ p_a_100006174=ggplot(data = df_segments_a[zoom,]) +
 #   facet_zoom(x = t >= df_segments_a$t[dim(Y)[1] / 2], zoom.size = 1)
 
 #ggplotly(p_a_res)
-
-
+p_a_100006174
 
 df_segments_theta <- df_res_100006174 %>%
   group_by(Segment) %>%
