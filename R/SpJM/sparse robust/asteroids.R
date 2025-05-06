@@ -99,76 +99,6 @@ source("Utils_sparse_robust_2.R")
 
 # 164207 ------------------------------------------------------------------
 
-trans_theta=function(theta){
-  #theta_trans <- data$theta
-  theta[which(theta > pi)] <- theta[which(theta > pi)] - 2 * pi
-  #data$theta <- theta_trans
-  return(theta)
-}
-
-max_min_feat=function(data,tt_thres_maxmin=2.5,l=5){
-  library(dplyr)
-  maxs <- as.numeric(splus2R::peaks(data$theta, span = l))
-  mins <- as.numeric(splus2R::peaks(-data$theta, span = l))
-  
-  # Values above tt_thres_maxmin and below -tt_thres_maxmin are not considered as max and min
-  maxs[which(data$theta>(tt_thres_maxmin))] <- 0
-  mins[which(data$theta<(-tt_thres_maxmin))] <- 0
-  
-  #
-  data$maxs=maxs
-  data$mins=mins
-  
-  find_closest <- function(t_val, t_events, theta_events) {
-    if (length(t_events) == 0) return(NA)  # No events found
-    diffs <- abs(t_events - t_val)  # Compute absolute time differences
-    closest_index <- which.min(diffs)  # Find index of closest event
-    return(theta_events[closest_index])  # Return corresponding theta value
-  }
-  
-  # Extract time and values of local maxima and minima
-  t_maxs <- data$t[data$maxs == 1]
-  theta_maxs <- data$theta[data$maxs == 1]
-  
-  t_mins <- data$t[data$mins == 1]
-  theta_mins <- data$theta[data$mins == 1]
-  
-  # Compute the closest local max and min for each row
-  data <- data %>%
-    mutate(
-      value_max = sapply(t, find_closest, t_maxs, theta_maxs),
-      value_min = sapply(t, find_closest, t_mins, theta_mins)
-    )
-  
-  # TP indicator
-  data$I_TP=as.numeric(data$value_max*data$value_min>0 & data$value_max>data$value_min)
-  
-  # HS indicator
-  data$I_HS=as.numeric(data$value_max*data$value_min<0&data$value_max<data$value_min)
-  
-  # QS indicator
-  data$I_QS=as.numeric(data$value_max*data$value_min<0 & data$value_max>data$value_min)
-  
-  # CP indicator
-  data$I_CP=as.numeric(data$value_max*data$value_min>0&data$value_max<=data$value_min)
-  
-  # Check if distance between max and min is small to distinguish between NR and QS
-  # data$I_QS=data$I_QS*data$I_diffmaxmin
-  
-  
-  
-  data$mean_osc=data$I_HS*(data$value_min+data$value_max+2*pi)/2+
-    data$I_QS*(data$value_min+data$value_max)/2+
-    data$I_TP*(data$value_min+data$value_max)/2
-  
-  data=data[,c("t","maxs","mins",
-               "value_min","value_max",
-               #"I_TP",
-               "I_HS","I_QS",
-               #"I_CP",
-               "mean_osc")]
-}
-
 load("propagation_164207_new_v2.Rdata")
 
 
@@ -460,29 +390,29 @@ ggarrange(p_a_100011836,p_theta_100011836,nrow=2,common.legend = T)
 
 
 load("C:/Users/federico/OneDrive - CNR/SJM-for_ACOMC/cleaned data for analysis in Nonlinear Dynamics/100006174_cleaned.Rdata")
-
+#load("D:/CNR/OneDrive - CNR/SJM-for_ACOMC/cleaned data for analysis in Nonlinear Dynamics/100006174_cleaned.Rdata")
 
 df100006174$theta=trans_theta(df100006174$theta)
 
-df100006174$da=c(NA,diff(df100006174$a))
+#df100006174$da=c(NA,diff(df100006174$a))
 df100006174$dtheta=c(NA,diff(df100006174$theta))
-df100006174$de=c(NA,diff(df100006174$e))
-df100006174$domega=c(NA,diff(df100006174$omega))
+# df100006174$de=c(NA,diff(df100006174$e))
+# df100006174$domega=c(NA,diff(df100006174$omega))
 
 #l=5
-l=10
+l=5
 
 df100006174$sd_theta=zoo::rollapply(df100006174$theta, l, sd, fill=NA)
 df100006174$sd_dtheta=zoo::rollapply(df100006174$dtheta, l, sd, fill=NA)
 
-df100006174$sd_a=zoo::rollapply(df100006174$a, l, sd, fill=NA)
-df100006174$sd_da=zoo::rollapply(df100006174$da, l, sd, fill=NA)
-
-df100006174$sd_e=zoo::rollapply(df100006174$e, l, sd, fill=NA)
-df100006174$sd_de=zoo::rollapply(df100006174$de, l, sd, fill=NA)
-
-df100006174$sd_omega=zoo::rollapply(df100006174$omega, l, sd, fill=NA)
-df100006174$sd_domega=zoo::rollapply(df100006174$domega, l, sd, fill=NA)
+# df100006174$sd_a=zoo::rollapply(df100006174$a, l, sd, fill=NA)
+# df100006174$sd_da=zoo::rollapply(df100006174$da, l, sd, fill=NA)
+# 
+# df100006174$sd_e=zoo::rollapply(df100006174$e, l, sd, fill=NA)
+# df100006174$sd_de=zoo::rollapply(df100006174$de, l, sd, fill=NA)
+# 
+# df100006174$sd_omega=zoo::rollapply(df100006174$omega, l, sd, fill=NA)
+# df100006174$sd_domega=zoo::rollapply(df100006174$domega, l, sd, fill=NA)
 
 df100006174_maxmin_theta=max_min_feat(df100006174,
                                       tt_thres_maxmin=2.5,l=l)
@@ -492,7 +422,7 @@ df100006174=merge(df100006174,df100006174_maxmin_theta,by='t')
 df100006174$maxmins=ifelse(df100006174$maxs==1,2,0)
 df100006174$maxmins=df100006174$maxmins+ifelse(df100006174$mins==1,1,0)
 
-df100006174_ind_a=a_feat(df100006174,l=l)
+df100006174_ind_a=a_feat(df100006174,l=10)
 
 df100006174=merge(df100006174,df100006174_ind_a,by='t')
 
@@ -543,25 +473,26 @@ plotly::plot_ly(
 
 Y=df100006174[,c("t",
                  "a",
-                 "da",
+                 #"da",
                  "theta",
                  "dtheta",
-                 "e",
-                 "de",
-                 "omega",
-                 "domega",
+                 # "e",
+                 # "de",
+                 # "omega",
+                 # "domega",
                  "sd_theta",
                  "sd_dtheta",
-                 "sd_a",
-                 "sd_da",
-                 "sd_e",
-                 "sd_de",
-                 "sd_omega",
-                 "sd_domega"
-                 #"I_TP","I_HS",
-                 #"I_QS",
-                 # "I_CP",
-                 #"ind_a_l",
+                 # "sd_a",
+                 # "sd_da",
+                 # "sd_e",
+                 # "sd_de",
+                 # "sd_omega",
+                 # "sd_domega"
+                 "I_TP","I_HS",
+                 "I_QS",
+                  "I_CP",
+                 "ind_a_l"
+                 #,
                  #"mean_osc"
                  )]
 
@@ -572,13 +503,14 @@ Y=Y[,-1]
 
 str(Y)
 
-# Y$I_CP=factor(Y$I_CP)
-# Y$I_TP=factor(Y$I_TP)
-# Y$I_HS=factor(Y$I_HS)
-# Y$I_QS=factor(Y$I_QS)
-# Y$ind_a_l=factor(Y$ind_a_l)
+Y$I_CP=factor(Y$I_CP)
+Y$I_TP=factor(Y$I_TP)
+Y$I_HS=factor(Y$I_HS)
+Y$I_QS=factor(Y$I_QS)
+Y$ind_a_l=factor(Y$ind_a_l)
 
 dim(Y)
+str(Y)
 
 TT=dim(Y)[1]
 zoom=400:(TT/3)
@@ -599,6 +531,14 @@ df_res_100006174=data.frame(t=timesY[zoom],
                             Y,
                             State=s_100006174
 )
+
+x11()
+plot(df_res_100006174$a, col=df_res_100006174$State,pch=19)
+legend("topright", legend = 1:4, col = 1:4, pch = 19,cex=.5)
+
+x11()
+plot(df_res_100006174$theta, col=df_res_100006174$State,pch=19)
+legend("topright", legend = 1:4, col = 1:4, pch = 19,cex=.5)
 
 label_size=18
 
@@ -680,3 +620,71 @@ p_theta_100006174=ggplot(data = df_segments_theta[zoom,]) +
 X11()
 ggarrange(p_a_100006174,p_theta_100006174,nrow=2,common.legend = T)
 
+
+# 2002AA29 ----------------------------------------------------------------
+
+load("D:/CNR/OneDrive - CNR/SJM-for_ACOMC/cleaned data for analysis in Nonlinear Dynamics/2002AA29_cleaned.Rdata")
+
+df2002AA29$theta=trans_theta(df2002AA29$theta)
+df2002AA29$dtheta=c(NA,diff(df2002AA29$theta))
+# df2002AA29$sd_theta=zoo::rollapply(df2002AA29$theta, 5, sd, fill=NA)
+# df2002AA29$sd_dtheta=zoo::rollapply(df2002AA29$dtheta, 5, sd, fill=NA)
+
+df2002AA29_maxmin_theta=max_min_feat(df2002AA29,
+                                      tt_thres_maxmin=2.5,l=5)
+df2002AA29=merge(df2002AA29,df2002AA29_maxmin_theta,by='t')
+
+Y=df100006174[,c("t",
+                 #"a",
+                 #"da",
+                 "theta",
+                 "dtheta",
+                 # "e",
+                 # "de",
+                 # "omega",
+                 # "domega",
+                 # "sd_theta",
+                 # "sd_dtheta",
+                 # "sd_a",
+                 # "sd_da",
+                 # "sd_e",
+                 # "sd_de",
+                 # "sd_omega",
+                 # "sd_domega"
+                 #"I_TP",
+                 "I_HS",
+                 "I_QS"
+                 #,
+                 #"I_CP",
+                 #"ind_a_l"
+                 #,
+                 #"mean_osc"
+)]
+
+Y=Y[complete.cases(Y),]
+
+timesY=Y$t
+
+Y=Y[,-1]
+
+Y_orig=Y
+
+Y[,1:2]=apply(Y[,1:2],2,scale)
+
+fit_df2002AA29=JM_COSA(Y,zeta0=.2,lambda=.25,
+                       K=2,tol=1e-16,n_outer=20,alpha=.1,verbose=T)
+
+W_df2002AA29=fit_df2002AA29$W
+colnames(W_df2002AA29)=colnames(Y)
+
+round(W_df2002AA29,3)
+
+s_df2002AA29=fit_df2002AA29$s
+medoids_df2002AA29=fit_df2002AA29$medoids
+
+df_res_df2002AA29=data.frame(t=timesY,
+                             Y,
+                             State=s_df2002AA29)
+x11()
+plot(df_res_df2002AA29$theta, col=df_res_df2002AA29$State,pch=19)
+legend("topright", legend = 1:2, col = 1:2, pch = 19,cex=.5)
