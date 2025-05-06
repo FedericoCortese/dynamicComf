@@ -82,8 +82,11 @@ D=distm(data_stat_number[,c("longitude","latitude")],
         data_stat_number[,c("longitude","latitude")], 
         fun = distGeo)/1000
 
-lambda=0.05
-gamma=0.05
+#lambda=0.05
+#gamma=0.05
+
+lambda=0.1
+lambda=0.1
 
 fit=STjumpDist(Y_6,3,D,
                jump_penalty=lambda,
@@ -122,6 +125,8 @@ tapply(Y_res$hour,Y_res$State,Mode)
 TY=unique(Y_6$t)
 timesY=unique(times)
 TT_6=length(TY)
+
+#load("C:/Users/federico/OneDrive - CNR/Comfort - HMM/emp_stud_STJM_singapore/cozie_compare.Rdata")
 
 # Strano che ws_timestamp_start ha SOLO orari dalle 2 di notte alle 11 di mattina, forse meglio prendere time
 q_data=cozie_compare[,c("q_thermal_preference","time","ws_longitude","ws_latitude")]
@@ -206,41 +211,44 @@ plot_base <- ggplot(S_summary_complete, aes(x = time, y = Proportion, fill = as.
         axis.text.x = element_text(angle = 45, hjust = 1),
         legend.position = "top")
 # + 
-
+library(scales)
 temp_state_plot <- plot_base +
-  geom_line(data = avg_weath, aes(x = times, y = air_temp 
-                                  / 40
-  ),  
-  color = "red", size = 1.2, inherit.aes = FALSE,linetype=6) +
-  #geom_point(data = avg_weath, aes(x = times, y = wind_speed / 10),  # Scale wind speed for better visualization
-  # color = "blue", size = 2, inherit.aes = FALSE) +
+  geom_line(
+    data = avg_weath,
+    aes(x = times, y = rescale(air_temp, to = c(0, 1))),  # Riscalata tra 0 e 1
+    color = "red", size = 1.2, inherit.aes = FALSE, linetype = 6
+  ) +
   scale_y_continuous(
     name = "Prop of Locations",
-    sec.axis = sec_axis(~ . * 40, name = "Average Air Temp (°C)", 
-                        labels = scales::number_format(accuracy = 0.1))
+    sec.axis = sec_axis(
+      ~ rescale(., from = c(0, 1), to = range(avg_weath$air_temp, na.rm = TRUE)),
+      name = "Average Air Temp (°C)",
+      labels = number_format(accuracy = 0.1)
+    )
   )
 
 rh_state_plot <- plot_base +
-  geom_line(data = avg_weath, aes(x = times, y = rh 
-                                  / 100
-  ),  #
-  color = "red", size = 1.2, inherit.aes = FALSE,linetype=6) +
-  #geom_point(data = avg_weath, aes(x = times, y = wind_speed / 10),  # Scale wind speed for better visualization
-  # color = "blue", size = 2, inherit.aes = FALSE) +
+  geom_line(
+    data = avg_weath,
+    aes(x = times, y = rescale(rh, to = c(0, 1))),
+    color = "red", size = 1.2, inherit.aes = FALSE, linetype = 6
+  ) +
   scale_y_continuous(
     name = "Prop of Locations",
-    sec.axis = sec_axis(~ . * 100, name = "Average Rel Humidity (%)", 
-                        labels = scales::number_format(accuracy = 0.1))
+    sec.axis = sec_axis(
+      ~ rescale(., from = c(0, 1), to = range(avg_weath$rh, na.rm = TRUE)),
+      name = "Average Rel Humidity (%)",
+      labels = number_format(accuracy = 0.1)
+    )
   )
 
-
-temp_state_plot <- temp_state_plot + theme(axis.title.x = element_blank(),
-                                           axis.text.x = element_blank(),
-                                           axis.ticks.x = element_blank())
-
-rh_state_plot=rh_state_plot+ theme(axis.title.x = element_blank(),
-                                   axis.text.x = element_blank(),
-                                   axis.ticks.x = element_blank())
+# temp_state_plot <- temp_state_plot + theme(axis.title.x = element_blank(),
+#                                            axis.text.x = element_blank(),
+#                                            axis.ticks.x = element_blank())
+# 
+# rh_state_plot=rh_state_plot+ theme(axis.title.x = element_blank(),
+#                                    axis.text.x = element_blank(),
+#                                    axis.ticks.x = element_blank())
 
 # Combine the plots
 # combined_plot <- (temp_state_plot / rh_state_plot) + 
@@ -255,31 +263,35 @@ rh_state_plot=rh_state_plot+ theme(axis.title.x = element_blank(),
 # dev.off()
 
 rainfall_state_plot <- plot_base +
-  geom_line(data = avg_weath, aes(x = times, y = rainfall 
-                                  #/ 10
-  ),  
-  color = "red", size = 1.2, inherit.aes = FALSE,linetype=6) +
-  #geom_point(data = avg_weath, aes(x = times, y = wind_speed / 10),  # Scale wind speed for better visualization
-  # color = "blue", size = 2, inherit.aes = FALSE) +
+  geom_line(
+    data = avg_weath,
+    aes(x = times, y = rescale(rainfall, to = c(0, 1))),
+    color = "red", size = 1.2, inherit.aes = FALSE, linetype = 6
+  ) +
   scale_y_continuous(
     name = "Prop of Locations",
-    sec.axis = sec_axis(~ . * 1, name = "Average Rainfall (mm)", 
-                        labels = scales::number_format(accuracy = 0.1))
+    sec.axis = sec_axis(
+      ~ rescale(., from = c(0, 1), to = range(avg_weath$rainfall, na.rm = TRUE)),
+      name = "Average Rainfall (mm)",
+      labels = number_format(accuracy = 0.1)
+    )
   )
-rainfall_state_plot
+#rainfall_state_plot
 
 wind_state_plot <- plot_base +
-  geom_line(data = avg_weath, aes(x = times, y = wind_speed 
-                                  / 10
-  ),  # Scale wind speed for better visualization
-  color = "red", size = 1.2, inherit.aes = FALSE,linetype=6) +
-  #geom_point(data = avg_weath, aes(x = times, y = wind_speed / 10),  # Scale wind speed for better visualization
-  # color = "blue", size = 2, inherit.aes = FALSE) +
+  geom_line(
+    data = avg_weath,
+    aes(x = times, y = rescale(wind_speed, to = c(0, 1))),
+    color = "red", size = 1.2, inherit.aes = FALSE, linetype = 6
+  ) +
   scale_y_continuous(
     name = "Prop of Locations",
-    sec.axis = sec_axis(~ . * 10, name = "Average Wind Speed (m/s)", labels = scales::number_format(accuracy = 0.1))
+    sec.axis = sec_axis(
+      ~ rescale(., from = c(0, 1), to = range(avg_weath$wind_speed, na.rm = TRUE)),
+      name = "Average Wind Speed (m/s)",
+      labels = number_format(accuracy = 0.1)
+    )
   )
-
 
 rainfall_state_plot <- rainfall_state_plot + theme(axis.title.x = element_blank(),
                                                    axis.text.x = element_blank(),
@@ -297,46 +309,56 @@ rainfall_state_plot <- rainfall_state_plot + theme(axis.title.x = element_blank(
 # combined_plot_2
 # dev.off()
 
-combined_plot_3 <- (temp_state_plot / rh_state_plot / rainfall_state_plot / wind_state_plot) +
-  plot_layout(guides = 'collect') &
+library(patchwork)
+temp_state_plot <- temp_state_plot + 
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank())
+
+rh_state_plot <- rh_state_plot + 
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank())
+
+rainfall_state_plot <- rainfall_state_plot + 
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank())
+
+# wind_state_plot mantiene l’asse x
+
+# Combina i plot verticalmente
+combined_plot <- (
+  temp_state_plot /
+    rh_state_plot /
+    rainfall_state_plot /
+    wind_state_plot
+) + plot_layout(guides = "collect") & 
   theme(legend.position = "top")
 
-# Display the plot
-combined_plot_3
+# Visualizza il plot
+combined_plot
 
 png(width = 500, height = 900,filename="all_state_plot.png")
-combined_plot_3
+combined_plot
 dev.off()
 
 # 
-plot_base <- ggplot(S_summary_complete, aes(x = time, y = Proportion, fill = as.factor(ComfortLevel))) +
-  geom_area(alpha = 0.6, size = 1, color = "black") +
-  scale_fill_manual(values = c("lightblue", "lightgreen", "orange"), 
-                    name = "Comfort Regime",
-                    labels=c("Cool","Neutral","Hot")) +
-  labs(
-    #title = "Temporal Evolution of Thermal Comfort Levels and Wind Speed",
-    # x = "Date and Hour",
-    x=" ",
-    y = "Prop of Locations",
-    fill = "Comfort Regime") +
-  scale_x_datetime(date_breaks = "12 hours", date_labels = "%Y-%m-%d %H:%M") +
-  theme_minimal() +
-  theme(text = element_text(size = 16),
-        axis.text.x = element_text(angle = 45, hjust = 1),
-        legend.position = "top")
 utci_state_plot <- plot_base +
-  geom_line(data = avg_weath, aes(x = times, y = UTCI 
-                                  / 40
-  ),  #
-  color = "red", size = 1.5, inherit.aes = FALSE,linetype=6) +
-  #geom_point(data = avg_weath, aes(x = times, y = wind_speed / 10),  # Scale wind speed for better visualization
-  # color = "blue", size = 2, inherit.aes = FALSE) +
+  geom_line(
+    data = avg_weath,
+    aes(x = times, y = rescale(UTCI, to = c(0, 1))),
+    color = "red", size = 1.5, inherit.aes = FALSE, linetype = 6
+  ) +
   scale_y_continuous(
     name = "Prop of Locations",
-    sec.axis = sec_axis(~ . * 40, name = "UTCI (°C)", 
-                        labels = scales::number_format(accuracy = 0.1))
+    sec.axis = sec_axis(
+      ~ rescale(., from = c(0, 1), to = range(avg_weath$UTCI, na.rm = TRUE)),
+      name = "UTCI (°C)",
+      labels = number_format(accuracy = 0.1)
+    )
   )
+
 
 
 png(width = 800, height = 600,filename="utci_state_plot.png")
