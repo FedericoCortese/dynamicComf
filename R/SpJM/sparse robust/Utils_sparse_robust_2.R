@@ -43,12 +43,6 @@ weight_inv_exp_dist <- function(Y,
   P <- ncol(Y)
   Y_orig=Y
   
-  # 1. Normalizzazione Gower
-  # range_Y <- apply(Y, 2, function(col) {
-  #   r <- max(col) - min(col)
-  #   if (r == 0) 1 else r
-  # })
-  
   # continuous vars
   Y=Y[,indx_num]
   sk=apply(Y,2,function(x)IQR(x)/1.35)
@@ -79,12 +73,6 @@ weight_inv_exp_dist <- function(Y,
     
     Y=Y_orig[,!indx_num]
     
-    # 2. Genera indici delle coppie (i < j)
-    # pairs <- combn(TT, 2)
-    # i_idx <- pairs[1, ]
-    # j_idx <- pairs[2, ]
-    # n_pairs <- ncol(pairs)
-    
     # 3. Estrai le righe corrispondenti
     Yi <- Y[i_idx, , drop = FALSE]
     Yj <- Y[j_idx, , drop = FALSE]
@@ -100,8 +88,6 @@ weight_inv_exp_dist <- function(Y,
   # 4. Estrai direttamente i pesi W[si, ] e W[sj, ] in blocco
   W_si <- W[s[i_idx], , drop = FALSE]
   W_sj <- W[s[j_idx], , drop = FALSE]
-  # W_si <- W[i_idx, , drop = FALSE]
-  # W_sj <- W[j_idx, , drop = FALSE]
   max_w <- pmax(W_si, W_sj)
   
   # 5. Calcola la distanza finale
@@ -130,6 +116,55 @@ weight_inv_exp_dist <- function(Y,
 #   }
 #   return(wcd)
 # }
+
+weight_inv_exp_dist_medoids <- function(Y, Ymedoids, s, W, zeta) {
+  indx_num <- sapply(Y, is.numeric)
+  
+  TT <- nrow(Y)
+  K <- nrow(Ymedoids)
+  P <- ncol(Y)
+  
+  Y_orig <- Y
+  Ymedoids_orig <- Ymedoids
+  
+  # Continuous variables
+  Y <- Y[, indx_num, drop = FALSE]
+  Ymedoids_cont <- Ymedoids[, indx_num, drop = FALSE]
+  sk <- apply(Y, 2, function(x) IQR(x) / 1.35)
+  
+  # Pre-allocate output matrix
+  mat <- matrix(0, nrow = TT, ncol = K)
+  
+  # Ciclo su tutti i medoids
+  for (k in 1:K) {
+    diff_cont <- abs(sweep(Y, 2, as.numeric(Ymedoids_cont[k,]), FUN = "-"))
+    
+    diff_cont <- sweep(diff_cont, 2, sk, FUN = "/") # normalizzazione
+    diff <- matrix(0, nrow = TT, ncol = P)
+    diff[, indx_num] <- as.matrix(diff_cont[, names(indx_num)[indx_num]])
+    
+    # Categorical variables
+    if (sum(indx_num) != P) {
+      Y_cat <- Y_orig[, !indx_num, drop = FALSE]
+      medoid_cat <- Ymedoids_orig[k, !indx_num, drop = FALSE]
+      diff_cat <- sweep(as.matrix(Y_cat), 2, as.matrix(medoid_cat), FUN = "!=") * 1
+      diff[, !indx_num] <- as.matrix(diff_cat[, names(!indx_num)[!indx_num]])
+    }
+    
+    # Pesatura con pesi W
+    W_si <- W[s, , drop = FALSE]
+    W_sj <- matrix(W[k, ], nrow = TT, ncol = ncol(W), byrow = TRUE)
+    max_w <- pmax(W_si, W_sj)
+    
+    weighted_exp <- exp(-diff / zeta) * max_w
+    dist_vals <- -zeta * log(rowSums(weighted_exp))
+    
+    mat[, k] <- dist_vals
+  }
+  
+  return(mat)  # matrice T x K
+}
+
 
 WCD=function(s,Y,K){
   #TT <- nrow(Y)
@@ -290,66 +325,66 @@ sim_data_stud_t=function(seed=123,
 #   return(Y_noised)
 # }
 
-# zeta0=0.1
-# alpha=.1
-# K=2
-# tol=1e-16
-# n_outer=15
-# verbose=T
-# lambda=.25
-# 
-# TT=1000
-# P=10
+zeta0=0.1
+alpha=.1
+K=2
+tol=1e-16
+n_outer=15
+verbose=T
+lambda=.25
 
-# simDat=sim_data_stud_t(seed=123,
-#                        TT=TT,
-#                        P=P,
-#                        Pcat=NULL,
-#                        Ktrue=2,
-#                        mu=1,
-#                        rho=0,
-#                        nu=100,
-#                        phi=.8,
-#                        pers=0.95)
+TT=1000
+P=10
 
-# Y=simDat$SimData
-# true_stat=simDat$mchain
+simDat=sim_data_stud_t(seed=123,
+                       TT=TT,
+                       P=P,
+                       Pcat=NULL,
+                       Ktrue=2,
+                       mu=1,
+                       rho=0,
+                       nu=100,
+                       phi=.8,
+                       pers=0.95)
 
-#plot(Y[,2],col=true_stat,pch=19)
+Y=simDat$SimData
+true_stat=simDat$mchain
 
-
+plot(Y[,2],col=true_stat,pch=19)
 
 
-# nu=4
-# # State 1, only features 1,2 and 3 are relevant
-# indx=which(true_stat!=1)
-# Sigma <- matrix(0,ncol=P-3,nrow=P-3)
-# diag(Sigma)=5
-# Y[indx,-(1:3)]=mvtnorm::rmvt(length(indx), 
-#                              sigma = (nu-2)*Sigma/nu, 
-#                              df = nu, delta = rep(0,P-3))
-# 
+
+
+nu=4
+# State 1, only features 1,2 and 3 are relevant
+indx=which(true_stat!=1)
+Sigma <- matrix(0,ncol=P-3,nrow=P-3)
+diag(Sigma)=5
+Y[indx,-(1:3)]=mvtnorm::rmvt(length(indx),
+                             sigma = (nu-2)*Sigma/nu,
+                             df = nu, delta = rep(0,P-3))
+
 # # State 2, only features 3,4 and 5 are relevant
-# indx=which(true_stat!=2)
-# Y[indx,-(3:5)]=mvtnorm::rmvt(length(indx), 
-#                              sigma = (nu-2)*Sigma/nu, 
-#                              df = nu, delta = rep(0,P-3))
-# 
-# 
-# Sigma <- matrix(0,ncol=P-5,nrow=P-5)
-# diag(Sigma)=5
-# Y[,6:P]=mvtnorm::rmvt(TT, 
-#                       sigma = (nu-2)*Sigma/nu, 
-#                       df = nu, delta = rep(0,P-5))
-# 
-# x11()
-# par(mfrow=c(4,3))
-# for (i in 1:P) {
-#   plot(Y[, i], col=simDat$mchain, pch=19,ylab=i)
-# }
+indx=which(true_stat!=2)
+Y[indx,-(3:5)]=mvtnorm::rmvt(length(indx),
+                             sigma = (nu-2)*Sigma/nu,
+                             df = nu, delta = rep(0,P-3))
 
-# Y$X1=factor(round(Y$X1))
-# Y$X2=factor(round(Y$X2))
+
+Sigma <- matrix(0,ncol=P-5,nrow=P-5)
+diag(Sigma)=5
+Y[,6:P]=mvtnorm::rmvt(TT,
+                      sigma = (nu-2)*Sigma/nu,
+                      df = nu, delta = rep(0,P-5))
+
+x11()
+par(mfrow=c(4,3))
+for (i in 1:P) {
+  plot(Y[, i], col=simDat$mchain, pch=19,ylab=i)
+}
+
+Y$X1=factor(round(Y$X1))
+Y$X2=factor(round(Y$X2))
 
 COSA=function(Y,zeta0,K,tol,n_outer=20,alpha=.1,verbose=F){
   P=ncol(Y)
@@ -415,9 +450,13 @@ COSA=function(Y,zeta0,K,tol,n_outer=20,alpha=.1,verbose=F){
   return(list(W=W,s=s,medoids=medoids))
 }
 
-JM_COSA=function(Y,zeta0,lambda,K,tol,n_outer=20,alpha=.1,verbose=F){
+JM_COSA=function(Y,zeta0,lambda,K,tol,n_outer=20,alpha=.1,verbose=F,Ts=NULL){
   P=ncol(Y)
   TT=nrow(Y)
+  
+  if(is.null(Ts)){
+    Ts=round(TT/2)
+  }
   
   # best_loss <- NULL
   # best_s <- NULL
@@ -428,11 +467,8 @@ JM_COSA=function(Y,zeta0,lambda,K,tol,n_outer=20,alpha=.1,verbose=F){
   
   zeta=zeta0
   
+  # Ottimizzare questo che segue??
   s=initialize_states(Y,K)
-  # Ymedoids=cluster::pam(Y,k=K)
-  # s=Ymedoids$clustering
-  # Ymedoids=Ymedoids$medoids
-  #s=sample(1:K,TT,replace = T)
   
   loss_old=1e10
   
@@ -442,13 +478,31 @@ JM_COSA=function(Y,zeta0,lambda,K,tol,n_outer=20,alpha=.1,verbose=F){
     #for(inner in 1:n_inner){
     #Compute distances
     #for(inner in 1:n_inner){
-      DW=weight_inv_exp_dist(Y,
-                             s,
-                             W,zeta)
-      medoids=cluster::pam(x=DW,k=K,diss=TRUE)
-      Ymedoids=Y[medoids$medoids,]
+    
+    # Questo qui sotto lentissimo se T>1000
+      subsample=sample(1:TT,Ts,replace = F)
+      Ys=Y[subsample,]
+      ss=s[subsample]
+    
+      # DW=weight_inv_exp_dist(Y,
+      #                        s,
+      #                        W,zeta)
       
-      loss_by_state=DW[,medoids$id.med]
+      # PAM only on subsample
+      DW_1=weight_inv_exp_dist(Ys,
+                             ss,
+                             W,zeta)
+      
+      medoids=cluster::pam(x=DW_1,k=K,diss=TRUE)
+      Ymedoids=Ys[medoids$medoids,]
+      #Ymedoids=Y[medoids$medoids,]
+      
+      # Questo se lavoro su tutto il dato
+      #loss_by_state=DW[,medoids$id.med]
+      
+      # Questo se lavoro su sottocampioni per ottimizzare i tempi
+      loss_by_state=weight_inv_exp_dist_medoids(Y, Ymedoids, s, W, zeta)
+      
       V <- loss_by_state
       for (t in (TT-1):1) {
         V[t-1,] <- loss_by_state[t-1,] + apply(V[t,] + Gamma, 2, min)
@@ -476,6 +530,7 @@ JM_COSA=function(Y,zeta0,lambda,K,tol,n_outer=20,alpha=.1,verbose=F){
     
     # Compute weights
     
+    # Pero' qua siamo punto e accapo -.-"
     Spk=WCD(s,Y,K)
     wcd=exp(-Spk/zeta0)
     W=wcd/rowSums(wcd)
