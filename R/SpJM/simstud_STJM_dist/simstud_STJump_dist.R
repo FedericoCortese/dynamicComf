@@ -709,3 +709,4 @@ res_BAC_NA20_max_P10=res_BAC_NA20_av_P10%>%group_by(M,TT)%>%summarise(maxBAC=max
 
 res_BAC_NA20_av_P10 %>%
   filter(gamma == 0, lambda == 0) 
+
