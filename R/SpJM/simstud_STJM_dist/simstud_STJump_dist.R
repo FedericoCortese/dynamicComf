@@ -92,7 +92,7 @@ p_p20_gap20_lambda <- ggplot(res_BAC_gap20_av[res_BAC_gap20_av$gamma <= 0.14 &
   )
 
 
-#png(width = 700, height = 700,filename="p_p10_gap20_lambda.png")
+#jpeg(width = 700, height = 700, filename = "p_p20_gap20_lambda.jpeg")
 p_p20_gap20_lambda
 #dev.off()
 
@@ -116,8 +116,9 @@ p_p20_gap20_gamma=ggplot(res_BAC_gap20_av
     panel.border = element_rect(color = "grey", fill = NA, size = 0.5)  # Grey border around each subplot
   )
 
-#jpeg(width = 700, height = 400,filename="p_p10_gap20_gamma.jpeg",quality=100)
+#jpeg(width = 700, height = 700, filename = "p_p20_gap20_gamma.jpeg")
 p_p20_gap20_gamma
+#dev.off()
 
 
 res_BAC_gap20_max=res_BAC_gap20_av%>%group_by(M,TT)%>%summarise(maxBAC=max(avBAC),
@@ -125,7 +126,8 @@ res_BAC_gap20_max=res_BAC_gap20_av%>%group_by(M,TT)%>%summarise(maxBAC=max(avBAC
                                                               lambdaBAC=lambda[which.max(avBAC)],
                                                               gammaBAC=gamma[which.max(avBAC)])
 
-
+res_BAC_gap20_av %>%
+  filter(gamma == 0, lambda == 0) 
 
 
 # # Extract unique combinations of T and M
@@ -295,6 +297,8 @@ res_BAC_NA5_max=res_BAC_NA5_av%>%group_by(M,TT)%>%summarise(maxBAC=max(avBAC),
                                                             gammaBAC=gamma[which.max(avBAC)])
 # 
 # 
+res_BAC_NA5_av %>%
+  filter(gamma == 0, lambda == 0)
 
 # 20 % NA -----------------------------------------------------------------
 
@@ -393,7 +397,8 @@ res_BAC_NA20_max=res_BAC_NA20_av%>%group_by(M,TT)%>%summarise(maxBAC=max(avBAC),
                                                             sd_maxBAC=sdBAC[which.max(avBAC)],
                                                             lambdaBAC=lambda[which.max(avBAC)],
                                                             gammaBAC=gamma[which.max(avBAC)])
-
+res_BAC_NA20_av %>%
+  filter(gamma == 0, lambda == 0) 
 
 # P=10 --------------------------------------------------------------------
 
@@ -515,7 +520,8 @@ res_BAC_gap20_max_P10=res_BAC_gap20_av_P10%>%group_by(M,TT)%>%summarise(maxBAC=m
                                                                 gammaBAC=gamma[which.max(avBAC)])
 
 
-
+res_BAC_gap20_av_P10 %>%
+  filter(gamma == 0, lambda == 0) 
 
 # 5% NA -------------------------------------------------------------------
 
@@ -608,6 +614,8 @@ res_BAC_NA5_max_P10=res_BAC_NA5_av_P10%>%group_by(M,TT)%>%summarise(maxBAC=max(a
                                                                         lambdaBAC=lambda[which.max(avBAC)],
                                                                         gammaBAC=gamma[which.max(avBAC)])
 
+res_BAC_NA5_av_P10 %>%
+  filter(gamma == 0, lambda == 0) 
 
 # 20% NA ------------------------------------------------------------------
 
@@ -698,3 +706,6 @@ res_BAC_NA20_max_P10=res_BAC_NA20_av_P10%>%group_by(M,TT)%>%summarise(maxBAC=max
                                                                     sd_maxBAC=sdBAC[which.max(avBAC)],
                                                                     lambdaBAC=lambda[which.max(avBAC)],
                                                                     gammaBAC=gamma[which.max(avBAC)])
+
+res_BAC_NA20_av_P10 %>%
+  filter(gamma == 0, lambda == 0) 

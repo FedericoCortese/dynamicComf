@@ -85,8 +85,8 @@ D=distm(data_stat_number[,c("longitude","latitude")],
 #lambda=0.05
 #gamma=0.05
 
-lambda=0.1
-lambda=0.1
+lambda=0.05
+gamma=0.05
 
 fit=STjumpDist(Y_6,3,D,
                jump_penalty=lambda,
@@ -207,9 +207,18 @@ plot_base <- ggplot(S_summary_complete, aes(x = time, y = Proportion, fill = as.
     fill = "Comfort Regime") +
   scale_x_datetime(date_breaks = "12 hours", date_labels = "%Y-%m-%d %H:%M") +
   theme_minimal() +
-  theme(text = element_text(size = 12),
-        axis.text.x = element_text(angle = 45, hjust = 1),
-        legend.position = "top")
+  theme(
+    legend.key.size = unit(0.8, "cm"),  # controls the box size
+    legend.text = element_text(size = 10),  # controls the text size
+    text = element_text(size = sz),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.text.y.right = element_blank(),
+    axis.text.y.left = element_text(angle = 0, hjust = 1),
+    legend.position = "top"
+  )
+  # theme(text = element_text(size = 12),
+  #       axis.text.x = element_text(angle = 45, hjust = 1),
+  #       legend.position = "top")
 # + 
 library(scales)
 temp_state_plot <- plot_base +
@@ -343,7 +352,29 @@ png(width = 500, height = 900,filename="all_state_plot.png")
 combined_plot
 dev.off()
 
-# 
+#
+plot_base <- ggplot(S_summary_complete, aes(x = time, y = Proportion, fill = as.factor(ComfortLevel))) +
+  geom_area(alpha = 0.6, size = 1, color = "black") +
+  scale_fill_manual(values = c("lightblue", "lightgreen", "orange"), 
+                    name = "Comfort Regime",
+                    labels=c("Cool","Neutral","Hot")) +
+  labs(
+    #title = "Temporal Evolution of Thermal Comfort Levels and Wind Speed",
+    # x = "Date and Hour",
+    x=" ",
+    y = "Prop of Locations",
+    fill = "Comfort Regime") +
+  scale_x_datetime(date_breaks = "12 hours", date_labels = "%Y-%m-%d %H:%M") +
+  theme_minimal() +
+  theme(
+    legend.key.size = unit(0.8, "cm"),  # controls the box size
+    legend.text = element_text(size = 15),  # controls the text size
+    text = element_text(size = sz),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.text.y.right = element_blank(),
+    axis.text.y.left = element_text(angle = 0, hjust = 1),
+    legend.position = "top"
+  )
 utci_state_plot <- plot_base +
   geom_line(
     data = avg_weath,
@@ -392,10 +423,15 @@ barplot_state=ggplot(hourly_distribution, aes(x = factor(Hour),
     x = "Hour of the Day",
     y = "Proportion of Locations") +
   theme_minimal() +
-  theme(text = element_text(size = 16),
-        # axis.text.x = element_text(size = 14),
-        # axis.text.y = element_text(size = 14),
-        legend.position = "top")
+  theme(
+    legend.key.size = unit(0.8, "cm"),  # controls the box size
+    legend.text = element_text(size = 18),  # controls the text size
+    text = element_text(size = sz),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.text.y.right = element_blank(),
+    axis.text.y.left = element_text(angle = 0, hjust = 1),
+    legend.position = "top"
+  )
 barplot_state
 
 png(width = 800, height = 600,filename="barplot_state.png")
@@ -451,6 +487,7 @@ proportion_data_entropy <- S_long %>%
   summarise(Entropy = calculate_entropy(Proportion))
 
 # Create bar plot of entropy for each station
+x11()
 ggplot(proportion_data_entropy, aes(x = Station, y = Entropy, fill = Station)) +
   geom_bar(alpha=.6,stat = "identity", color = "black") +
   scale_fill_manual(values = rep("pink",M)) +
@@ -504,8 +541,11 @@ dev.off()
 sz=15
 heatmap_time_stat <- ggplot(S_long, aes(x = Location, y = t, fill = as.factor(ComfortLevel))) +
   geom_tile(alpha = 0.6) +
-  scale_fill_manual(values = c("lightblue", "lightgreen", "orange"), 
-                    name = "Comfort Regime") +
+  scale_fill_manual(
+    values = c("lightblue", "lightgreen", "orange"), 
+    name = "Comfort Regime",
+    guide = guide_legend(override.aes = list(color = "black"))
+  ) +
   scale_y_datetime(
     breaks = seq(as.POSIXct("2023-04-18 20:00:00"), 
                  as.POSIXct("2023-04-26 07:00:00"), 
@@ -522,14 +562,20 @@ heatmap_time_stat <- ggplot(S_long, aes(x = Location, y = t, fill = as.factor(Co
     x = "Station",
     y = NULL) +  # Remove y-axis label on the left
   theme_minimal() +
-  theme(text = element_text(size = sz),
-        axis.text.x = element_text(angle = 45, hjust = 1),
-        axis.text.y.right = element_blank(),
-        axis.text.y.left = element_text(angle = 0, hjust = 1),
-        legend.position = "top")
+  theme(
+    legend.key.size = unit(0.8, "cm"),  # controls the box size
+    legend.text = element_text(size = 10),  # controls the text size
+    text = element_text(size = sz),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.text.y.right = element_blank(),
+    axis.text.y.left = element_text(angle = 0, hjust = 1),
+    legend.position = "top"
+  )
 
+
+png(width = 800, height = 600,filename="heatmap_time_stat.png")
 heatmap_time_stat
-
+dev.off()
 
 
 # leaflet with colored areas ----------------------------------------------
