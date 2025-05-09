@@ -193,6 +193,7 @@ avg_weath <- Y_res%>%
   group_by(times)%>%
   summarise_if(is.numeric, mean, na.rm = TRUE)
 
+sz=18
 # Create the initial plot object for the area plot
 plot_base <- ggplot(S_summary_complete, aes(x = time, y = Proportion, fill = as.factor(ComfortLevel))) +
   geom_area(alpha = 0.6, size = 1, color = "black") +
@@ -510,8 +511,12 @@ S_long <- melt(S_est_heat, id.vars = "t",
 
 heatmap_stat_time <- ggplot(S_long, aes(x = t, y = Location, fill = as.factor(ComfortLevel))) +
   geom_tile(alpha=.6) +
-  scale_fill_manual(values = c("lightblue", "lightgreen", "orange"), 
-                    name = "Comfort Regime") +
+  scale_fill_manual(
+    values = c("lightblue", "lightgreen", "orange"), 
+    name = "Comfort Regime",
+    labels = c("Cool", "Neutral", "Hot"),
+    guide = guide_legend(override.aes = list(color = "black"))
+  ) +
   scale_x_datetime(breaks = seq(as.POSIXct("2023-04-18 20:00:00"), 
                                 as.POSIXct("2023-04-26 07:00:00"), 
                                 by = "24 hours")
@@ -892,3 +897,205 @@ stat_bar_plot_svf_gvf=ggplot(proportion_data, aes(x = Station, y = Proportion, f
 png(width = 800, height = 600,filename="stat_bar_plot_svf_gvf.png")
 stat_bar_plot_svf_gvf
 dev.off()
+
+
+# All plots with standardized legend ---------------------------------------
+
+library(ggplot2)
+library(scales)
+library(patchwork)
+
+# Common legend theme
+legend_theme <- theme(
+  legend.key.size = unit(0.8, "cm"),
+  legend.text = element_text(size = 14),
+  legend.title = element_text(size = 16),
+  legend.position = "top"
+)
+
+# Common fill scale
+fill_scale <- scale_fill_manual(
+  values = c("lightblue", "lightgreen", "orange"), 
+  name = "Comfort Regime",
+  labels = c("Cool", "Neutral", "Hot"),
+  guide = guide_legend(override.aes = list(color = "black"))
+)
+
+# 1. barplot_state
+barplot_state <- ggplot(hourly_distribution, aes(x = factor(Hour), 
+                                                 y = Proportion, 
+                                                 fill = as.factor(ComfortLevel))) +
+  geom_bar(alpha = .6, stat = "identity", position = "fill", color = "black", size = 0.7) +
+  fill_scale +
+  labs(x = "Hour of the Day", y = "Proportion of Locations") +
+  theme_minimal() +
+  theme(
+    text = element_text(size = 18),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.text.y.right = element_blank(),
+    axis.text.y.left = element_text(angle = 0, hjust = 1)
+  ) +
+  legend_theme
+
+# 2. stat_bar_plot
+stat_bar_plot <- ggplot(proportion_data, aes(x = Station, y = Proportion, fill = as.factor(ComfortLevel))) +
+  geom_bar(alpha = .6, stat = "identity", position = "fill", color = "black", size = 0.7) +
+  fill_scale +
+  labs(x = "Station", y = "Proportion of Comfort Regimes") +
+  theme_minimal() +
+  theme(
+    text = element_text(size = 18),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  ) +
+  legend_theme
+
+# 3. heatmap_stat_time
+heatmap_stat_time <- ggplot(S_long, aes(x = t, y = Location, fill = as.factor(ComfortLevel))) +
+  geom_tile(alpha = .6) +
+  fill_scale +
+  scale_x_datetime(
+    breaks = seq(as.POSIXct("2023-04-18 20:00:00"), as.POSIXct("2023-04-26 07:00:00"), by = "24 hours"),
+    labels = date_format("%Y-%m-%d %H:%M")
+  ) +
+  geom_vline(
+    xintercept = seq(as.POSIXct("2023-04-18 12:00:00"), as.POSIXct("2023-04-26 07:00:00"), by = "24 hours"),
+    color = "grey20", linetype = "dotted"
+  ) +
+  labs(x = "Time", y = "Station") +
+  theme_minimal() +
+  theme(
+    text = element_text(size = 18),
+    axis.text.y = element_text(angle = 45, hjust = 1),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  ) +
+  legend_theme
+
+# 4. Area plots (shared base)
+sz <- 18
+plot_base <- ggplot(S_summary_complete, aes(x = time, y = Proportion, fill = as.factor(ComfortLevel))) +
+  geom_area(alpha = 0.6, size = 1, color = "black") +
+  fill_scale +
+  labs(x = " ", y = "Prop of Locations", fill = "Comfort Regime") +
+  scale_x_datetime(date_breaks = "12 hours", date_labels = "%Y-%m-%d %H:%M") +
+  theme_minimal() +
+  theme(
+    text = element_text(size = sz),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.text.y.right = element_blank(),
+    axis.text.y.left = element_text(angle = 0, hjust = 1)
+  ) +
+  legend_theme
+
+# Derived plots with weather lines
+temp_state_plot <- plot_base +
+  geom_line(data = avg_weath, aes(x = times, y = rescale(air_temp, to = c(0, 1))),
+            color = "red", size = 1.2, inherit.aes = FALSE, linetype = 6) +
+  scale_y_continuous(
+    name = "Prop of Locations",
+    sec.axis = sec_axis(~ rescale(., from = c(0, 1), to = range(avg_weath$air_temp, na.rm = TRUE)),
+                        name = "Average Air Temp (°C)", labels = number_format(accuracy = 0.1))
+  ) +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank())
+
+rh_state_plot <- plot_base +
+  geom_line(data = avg_weath, aes(x = times, y = rescale(rh, to = c(0, 1))),
+            color = "red", size = 1.2, inherit.aes = FALSE, linetype = 6) +
+  scale_y_continuous(
+    name = "Prop of Locations",
+    sec.axis = sec_axis(~ rescale(., from = c(0, 1), to = range(avg_weath$rh, na.rm = TRUE)),
+                        name = "Average Rel Humidity (%)", labels = number_format(accuracy = 0.1))
+  ) +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank())
+
+rainfall_state_plot <- plot_base +
+  geom_line(data = avg_weath, aes(x = times, y = rescale(rainfall, to = c(0, 1))),
+            color = "red", size = 1.2, inherit.aes = FALSE, linetype = 6) +
+  scale_y_continuous(
+    name = "Prop of Locations",
+    sec.axis = sec_axis(~ rescale(., from = c(0, 1), to = range(avg_weath$rainfall, na.rm = TRUE)),
+                        name = "Average Rainfall (mm)", labels = number_format(accuracy = 0.1))
+  ) +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank())
+
+wind_state_plot <- plot_base +
+  geom_line(data = avg_weath, aes(x = times, y = rescale(wind_speed, to = c(0, 1))),
+            color = "red", size = 1.2, inherit.aes = FALSE, linetype = 6) +
+  scale_y_continuous(
+    name = "Prop of Locations",
+    sec.axis = sec_axis(~ rescale(., from = c(0, 1), to = range(avg_weath$wind_speed, na.rm = TRUE)),
+                        name = "Average Wind Speed (m/s)", labels = number_format(accuracy = 0.1))
+  )
+
+# Final combined plot
+combined_plot <- (
+  temp_state_plot /
+    rh_state_plot /
+    rainfall_state_plot /
+    wind_state_plot
+) + plot_layout(guides = "collect") &
+  legend_theme
+
+sz <- 18
+
+# Tema e scala legenda uniformi
+legend_theme <- theme(
+  legend.key.size = unit(0.8, "cm"),
+  legend.text = element_text(size = 14),
+  legend.title = element_text(size = 16),
+  legend.position = "top"
+)
+
+fill_scale <- scale_fill_manual(
+  values = c("lightblue", "lightgreen", "orange"), 
+  name = "Comfort Regime",
+  labels = c("Cool", "Neutral", "Hot")
+)
+
+# Plot base
+plot_base <- ggplot(S_summary_complete, aes(x = time, y = Proportion, fill = as.factor(ComfortLevel))) +
+  geom_area(alpha = 0.6, size = 1, color = "black") +
+  fill_scale +
+  labs(
+    x = " ",
+    y = "Prop of Locations",
+    fill = "Comfort Regime"
+  ) +
+  scale_x_datetime(date_breaks = "12 hours", date_labels = "%Y-%m-%d %H:%M") +
+  theme_minimal() +
+  theme(
+    text = element_text(size = sz),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.text.y.right = element_blank(),
+    axis.text.y.left = element_text(angle = 0, hjust = 1)
+  ) +
+  legend_theme
+
+# UTCI plot
+utci_state_plot <- plot_base +
+  geom_line(
+    data = avg_weath,
+    aes(x = times, y = rescale(UTCI, to = c(0, 1))),
+    color = "red", size = 1.5, inherit.aes = FALSE, linetype = 6
+  ) +
+  scale_y_continuous(
+    name = "Prop of Locations",
+    sec.axis = sec_axis(
+      ~ rescale(., from = c(0, 1), to = range(avg_weath$UTCI, na.rm = TRUE)),
+      name = "UTCI (°C)",
+      labels = number_format(accuracy = 0.1)
+    )
+  )
+
+# Print all plots
+x11()
+barplot_state
+stat_bar_plot
+heatmap_stat_time
+combined_plot
+utci_state_plot
