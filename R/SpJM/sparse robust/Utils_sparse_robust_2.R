@@ -386,7 +386,7 @@ for (i in 1:P) {
 Y$X1=factor(round(Y$X1))
 Y$X2=factor(round(Y$X2))
 
-COSA=function(Y,zeta0,K,tol,n_outer=20,alpha=.1,verbose=F){
+COSA=function(Y,zeta0,K,tol=NULL,n_outer=20,alpha=.1,verbose=F){
   P=ncol(Y)
   TT=nrow(Y)
   
@@ -399,11 +399,11 @@ COSA=function(Y,zeta0,K,tol,n_outer=20,alpha=.1,verbose=F){
   
   zeta=zeta0
   
-  #s=initialize_states(Y,K)
+  s=initialize_states(Y,K)
   # Ymedoids=cluster::pam(Y,k=K)
   # s=Ymedoids$clustering
   # Ymedoids=Ymedoids$medoids
-  s=sample(1:K,TT,replace = T)
+  #s=sample(1:K,TT,replace = T)
   
   for (outer in 1:n_outer){
     
@@ -426,6 +426,7 @@ COSA=function(Y,zeta0,K,tol,n_outer=20,alpha=.1,verbose=F){
     
     #}
     
+    w_loss=sum(W*Spk)  
     eps_W=mean((W-W_old)^2)
     if (!is.null(tol)) {
       if (eps_W < tol) {
@@ -438,17 +439,20 @@ COSA=function(Y,zeta0,K,tol,n_outer=20,alpha=.1,verbose=F){
     
     # print(W)
     # print(zeta)
-    print(Spk)
-    print(zeta0)
-    print(range(DW))
+    # print(Spk)
+    # print(zeta0)
+    # print(range(DW))
     
     if (verbose) {
       cat(sprintf('Outer iteration %d: %.6e\n', outer, eps_W))
     }
     
   }
-  return(list(W=W,s=s,medoids=medoids))
+  
+  
+  return(list(W=W,s=s,medoids=medoids,w_loss=w_loss))
 }
+
 
 JM_COSA=function(Y,zeta0,lambda,K,tol,n_outer=20,alpha=.1,verbose=F,Ts=NULL){
   P=ncol(Y)
