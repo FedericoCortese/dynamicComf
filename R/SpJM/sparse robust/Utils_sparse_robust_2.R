@@ -856,7 +856,7 @@ RJM_COSA_gap=function(Y,
   registerDoParallel(cl)
   
   results_list <- foreach(i = 1:nrow(grid), .combine = 'list',
-                          .packages = c("cluster","Rcpp"),
+                          .packages = c("cluster","Rcpp","DescTools"),
                           .multicombine = TRUE,
                           .export = c("Y", "robust_JM_COSA", 
                                       #"WCD", "weight_inv_exp_dist",
