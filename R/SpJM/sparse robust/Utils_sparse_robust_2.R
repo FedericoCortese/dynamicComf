@@ -31,20 +31,21 @@ Mode <- function(x,na.rm=T) {
   
 }
 
-weight_inv_exp_dist <- function(Y,
-                                #Ymedoids,
-                                #index_medoids, 
-                                s, 
-                                W, zeta) {
-  
-  indx_num=sapply(Y,is.numeric)
-  
+# Rcpp --------------------------------------------------------------------
+
+library(Rcpp)
+Rcpp::sourceCpp("weight_inv_exp_dist.cpp")
+Rcpp::sourceCpp("wcd.cpp")
+
+
+# OLD -------------------------------------------------------------------------
+
+weight_inv_exp_dist_old <- function(Y,
+                                    s, 
+                                    W, zeta) {
   TT <- nrow(Y)
   P <- ncol(Y)
-  Y_orig=Y
   
-  # continuous vars
-  Y=Y[,indx_num]
   sk=apply(Y,2,function(x)IQR(x)/1.35)
   
   # 2. Genera indici delle coppie (i < j)
@@ -53,41 +54,21 @@ weight_inv_exp_dist <- function(Y,
   j_idx <- pairs[2, ]
   n_pairs <- ncol(pairs)
   
-  diff=matrix(0,ncol=P,nrow=n_pairs)
-  
   # 3. Estrai le righe corrispondenti
   Yi <- Y[i_idx, , drop = FALSE]
   Yj <- Y[j_idx, , drop = FALSE]
-  
-  diff_cont <- abs(Yi - Yj)
+  diff <- abs(Yi - Yj)
   #sk=apply(diff,2,function(x)sum(x)/TT^2)
   
-  diff_cont=sweep(diff_cont, 2, sk, FUN = "/")
-  diff[,indx_num]=as.matrix(diff_cont[, names(indx_num)[indx_num]])
+  diff=sweep(diff, 2, sk, FUN = "/")
   #diff=sweep(diff, 2, range_Y, FUN = "/")
-  
-  # Categorical vars
-  if(sum(indx_num)!=P){
-    
-    # FUNZIONA SOLO SE LE VARIABILI CATEGORIALI SONO ALMENO DUE
-    
-    Y=Y_orig[,!indx_num]
-    
-    # 3. Estrai le righe corrispondenti
-    Yi <- Y[i_idx, , drop = FALSE]
-    Yj <- Y[j_idx, , drop = FALSE]
-    diff_cat <- apply(Yi != Yj, 2, as.numeric)
-    #sk=apply(diff,2,function(x)sum(x)/TT^2)
-    
-    diff[,!indx_num]=as.matrix(diff_cat[, names(!indx_num)[!indx_num]])
-    
-    
-  }
   
   
   # 4. Estrai direttamente i pesi W[si, ] e W[sj, ] in blocco
   W_si <- W[s[i_idx], , drop = FALSE]
   W_sj <- W[s[j_idx], , drop = FALSE]
+  # W_si <- W[i_idx, , drop = FALSE]
+  # W_sj <- W[j_idx, , drop = FALSE]
   max_w <- pmax(W_si, W_sj)
   
   # 5. Calcola la distanza finale
@@ -102,89 +83,133 @@ weight_inv_exp_dist <- function(Y,
   return(mat)
 }
 
-# WCD=function(s,Y,K){
-#   Tk=table(s)
-#   wcd=matrix(0,nrow=K,ncol=ncol(Y))
-#   for(k in unique(s)){
-#     for(p in 1:P){
-#       temp=Y[s==k,p]
-#       dist_temp=abs(outer(temp, temp, "-"))
-#       dist_temp[upper.tri(dist_temp)] <- 0
-#       dist_temp=dist_temp/diff(range(temp))
-#       wcd[k,p]=sum(dist_temp)/Tk[k]^2
-#     }
+# weight_inv_exp_dist <- function(Y,
+#                                 s, 
+#                                 W, zeta) {
+#   
+#   indx_num=sapply(Y,is.numeric)
+#   
+#   TT <- nrow(Y)
+#   P <- ncol(Y)
+#   Y_orig=Y
+#   
+#   # continuous vars
+#   Y=Y[,indx_num]
+#   sk=apply(Y,2,function(x)IQR(x)/1.35)
+#   
+#   # 2. Genera indici delle coppie (i < j)
+#   pairs <- combn(TT, 2)
+#   i_idx <- pairs[1, ]
+#   j_idx <- pairs[2, ]
+#   n_pairs <- ncol(pairs)
+#   
+#   diff=matrix(0,ncol=P,nrow=n_pairs)
+#   
+#   # 3. Estrai le righe corrispondenti
+#   Yi <- Y[i_idx, , drop = FALSE]
+#   Yj <- Y[j_idx, , drop = FALSE]
+#   
+#   diff_cont <- abs(Yi - Yj)
+#   #sk=apply(diff,2,function(x)sum(x)/TT^2)
+#   
+#   diff_cont=sweep(diff_cont, 2, sk, FUN = "/")
+#   diff[,indx_num]=as.matrix(diff_cont[, names(indx_num)[indx_num]])
+#   #diff=sweep(diff, 2, range_Y, FUN = "/")
+#   
+#   # Categorical vars
+#   if(sum(indx_num)!=P){
+#     
+#     # FUNZIONA SOLO SE LE VARIABILI CATEGORIALI SONO ALMENO DUE
+#     
+#     Y=Y_orig[,!indx_num]
+#     
+#     # 3. Estrai le righe corrispondenti
+#     Yi <- Y[i_idx, , drop = FALSE]
+#     Yj <- Y[j_idx, , drop = FALSE]
+#     diff_cat <- apply(Yi != Yj, 2, as.numeric)
+#     #sk=apply(diff,2,function(x)sum(x)/TT^2)
+#     
+#     diff[,!indx_num]=as.matrix(diff_cat[, names(!indx_num)[!indx_num]])
+#     
+#     
 #   }
-#   return(wcd)
+#   
+#   
+#   # 4. Estrai direttamente i pesi W[si, ] e W[sj, ] in blocco
+#   W_si <- W[s[i_idx], , drop = FALSE]
+#   W_sj <- W[s[j_idx], , drop = FALSE]
+#   max_w <- pmax(W_si, W_sj)
+#   
+#   # 5. Calcola la distanza finale
+#   weighted_exp <- exp(-diff / zeta) * max_w
+#   dist_vals <- -zeta * log(rowSums(weighted_exp))
+#   
+#   # 6. Ricostruzione della matrice simmetrica
+#   mat <- matrix(0, TT, TT)
+#   mat[cbind(i_idx, j_idx)] <- dist_vals
+#   mat[cbind(j_idx, i_idx)] <- dist_vals
+#   
+#   return(mat)
+# }
+# 
+# 
+# weight_inv_exp_dist_medoids <- function(Y, Ymedoids, s, W, zeta) {
+#   indx_num <- sapply(Y, is.numeric)
+#   
+#   TT <- nrow(Y)
+#   K <- nrow(Ymedoids)
+#   P <- ncol(Y)
+#   
+#   Y_orig <- Y
+#   Ymedoids_orig <- Ymedoids
+#   
+#   # Continuous variables
+#   Y <- Y[, indx_num, drop = FALSE]
+#   Ymedoids_cont <- Ymedoids[, indx_num, drop = FALSE]
+#   sk <- apply(Y, 2, function(x) IQR(x) / 1.35)
+#   
+#   # Pre-allocate output matrix
+#   mat <- matrix(0, nrow = TT, ncol = K)
+#   
+#   # Ciclo su tutti i medoids
+#   for (k in 1:K) {
+#     diff_cont <- abs(sweep(Y, 2, as.numeric(Ymedoids_cont[k,]), FUN = "-"))
+#     
+#     diff_cont <- sweep(diff_cont, 2, sk, FUN = "/") # normalizzazione
+#     diff <- matrix(0, nrow = TT, ncol = P)
+#     diff[, indx_num] <- as.matrix(diff_cont[, names(indx_num)[indx_num]])
+#     
+#     # Categorical variables
+#     if (sum(indx_num) != P) {
+#       Y_cat <- Y_orig[, !indx_num, drop = FALSE]
+#       medoid_cat <- Ymedoids_orig[k, !indx_num, drop = FALSE]
+#       diff_cat <- sweep(as.matrix(Y_cat), 2, as.matrix(medoid_cat), FUN = "!=") * 1
+#       diff[, !indx_num] <- as.matrix(diff_cat[, names(!indx_num)[!indx_num]])
+#     }
+#     
+#     # Pesatura con pesi W
+#     W_si <- W[s, , drop = FALSE]
+#     W_sj <- matrix(W[k, ], nrow = TT, ncol = ncol(W), byrow = TRUE)
+#     max_w <- pmax(W_si, W_sj)
+#     
+#     weighted_exp <- exp(-diff / zeta) * max_w
+#     dist_vals <- -zeta * log(rowSums(weighted_exp))
+#     
+#     mat[, k] <- dist_vals
+#   }
+#   
+#   return(mat)  # matrice T x K
 # }
 
-weight_inv_exp_dist_medoids <- function(Y, Ymedoids, s, W, zeta) {
-  indx_num <- sapply(Y, is.numeric)
-  
-  TT <- nrow(Y)
-  K <- nrow(Ymedoids)
-  P <- ncol(Y)
-  
-  Y_orig <- Y
-  Ymedoids_orig <- Ymedoids
-  
-  # Continuous variables
-  Y <- Y[, indx_num, drop = FALSE]
-  Ymedoids_cont <- Ymedoids[, indx_num, drop = FALSE]
-  sk <- apply(Y, 2, function(x) IQR(x) / 1.35)
-  
-  # Pre-allocate output matrix
-  mat <- matrix(0, nrow = TT, ncol = K)
-  
-  # Ciclo su tutti i medoids
-  for (k in 1:K) {
-    diff_cont <- abs(sweep(Y, 2, as.numeric(Ymedoids_cont[k,]), FUN = "-"))
-    
-    diff_cont <- sweep(diff_cont, 2, sk, FUN = "/") # normalizzazione
-    diff <- matrix(0, nrow = TT, ncol = P)
-    diff[, indx_num] <- as.matrix(diff_cont[, names(indx_num)[indx_num]])
-    
-    # Categorical variables
-    if (sum(indx_num) != P) {
-      Y_cat <- Y_orig[, !indx_num, drop = FALSE]
-      medoid_cat <- Ymedoids_orig[k, !indx_num, drop = FALSE]
-      diff_cat <- sweep(as.matrix(Y_cat), 2, as.matrix(medoid_cat), FUN = "!=") * 1
-      diff[, !indx_num] <- as.matrix(diff_cat[, names(!indx_num)[!indx_num]])
-    }
-    
-    # Pesatura con pesi W
-    W_si <- W[s, , drop = FALSE]
-    W_sj <- matrix(W[k, ], nrow = TT, ncol = ncol(W), byrow = TRUE)
-    max_w <- pmax(W_si, W_sj)
-    
-    weighted_exp <- exp(-diff / zeta) * max_w
-    dist_vals <- -zeta * log(rowSums(weighted_exp))
-    
-    mat[, k] <- dist_vals
-  }
-  
-  return(mat)  # matrice T x K
-}
-
-
-WCD=function(s,Y,K){
+WCD_old=function(s,Y,K){
   #TT <- nrow(Y)
   P <- ncol(Y)
   
-  Y_orig=Y
-  
   wcd=matrix(0,nrow=K,ncol=P)
   
-  indx_num=sapply(Y,is.numeric)
-  
-  # 1. Normalizzazione Gower
-  # range_Y <- apply(Y, 2, function(col) {
-  #   r <- max(col) - min(col)
-  #   if (r == 0) 1 else r
-  # })
-  sk=apply(Y[,indx_num],2,function(x)IQR(x)/1.35)
+  sk=apply(Y,2,function(x)IQR(x)/1.35)
   
   for(i in 1:K){
-    Y=Y_orig[,indx_num]
     Ys=Y[s==i,]
     TTk <- nrow(Ys)
     pairs <- combn(TTk, 2)
@@ -192,35 +217,13 @@ WCD=function(s,Y,K){
     j_idx <- pairs[2, ]
     n_pairs <- ncol(pairs)
     
-    diff=matrix(0,ncol=P,nrow=n_pairs)
-    
     Yi <- Ys[i_idx, , drop = FALSE]
     Yj <- Ys[j_idx, , drop = FALSE]
+    diff <- abs(Yi - Yj)
+    #sk=apply(diff,2,function(x)sum(x)/TTk^2)
     
-    diff_cont <- abs(Yi - Yj)
-    #sk=apply(diff,2,function(x)sum(x)/TT^2)
-    
-    diff_cont=sweep(diff_cont, 2, sk, FUN = "/")
-    diff[,indx_num]=as.matrix(diff_cont[, names(indx_num)[indx_num]])
-    
-    
-    if(sum(indx_num)!=P){
-      
-      # FUNZIONA SOLO SE LE VARIABILI CATEGORIALI SONO ALMENO DUE
-      
-      Y=Y_orig[,!indx_num]
-      
-      # 3. Estrai le righe corrispondenti
-      Yi <- Y[i_idx, , drop = FALSE]
-      Yj <- Y[j_idx, , drop = FALSE]
-      diff_cat <- apply(Yi != Yj, 2, as.numeric)
-      #sk=apply(diff,2,function(x)sum(x)/TT^2)
-      
-      diff[,!indx_num]=as.matrix(diff_cat[, names(!indx_num)[!indx_num]])
-      
-      
-    }
-    
+    diff=sweep(diff, 2, sk, FUN = "/")
+    # diff=sweep(diff, 2, range_Y, FUN = "/")
     
     for(p in 1:P){
       mat <- matrix(0, TTk, TTk)
@@ -235,6 +238,79 @@ WCD=function(s,Y,K){
   return(wcd)
   
 }
+
+# WCD=function(s,Y,K){
+#   #TT <- nrow(Y)
+#   P <- ncol(Y)
+#   
+#   Y_orig=Y
+#   
+#   wcd=matrix(0,nrow=K,ncol=P)
+#   
+#   indx_num=sapply(Y,is.numeric)
+#   
+#   # 1. Normalizzazione Gower
+#   # range_Y <- apply(Y, 2, function(col) {
+#   #   r <- max(col) - min(col)
+#   #   if (r == 0) 1 else r
+#   # })
+#   sk=apply(Y[,indx_num],2,function(x)IQR(x)/1.35)
+#   
+#   for(i in 1:K){
+#     Y=Y_orig[,indx_num]
+#     Ys=Y[s==i,]
+#     TTk <- nrow(Ys)
+#     pairs <- combn(TTk, 2)
+#     i_idx <- pairs[1, ]
+#     j_idx <- pairs[2, ]
+#     n_pairs <- ncol(pairs)
+#     
+#     diff=matrix(0,ncol=P,nrow=n_pairs)
+#     
+#     Yi <- Ys[i_idx, , drop = FALSE]
+#     Yj <- Ys[j_idx, , drop = FALSE]
+#     
+#     diff_cont <- abs(Yi - Yj)
+#     #sk=apply(diff,2,function(x)sum(x)/TT^2)
+#     
+#     diff_cont=sweep(diff_cont, 2, sk, FUN = "/")
+#     diff[,indx_num]=as.matrix(diff_cont[, names(indx_num)[indx_num]])
+#     
+#     
+#     if(sum(indx_num)!=P){
+#       
+#       # FUNZIONA SOLO SE LE VARIABILI CATEGORIALI SONO ALMENO DUE
+#       
+#       Y=Y_orig[,!indx_num]
+#       
+#       # 3. Estrai le righe corrispondenti
+#       Yi <- Y[i_idx, , drop = FALSE]
+#       Yj <- Y[j_idx, , drop = FALSE]
+#       diff_cat <- apply(Yi != Yj, 2, as.numeric)
+#       #sk=apply(diff,2,function(x)sum(x)/TT^2)
+#       
+#       diff[,!indx_num]=as.matrix(diff_cat[, names(!indx_num)[!indx_num]])
+#       
+#       
+#     }
+#     
+#     
+#     for(p in 1:P){
+#       mat <- matrix(0, TTk, TTk)
+#       mat[cbind(i_idx, j_idx)] <- diff[,p]
+#       mat[cbind(j_idx, i_idx)] <- diff[,p]
+#       wcd[i,p]=mean(apply(mat,1,median))
+#     }
+#     # 
+#     #wcd[i,]=colSums(diff)/TTk^2
+#     #wcd[i,]=apply(diff,2,median)/TTk
+#   }
+#   return(wcd)
+#   
+# }
+
+
+# Sim ---------------------------------------------------------------------
 
 sim_data_stud_t=function(seed=123,
                          TT,
@@ -306,26 +382,8 @@ sim_data_stud_t=function(seed=123,
   
 }
 
-# apply_noise_by_cluster <- function(Y, s, feat_list) {
-#   Y_noised <- Y
-#   K <- length(feat_list)
-#   
-#   for (k in 1:K) {
-#     cluster_rows <- which(s == k)
-#     if (length(cluster_rows) <= 1) next  # nulla da mescolare se solo una riga
-#     all_features <- seq_len(ncol(Y))
-#     irrelevant_feats <- setdiff(all_features, feat_list[[k]])
-#     
-#     for (j in irrelevant_feats) {
-#       # mescola le osservazioni della colonna j solo tra le righe del cluster k
-#       Y_noised[cluster_rows, j] <- sample(Y[, j],size=length(Y_noised[cluster_rows, j]))
-#     }
-#   }
-#   
-#   return(Y_noised)
-# }
 
-zeta0=0.1
+zeta0=0.15
 alpha=.1
 K=2
 tol=1e-16
@@ -377,16 +435,28 @@ Y[,6:P]=mvtnorm::rmvt(TT,
                       sigma = (nu-2)*Sigma/nu,
                       df = nu, delta = rep(0,P-5))
 
+# Introduce outliers
+set.seed(1)
+N_out=TT*0.02
+t_out=sample(1:TT,size=N_out)
+Y[t_out,]=Y[t_out,]+rnorm(N_out*P,0,10)
+
+truth=simDat$mchain
+truth[t_out]=0
+
 x11()
 par(mfrow=c(4,3))
 for (i in 1:P) {
-  plot(Y[, i], col=simDat$mchain, pch=19,ylab=i)
+  plot(Y[, i], col=truth+1, pch=19,ylab=i)
 }
 
-Y$X1=factor(round(Y$X1))
-Y$X2=factor(round(Y$X2))
+# Y$X1=factor(round(Y$X1))
+# Y$X2=factor(round(Y$X2))
 
 COSA=function(Y,zeta0,K,tol=NULL,n_outer=20,alpha=.1,verbose=F){
+  
+  # Simple version of COSA (no outlier detection)
+  
   P=ncol(Y)
   TT=nrow(Y)
   
@@ -415,7 +485,7 @@ COSA=function(Y,zeta0,K,tol=NULL,n_outer=20,alpha=.1,verbose=F){
                            s,
                            W,zeta)
     medoids=cluster::pam(x=DW,k=K,diss=TRUE)
-    Ymedoids=Y[medoids$medoids,]
+    #Ymedoids=Y[medoids$medoids,]
     s=medoids$clustering
     
     # Compute weights
@@ -453,18 +523,113 @@ COSA=function(Y,zeta0,K,tol=NULL,n_outer=20,alpha=.1,verbose=F){
   return(list(W=W,s=s,medoids=medoids,w_loss=w_loss))
 }
 
+library(DescTools)
+
+lof_star=function(x,knn){
+  lof_x=DescTools::LOF(x, knn)
+  mean_lof=mean(lof_x)
+  sd_lof=sd(lof_x)
+  lof_st=(lof_x-mean_lof)/sd_lof
+  return(lof_st)
+}
+
+v_1=function(x,knn=10,c=2,M=NULL){
+  
+  lof_st=lof_star(x,knn)
+  
+  if(is.null(M)){
+    M=median(lof_st)+mad(lof_st)
+  }
+  
+  v=rep(1,dim(x)[1])
+  v[lof_st>=c]=0
+  indx=which(M<lof_st&lof_st<c)
+  v[indx]=(1-((lof_st[indx]-M)/(c-M))^2)^2
+  return(v)
+}
+
+robust_COSA=function(Y,zeta0,K,tol=NULL,n_outer=20,alpha=.1,verbose=F,knn=10,c=2,M=NULL){
+  
+  # Robust version of COSA
+
+  
+  P=ncol(Y)
+  TT=nrow(Y)
+  
+  # best_loss <- NULL
+  # best_s <- NULL
+  # best_W = NULL
+  
+  W=matrix(1/P,nrow=K,ncol=P)
+  W_old=W
+  
+  zeta=zeta0
+  
+  s=initialize_states(Y,K)
+  
+  for (outer in 1:n_outer){
+    
+    ## Clustering
+    #for(inner in 1:n_inner){
+    
+    v1=v_1(W[s,]*Y,knn=knn,c=c,M=M)
+    v2=v_1(Y,knn=knn,c=c,M=M)
+    
+    v=apply(cbind(v1,v2),1,min)
+    
+    #Compute distances
+    DW=weight_inv_exp_dist(Y * v,
+                           s,
+                           W,zeta)
+    medoids=cluster::pam(x=DW,k=K,diss=TRUE)
+    #Ymedoids=Y[medoids$medoids,]
+    s=medoids$clustering
+    
+    # Compute weights
+    
+    Spk=WCD(s,Y * v,K)
+    wcd=exp(-Spk/zeta0)
+    W=wcd/rowSums(wcd)
+    
+    #}
+    
+    w_loss=sum(W*Spk)  
+    eps_W=mean((W-W_old)^2)
+    if (!is.null(tol)) {
+      if (eps_W < tol) {
+        break
+      }
+    }
+    
+    W_old=W
+    zeta=zeta+alpha*zeta0
+    
+    # print(W)
+    # print(zeta)
+    # print(Spk)
+    # print(zeta0)
+    # print(range(DW))
+    
+    if (verbose) {
+      cat(sprintf('Outer iteration %d: %.6e\n', outer, eps_W))
+    }
+    
+  }
+  
+  
+  return(list(W=W,s=s,medoids=medoids,w_loss=w_loss,v=v))
+}
+
+
 
 JM_COSA=function(Y,zeta0,lambda,K,tol,n_outer=20,alpha=.1,verbose=F,Ts=NULL){
   P=ncol(Y)
   TT=nrow(Y)
   
-  if(is.null(Ts)){
-    Ts=round(TT/2)
-  }
+  # if(is.null(Ts)){
+  #   Ts=round(TT/2)
+  # }
   
-  # best_loss <- NULL
-  # best_s <- NULL
-  # best_W = NULL
   Gamma <- lambda * (1 - diag(K))
   W=matrix(1/P,nrow=K,ncol=P)
   W_old=W
@@ -478,34 +643,30 @@ JM_COSA=function(Y,zeta0,lambda,K,tol,n_outer=20,alpha=.1,verbose=F,Ts=NULL){
   
   for (outer in 1:n_outer){
     
-    ## Clustering
-    #for(inner in 1:n_inner){
-    #Compute distances
-    #for(inner in 1:n_inner){
+    # subsample=sample(1:TT,Ts,replace = F)
+    # Ys=Y[subsample,]
+    # ss=s[subsample]
     
     # Questo qui sotto lentissimo se T>1000
-      subsample=sample(1:TT,Ts,replace = F)
-      Ys=Y[subsample,]
-      ss=s[subsample]
-    
-      # DW=weight_inv_exp_dist(Y,
-      #                        s,
-      #                        W,zeta)
       
-      # PAM only on subsample
-      DW_1=weight_inv_exp_dist(Ys,
-                             ss,
+      DW=weight_inv_exp_dist(Y,
+                             s,
                              W,zeta)
       
-      medoids=cluster::pam(x=DW_1,k=K,diss=TRUE)
-      Ymedoids=Ys[medoids$medoids,]
+      # PAM only on subsample
+      # DW_1=weight_inv_exp_dist(Ys,
+      #                        ss,
+      #                        W,zeta)
+      
+      medoids=cluster::pam(x=DW,k=K,diss=TRUE)
+      #Ymedoids=Ys[medoids$medoids,]
       #Ymedoids=Y[medoids$medoids,]
       
       # Questo se lavoro su tutto il dato
-      #loss_by_state=DW[,medoids$id.med]
+      loss_by_state=DW[,medoids$id.med]
       
       # Questo se lavoro su sottocampioni per ottimizzare i tempi
-      loss_by_state=weight_inv_exp_dist_medoids(Y, Ymedoids, s, W, zeta)
+      #loss_by_state=weight_inv_exp_dist_medoids(Y, Ymedoids, s, W, zeta)
       
       V <- loss_by_state
       for (t in (TT-1):1) {
@@ -534,7 +695,6 @@ JM_COSA=function(Y,zeta0,lambda,K,tol,n_outer=20,alpha=.1,verbose=F,Ts=NULL){
     
     # Compute weights
     
-    # Pero' qua siamo punto e accapo -.-"
     Spk=WCD(s,Y,K)
     wcd=exp(-Spk/zeta0)
     W=wcd/rowSums(wcd)
@@ -551,7 +711,7 @@ JM_COSA=function(Y,zeta0,lambda,K,tol,n_outer=20,alpha=.1,verbose=F,Ts=NULL){
     W_old=W
     zeta=zeta+alpha*zeta0
     
-    print(W)
+    #print(W)
     # print(zeta)
     # print(Spk)
     # print(zeta0)
@@ -565,6 +725,236 @@ JM_COSA=function(Y,zeta0,lambda,K,tol,n_outer=20,alpha=.1,verbose=F,Ts=NULL){
   }
   return(list(W=W,s=s,medoids=medoids))
 }
+
+robust_JM_COSA=function(Y,zeta0,lambda,K,tol,n_outer=20,alpha=.1,
+                        verbose=F,knn=10,c=2,M=NULL){
+  library(Rcpp)
+  Rcpp::sourceCpp("weight_inv_exp_dist.cpp")
+  Rcpp::sourceCpp("wcd.cpp")
+  P=ncol(Y)
+  TT=nrow(Y)
+
+  Gamma <- lambda * (1 - diag(K))
+  W=matrix(1/P,nrow=K,ncol=P)
+  W_old=W
+  
+  zeta=zeta0
+  
+  # Ottimizzare questo che segue??
+  s=initialize_states(Y,K)
+  
+  loss_old=1e10
+  
+  for (outer in 1:n_outer){
+    
+    # subsample=sample(1:TT,Ts,replace = F)
+    # Ys=Y[subsample,]
+    # ss=s[subsample]
+    
+    v1=v_1(W[s,]*Y,knn=knn,c=c,M=M)
+    v2=v_1(Y,knn=knn,c=c,M=M)
+    
+    v=apply(cbind(v1,v2),1,min)
+    
+    #Compute distances
+    DW=weight_inv_exp_dist(as.matrix(Y * v),
+                           s,
+                           W,zeta)
+    medoids=cluster::pam(x=DW,k=K,diss=TRUE)
+    
+    # Questo se lavoro su tutto il dato
+    loss_by_state=DW[,medoids$id.med]
+    
+    # Questo se lavoro su sottocampioni per ottimizzare i tempi
+    #loss_by_state=weight_inv_exp_dist_medoids(Y, Ymedoids, s, W, zeta)
+    
+    V <- loss_by_state
+    for (t in (TT-1):1) {
+      V[t-1,] <- loss_by_state[t-1,] + apply(V[t,] + Gamma, 2, min)
+    }
+    s_old=s
+    s[1] <- which.min(V[1,])
+    for (t in 2:TT) {
+      s[t] <- which.min(V[t,] + Gamma[s[t-1],])
+    }
+    loss <- min(V[1,])
+    if (length(unique(s)) < K) {
+      s=s_old
+      break
+    }
+    
+    epsilon <- loss_old - loss
+    if (!is.null(tol)) {
+      if (epsilon < tol) {
+        break
+      }
+    } 
+    # else if (all(s == s_old)) {
+    #   break
+    # }
+    loss_old <- loss
+    #}
+    
+    # Compute weights
+    
+    Spk=WCD(s,as.matrix(Y * v),K)
+    wcd=exp(-Spk/zeta0)
+    W=wcd/rowSums(wcd)
+    
+    #}
+    
+    #}
+    
+    eps_W=mean((W-W_old)^2)
+    
+    if (!is.null(tol)) {
+      if (eps_W < tol) {
+        break
+      }
+    }
+    
+    W_old=W
+    zeta=zeta+alpha*zeta0
+
+    # print(W)
+    # print(epsilon)
+    # print(eps_W)
+    # print(zeta)
+    # print(Spk)
+    # print(zeta0)
+    # print(range(DW))
+    
+    if (verbose) {
+      cat(sprintf('Iteration %d: %.6e\n', outer, loss))
+      #cat(sprintf('Out iteration %d (# inn iterations %d): %.6e\n', outer, inner, eps_W))
+    }
+    
+  }
+  return(list(W=W,s=s,medoids=medoids,v=v,loss=loss))
+}
+
+RJM_COSA_gap=function(Y,
+                      zeta_grid=seq(0.1,.7,.1),
+                      lambda_grid=seq(0,1,.1),
+                      K_grid=2:6,
+                      tol=NULL,n_outer=20,alpha=.1,verbose=F,n_cores=NULL,
+                      B=10, knn=10,c=2,M=NULL){
+  
+  # B is the number of permutations
+  
+  grid <- expand.grid(zeta0 = zeta_grid, lambda = lambda_grid, K = K_grid, b = 0:B)
+  
+  library(foreach)
+  library(doParallel)
+  
+  if(is.null(n_cores)){
+    n_cores <- parallel::detectCores() - 1
+  } 
+  
+  # Set up cluster
+  cl <- makeCluster(n_cores)
+  registerDoParallel(cl)
+  
+  results_list <- foreach(i = 1:nrow(grid), .combine = 'list',
+                          .packages = c("cluster","Rcpp"),
+                          .multicombine = TRUE,
+                          .export = c("Y", "robust_JM_COSA", 
+                                      #"WCD", "weight_inv_exp_dist",
+                                      "initialize_states",
+                                      "v_1","lof_star",
+                                      "grid", "tol", "n_outer", "alpha",
+                                      "knn","c","M")) %dopar% {
+                                        K_val <- grid$K[i]
+                                        zeta_val <- grid$zeta0[i]
+                                        lambda_val=grid$lambda[i]
+                                        b <- grid$b[i]
+                                        
+                                        set.seed(b + 1000 * i)
+                                        
+                                        if (b == 0) {
+                                          Y_input <- Y
+                                          permuted <- FALSE
+                                        } else {
+                                          # Permute features for zeta0
+                                          Y_input <- apply(Y, 2, sample)
+                                          # Permute rows for lambda
+                                          Y_input <- Y_input[ sample(nrow(Y_input),
+                                                                     size = nrow(Y_input),
+                                                                     replace = FALSE), ]
+                                          permuted <- TRUE
+                                        }
+                                        
+                                        res <- robust_JM_COSA(Y_input, zeta0 = zeta_val, 
+                                                              lambda = lambda_val, K = K_val, tol = tol,
+                                                              n_outer = n_outer, alpha = alpha, verbose = FALSE,
+                                                              knn=knn,c=c,M=M)
+                                        
+                                        list(
+                                          meta = data.frame(zeta0 = zeta_val, lambda=lambda_val,K = K_val, 
+                                                            loss = res$loss, permuted = permuted),
+                                          cosa = if (!permuted) list(zeta0 = zeta_val, lambda=lambda_val,K = K_val, 
+                                                                     W = res$W, s = res$s, 
+                                                                     medoids = res$medoids$medoids,
+                                                                     v=res$v) else NULL
+                                        )
+                                      }
+  
+  
+  stopCluster(cl)
+  
+  # Flatten results
+  meta_df <- do.call(rbind, lapply(results_list, `[[`, "meta"))
+  cosa_results <- Filter(Negate(is.null), lapply(results_list, `[[`, "cosa"))
+  
+  
+  # Compute GAP
+  library(dplyr)
+  gap_stats <- meta_df %>%
+    group_by(K, zeta0) %>%
+    summarise(
+      log_O = log(loss[!permuted]),
+      log_O_star_mean = mean(log(loss[permuted])),
+      se_log_O_star=sd(log(loss[permuted])),
+      GAP = log_O_star_mean - log_O,
+      .groups = 'drop'
+    )
+  
+  return(list(
+    gap_stats = gap_stats,
+    cosa_results = cosa_results
+  ))
+  
+}
+
+zeta_grid=seq(0.1,.3,.1)
+lambda_grid=seq(0,.3,.1)
+K_grid=2:3
+B=2
+
+prv=RJM_COSA_gap(Y,
+                 zeta_grid,
+                 lambda_grid,
+                 K_grid,
+                 tol=NULL,n_outer=15,alpha=.1,verbose=F,n_cores=NULL,
+                 B, knn=10,c=2,M=NULL)
+
+library(ggplot2)
+
+x11()
+ggplot(prv$gap_stats, 
+       aes(x = zeta0, 
+           y = GAP, 
+           color = factor(K), 
+           group = factor(K))) +
+  geom_line() +
+  geom_point() +
+  scale_color_brewer(palette = "Set1", name = "K") +
+  theme_minimal() +
+  labs(
+    x = expression(zeta[0]),
+    y = "GAP",
+    title = "Gap Statistic vs. Zeta0, by Number of Clusters"
+  )
 
 plot_W=function(W){
   library(reshape)
