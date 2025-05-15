@@ -22,3 +22,15 @@ temp=fuzzy_jump_cpp(Y,
                                  verbose=FALSE
                                  
 )
+
+
+temp_par=fuzzy_jump_cpp_parallel(Y, 
+                                    K, 
+                                    lambda = 0, 
+                                    m      = 1.01,
+                                    max_iter = 20, 
+                                    n_init   = 10, 
+                                    tol      = 1e-8, 
+                                    verbose  = FALSE)
+
+table(temp_par$MAP,prv$mchain)
