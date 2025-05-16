@@ -36,3 +36,14 @@ temp_par=fuzzy_jump_cpp_parallel(Y,
 
 table(temp$MAP,prv$mchain)
 table(temp_par$MAP,prv$mchain)
+
+temp_gap=fuzzy_jump_gap(Y,
+                           K_grid = 2:4,
+                           lambda_grid = seq(0, .2, 0.1),
+                           B = 50, # numero permutazioni
+                           m = 1.01,
+                           max_iter = 6,
+                           n_init = 10,
+                           tol = 1e-10,
+                           verbose = FALSE,
+                           n_cores = NULL)
