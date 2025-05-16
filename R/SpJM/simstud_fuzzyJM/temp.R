@@ -9,28 +9,30 @@ prv=sim_data_stud_t(seed=123,
                              rho=0,
                              nu=4,
                              phi=.8,
-                             pers=.95)
+                             pers=.99)
 
 Y=prv$SimData
 
 temp=fuzzy_jump_cpp(Y, 
-                                 K=2, 
-                                 lambda=0, 
-                                 m=1.01,
-                                 max_iter=8, 
-                                 n_init=10, tol=1e-16, 
-                                 verbose=FALSE
+                    K=2, 
+                    lambda = 0.05, 
+                    m      = 1.01,
+                    max_iter = 20, 
+                    n_init   = 10, 
+                    tol      = 1e-8, 
+                    verbose  = FALSE
                                  
 )
 
-
 temp_par=fuzzy_jump_cpp_parallel(Y, 
-                                    K, 
-                                    lambda = 0, 
+                                    K=2, 
+                                    lambda = 0.05, 
                                     m      = 1.01,
                                     max_iter = 20, 
                                     n_init   = 10, 
                                     tol      = 1e-8, 
-                                    verbose  = FALSE)
+                                    verbose  = FALSE
+                                 )
 
+table(temp$MAP,prv$mchain)
 table(temp_par$MAP,prv$mchain)
