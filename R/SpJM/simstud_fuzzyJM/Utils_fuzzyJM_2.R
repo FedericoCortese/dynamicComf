@@ -6,6 +6,23 @@ library(parallel)
 library(foreach)
 library(doParallel)
 
+compute_entropy <- function(prob_matrix, base = 2) {
+  # Ensure the input is a matrix
+  prob_matrix <- as.matrix(prob_matrix)
+  
+  # Replace zeros with NA to avoid log(0); these will be treated as zero in entropy
+  prob_matrix[prob_matrix == 0] <- NA
+  
+  # Compute entropy for each row
+  entropy_values <- apply(prob_matrix, 1, function(row) {
+    # Remove NA values (originally zeros)
+    valid_probs <- row[!is.na(row)]
+    -sum(valid_probs * log(valid_probs, base = base))
+  })
+  
+  return(sum(entropy_values))
+}
+
 weighted_median <- function(x, weights) {
   # Ensure x and weights are of the same length
   if (length(x) != length(weights)) {

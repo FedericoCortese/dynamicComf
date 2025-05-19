@@ -37,6 +37,36 @@ temp_par=fuzzy_jump_cpp_parallel(Y,
 table(temp$MAP,prv$mchain)
 table(temp_par$MAP,prv$mchain)
 
+compute_entropy(temp_par$best_S)
+
+temp_par_null=fuzzy_jump_cpp_parallel(Y, 
+                                 K=2, 
+                                 lambda = 0, 
+                                 m      = 1.01,
+                                 max_iter = 20, 
+                                 n_init   = 10, 
+                                 tol      = 1e-8, 
+                                 verbose  = FALSE
+)
+
+table(temp_par_null$MAP,prv$mchain)
+
+compute_entropy(temp_par_null$best_S)
+
+temp_par_l1=fuzzy_jump_cpp_parallel(Y, 
+                                      K=2, 
+                                      lambda = 0.2, 
+                                      m      = 1.01,
+                                      max_iter = 20, 
+                                      n_init   = 10, 
+                                      tol      = 1e-8, 
+                                      verbose  = FALSE
+)
+
+table(temp_par_l1$MAP,prv$mchain)
+
+compute_entropy(temp_par_l1$best_S)
+
 temp_gap=fuzzy_jump_gap(Y,
                            K_grid = 2:4,
                            lambda_grid = seq(0, .2, 0.1),
