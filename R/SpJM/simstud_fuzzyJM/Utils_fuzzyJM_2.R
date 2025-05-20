@@ -677,7 +677,7 @@ fuzzyJM_gap <- function(Y,
   registerDoParallel(cl)
   clusterExport(cl, varlist = c("Y","grid","tol","max_iter","n_init"), envir = environment())
   meta_list <- foreach(i = seq_len(nrow(grid)),
-                       .packages = c("poliscidata","Rcpp","StatMatch"),
+                       .packages = c("poliscidata","Rcpp","StatMatch","cluster"),
                        .export   = c("fuzzy_jump_cpp","initialize_states",
                                      "order_states_condMed","weighted_median"),
                        .errorhandling = "pass") %dopar% {
