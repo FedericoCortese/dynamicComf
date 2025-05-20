@@ -675,14 +675,13 @@ fuzzyJM_gap <- function(Y,
   if (is.null(n_cores)) n_cores <- parallel::detectCores() - 1
   cl <- makeCluster(n_cores)
   registerDoParallel(cl)
+  clusterExport(cl, varlist = c("Y","grid","tol","max_iter","n_init"), envir = environment())
   results_list <- foreach(i = seq_len(nrow(grid)),
                           .packages = c("poliscidata","Rcpp","StatMatch"),
                           .export   = c("Y","fuzzy_jump_cpp",
                                         "weighted_median",
                                         "order_states_condMed",
-                                        "initialize_states",
-                                        "tol","max_iter",
-                                        "n_init"),
+                                        "initialize_states"),
                           .errorhandling = "pass") %dopar% {
                             params <- grid[i, ]
                             K_val  <- params$K
