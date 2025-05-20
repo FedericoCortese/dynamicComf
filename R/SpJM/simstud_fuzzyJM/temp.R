@@ -96,8 +96,8 @@ temp_gap=fuzzy_jump_gap(Y,
 # hard clustering scenario
 source("Utils_fuzzyJM_2.R")
 
-TT = 250
-P = 5
+TT = 100
+P = 2
 mu = 1
 Sigma_rho = 0
 ar_rho = 0.99
@@ -250,6 +250,7 @@ mean(hellinger_ts)
 
 # gap ---------------------------------------------------------------------
 
+source("Utils_fuzzyJM.R")
 prv=fuzzyJM_gap(Y,
                         K_grid    = 2:3,
                         lambda_grid = seq(0.01, .5, length.out=2),

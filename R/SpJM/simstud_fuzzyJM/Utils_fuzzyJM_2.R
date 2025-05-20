@@ -653,6 +653,7 @@ fuzzy_jump_cpp_parallel <- function(Y,
   list(best_S = best_S, MAP = MAP, Y = Y,loss=loss)
 }
 
+# questo sotto da problemi, da rivedere
 fuzzyJM_gap <- function(Y,
                            K_grid,
                            lambda_grid,
