@@ -676,97 +676,79 @@ fuzzyJM_gap <- function(Y,
   cl <- makeCluster(n_cores)
   registerDoParallel(cl)
   clusterExport(cl, varlist = c("Y","grid","tol","max_iter","n_init"), envir = environment())
-  results_list <- foreach(i = seq_len(nrow(grid)),
-                          .packages = c("poliscidata","Rcpp","StatMatch"),
-                          .export   = c("Y","fuzzy_jump_cpp",
-                                        "weighted_median",
-                                        "order_states_condMed",
-                                        "initialize_states"),
-                          .errorhandling = "pass") %dopar% {
-                            params <- grid[i, ]
-                            K_val  <- params$K
-                            lambda  <- params$lambda
-                            b      <- params$b
-                            m = params$m
-                            
-                            set.seed(1000*i + b)
-                            
-                            Y_input <- if (b == 0) Y else Y[sample(1:nrow(Y),nrow(Y)),]
-                            permuted <- (b != 0)
-                            
-                            out <- tryCatch({
-                              res <- fuzzy_jump_cpp(Y_input,
-                                           lambda   = lambda,
-                                           K       = K_val,
-                                           m =m,
-                                           tol     = tol,
-                                           n_init = n_init,
-                                           verbose = FALSE,
-                                           max_iter  = max_iter)
-                              
-                              list(
-                                meta = data.frame(K        = K_val,
-                                                  lambda    = lambda,
-                                                  m=m,
-                                                  loss     = res$loss,
-                                                  permuted = permuted,
-                                                  i=i),
-                                cosa = if (!permuted)
-                                  list(K       = K_val,
-                                       lambda   = lambda,
-                                       m=m,
-                                       s       = res$best_S,
-                                       i=i
-                                  )
-                                else NULL,
-                                error = NA_character_
-                              )
-                              
-                            }, error = function(e) {
-                              # on error, record the params and the message
-                              list(
-                                meta  = data.frame(K        = K_val,
-                                                   lambda    = lambda,
-                                                   loss     = NA_real_,
-                                                   permuted = permuted),
-                                cosa  = NULL,
-                                error = e$message
-                              )
-                            })
-                            out
-                          }
+  meta_list <- foreach(i = seq_len(nrow(grid)),
+                       .packages = c("poliscidata","Rcpp","StatMatch"),
+                       .export   = c("fuzzy_jump_cpp","initialize_states",
+                                     "order_states_condMed","weighted_median"),
+                       .errorhandling = "pass") %dopar% {
+                         params   <- grid[i, ]
+                         K_val    <- params$K
+                         lambda   <- params$lambda
+                         m_val    <- params$m
+                         b        <- params$b
+                         
+                         set.seed(1000*i + b)
+                         permuted <- (b != 0)
+                         Y_input  <- if (permuted) Y[sample(nrow(Y)), , drop = FALSE] else Y
+                         
+                         # wrap the model call in tryCatch
+                         tryCatch({
+                           res <- fuzzy_jump_cpp(
+                             Y        = Y_input,
+                             K        = K_val,
+                             lambda   = lambda,
+                             m        = m_val,
+                             tol      = tol,
+                             max_iter = max_iter,
+                             n_init   = n_init,
+                             verbose  = FALSE
+                           )
+                           data.frame(
+                             K         = K_val,
+                             lambda    = lambda,
+                             m         = m_val,
+                             log_loss  = log(res$loss),
+                             permuted  = permuted,
+                             error     = NA_character_,
+                             stringsAsFactors = FALSE
+                           )
+                         }, error = function(e) {
+                           data.frame(
+                             K         = K_val,
+                             lambda    = lambda,
+                             m         = m_val,
+                             log_loss  = NA_real_,
+                             permuted  = permuted,
+                             error     = e$message,
+                             stringsAsFactors = FALSE
+                           )
+                         })
+                       }
   stopCluster(cl)
   
-  # 4) pull out all the meta–data and cosa results
-  meta_df <- do.call(rbind, lapply(results_list, `[[`, "meta"))
-  # cosa_results <- Filter(Negate(is.null),
-  #                        lapply(results_list, `[[`, "cosa"))
+  meta_df <- bind_rows(meta_list)
   
-  # 5) inspect errors, if any
-  errors <- do.call(rbind, lapply(results_list, function(x) {
-    data.frame(x$meta, error = x$error, stringsAsFactors = FALSE)
-  })) %>% filter(!is.na(error))
-  
-  if (nrow(errors) && verbose) {
-    message("Some iterations failed. Inspect 'errors' data frame.")
-    print(errors)
-  }
-  
-  # 6) compute GAP statistics
-  gap_stats <- meta_df %>%
+  # Compute expected log-loss over permutations
+  avg_perm <- meta_df %>%
+    filter(permuted == TRUE) %>%
     group_by(K, lambda, m) %>%
-    summarise(
-      log_O           = log(loss[!permuted]),
-      log_O_star_mean = mean(log(loss[permuted]), na.rm = TRUE),
-      se_log_O_star   = sd(log(loss[permuted]),   na.rm = TRUE),
-      GAP             = log_O_star_mean - log_O,
-      .groups         = "drop"
-    )
+    summarise(E_log_loss = mean(log_loss, na.rm = TRUE), .groups = "drop")
   
-  list(
-    gap_stats    = gap_stats,
-    errors       = if (nrow(errors)) errors else NULL
-  )
+  # Extract non-permuted (b = 0) log-loss
+  non_perm <- meta_df %>%
+    filter(permuted == FALSE) %>%
+    select(K, lambda, m, log_loss)
+  
+  # Join and compute gap
+  gap_df <- non_perm %>%
+    left_join(avg_perm, by = c("K", "lambda", "m")) %>%
+    rename(log_loss_nonperm = log_loss) %>%
+    mutate(
+      gap = E_log_loss - log_loss_nonperm
+    ) %>%
+    select(K, lambda, m, E_log_loss, log_loss_nonperm, gap)
+  
+  return( gap_df)
   
   
 }
