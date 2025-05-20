@@ -247,3 +247,16 @@ hellinger_ts <- apply(cbind(fjm_par_m2_soft$best_S, true_distr), 1, function(row
 })
 mean(hellinger_ts)
 
+
+# gap ---------------------------------------------------------------------
+
+prv=fuzzyJM_gap(Y,
+                        K_grid    = 2:3,
+                        lambda_grid = seq(0.01, .5, length.out=2),
+                        m_grid     = seq(1.01,2,length.out=2),
+                        tol       = NULL,
+                        max_iter   = 10,
+                        verbose   = FALSE,
+                        n_cores   = NULL,
+                        B         = 10,
+                        n_init=10)
