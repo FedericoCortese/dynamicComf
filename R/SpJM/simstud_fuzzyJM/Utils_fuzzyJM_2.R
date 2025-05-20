@@ -6,7 +6,12 @@ library(parallel)
 library(foreach)
 library(doParallel)
 
-compute_entropy <- function(prob_matrix, base = 2) {
+hellinger_distance_vec <- function(p, q) {
+  sqrt(sum((sqrt(p) - sqrt(q))^2)) / sqrt(2)
+}
+
+
+compute_entropy <- function(prob_matrix, base = exp(1)) {
   # Ensure the input is a matrix
   prob_matrix <- as.matrix(prob_matrix)
   
@@ -637,6 +642,7 @@ fuzzy_jump_cpp_parallel <- function(Y,
   parallel::stopCluster(cl)
   
   # pick & reorder
+  loss=best$loss
   best_S  <- best$S
   oldMAP  <- apply(best_S,1,which.max)
   MAP     <- order_states_condMed(Y[,1], oldMAP)
@@ -644,93 +650,192 @@ fuzzy_jump_cpp_parallel <- function(Y,
   new_ord <- apply(tab,1,which.max)
   best_S  <- best_S[, new_ord]
   
-  list(best_S = best_S, MAP = MAP, Y = Y)
+  list(best_S = best_S, MAP = MAP, Y = Y,loss=loss)
 }
 
-
-# GAP ---------------------------------------------------------------------
-
-
-fuzzy_jump_gap <- function(Y,
-                           K_grid = 2:6,
-                           lambda_grid = seq(0, 1, 0.1),
-                           B = 10, # numero permutazioni
-                           m = 1.01,
-                           max_iter = 6,
-                           n_init = 10,
-                           tol = 1e-10,
-                           verbose = FALSE,
-                           n_cores = NULL) {
+fuzzyJM_gap <- function(Y,
+                     K_grid    = 2:3,
+                     lambda_grid = seq(0.01, .5, .05),
+                     m_grid     = seq(1.01,2,length.out=3),
+                     tol       = NULL,
+                     max_iter   = 10,
+                     verbose   = FALSE,
+                     n_cores   = NULL,
+                     B         = 10,
+                     n_init=10) {
   
-  library(foreach)
-  library(doParallel)
-  library(dplyr)
+  require(foreach)
+  require(doParallel)
+  require(dplyr)
   
-  grid <- expand.grid(K = K_grid, lambda = lambda_grid, b = 0:B)
+  # 1) build your parameter grid
+  grid <- expand.grid(K = K_grid, lambda = lambda_grid,m=m_grid, b = 0:B)
   
-  if(is.null(n_cores)){
-    n_cores <- parallel::detectCores() - 1
-  } 
-  
-  # Set up cluster
+  # 2) set up cores
+  if (is.null(n_cores)) n_cores <- parallel::detectCores() - 1
   cl <- makeCluster(n_cores)
   registerDoParallel(cl)
+  results_list <- foreach(i = seq_len(nrow(grid)),
+                          .packages = c("poliscidata","Rcpp","StatMatch"),
+                          .export   = c("Y","fuzzy_jump_cpp",
+                                        "weighted_median",
+                                        "order_states_condMed",
+                                        "initialize_states",
+                                        "tol","max_iter",
+                                        "n_init"),
+                          .errorhandling = "pass") %dopar% {
+                            params <- grid[i, ]
+                            K_val  <- params$K
+                            lambda  <- params$lambda
+                            b      <- params$b
+                            m = params$m
+                            
+                            set.seed(1000*i + b)
+                            
+                            Y_input <- if (b == 0) Y else Y[sample(1:nrow(Y),nrow(Y)),]
+                            permuted <- (b != 0)
+                            
+                            out <- tryCatch({
+                              res <- fuzzy_jump_cpp(Y_input,
+                                           lambda   = lambda,
+                                           K       = K_val,
+                                           m =m,
+                                           tol     = tol,
+                                           n_init = n_init,
+                                           verbose = FALSE,
+                                           max_iter  = max_iter)
+                              
+                              list(
+                                meta = data.frame(K        = K_val,
+                                                  lambda    = lambda,
+                                                  m=m,
+                                                  loss     = res$loss,
+                                                  permuted = permuted,
+                                                  i=i),
+                                cosa = if (!permuted)
+                                  list(K       = K_val,
+                                       lambda   = lambda,
+                                       m=m,
+                                       s       = res$best_S,
+                                       i=i
+                                  )
+                                else NULL,
+                                error = NA_character_
+                              )
+                              
+                            }, error = function(e) {
+                              # on error, record the params and the message
+                              list(
+                                meta  = data.frame(K        = K_val,
+                                                   lambda    = lambda,
+                                                   loss     = NA_real_,
+                                                   permuted = permuted),
+                                cosa  = NULL,
+                                error = e$message
+                              )
+                            })
+                            out
+                          }
+  stopCluster(cl)
   
-  results_list <- foreach(i = 1:nrow(grid), .combine = 'list',
-                          .packages = c("poliscidata","gower","StatMatch","cluster","Rcpp"),
-                          .multicombine = TRUE,
-                          .export = c("Y", "fuzzy_jump_cpp", 
-                                      "initialize_states",
-                                      "order_states_condMed","weighted_median",
-                                      "grid", "tol", "n_init")) %dopar% {
-                                        
-                                        K_val <- grid$K[i]
-                                        lambda_val <- grid$lambda[i]
-                                        b <- grid$b[i]
-                                        
-                                        set.seed(b + 1000 * i)
-                                        
-                                        if (b == 0) {
-                                          Y_input <- Y
-                                          permuted <- FALSE
-                                        } else {
-                                          # Permute rows for lambda
-                                          Y_input <- Y[ sample(nrow(Y),
-                                                                     size = nrow(Y),
-                                                                     replace = FALSE), ]
-                                          permuted <- TRUE
-                                        }
-                                        
-                                        res=fuzzy_jump_cpp(Y_input, 
-                                                           lambda = lambda_val, K = K_val, tol = tol,
-                                                           n_init = n_init, max_iter = max_iter, verbose = FALSE)
-                                        list(
-                                          meta = data.frame(lambda=lambda_val,K = K_val, 
-                                                            loss = res$loss, permuted = permuted),
-                                          cosa = if (!permuted) list(lambda=lambda_val,K = K_val, 
-                                                                     S = res$best_S) else NULL
-                                        )
-                                        
-                                      }
-  
-  
-  
-  # Estrai le perdite e metadati
+  # 4) pull out all the meta–data and cosa results
   meta_df <- do.call(rbind, lapply(results_list, `[[`, "meta"))
-  cosa_results <- Filter(Negate(is.null), lapply(results_list, `[[`, "cosa"))
+  # cosa_results <- Filter(Negate(is.null),
+  #                        lapply(results_list, `[[`, "cosa"))
   
-  # GAP calculation
+  # 5) inspect errors, if any
+  errors <- do.call(rbind, lapply(results_list, function(x) {
+    data.frame(x$meta, error = x$error, stringsAsFactors = FALSE)
+  })) %>% filter(!is.na(error))
+  
+  if (nrow(errors) && verbose) {
+    message("Some iterations failed. Inspect 'errors' data frame.")
+    print(errors)
+  }
+  
+  # 6) compute GAP statistics
   gap_stats <- meta_df %>%
-    group_by(K, lambda) %>%
+    group_by(K, lambda, m) %>%
     summarise(
-      log_O = log(loss[!permuted]),
-      log_O_star_mean = mean(log(loss[permuted])),
-      se_log_O_star = sd(log(loss[permuted])),
-      GAP = log_O_star_mean - log_O,
-      .groups = "drop"
+      log_O           = log(loss[!permuted]),
+      log_O_star_mean = mean(log(loss[permuted]), na.rm = TRUE),
+      se_log_O_star   = sd(log(loss[permuted]),   na.rm = TRUE),
+      GAP             = log_O_star_mean - log_O,
+      .groups         = "drop"
     )
   
-  return(list(gap_stats = gap_stats,
-              meta = meta_df))
+  list(
+    gap_stats    = gap_stats,
+    errors       = if (nrow(errors)) errors else NULL
+  )
+  
+  
 }
+
+# simstud gaussian AR(1) ---------------------------------------------------------------------
+
+
+simulate_fuzzy_mixture_mv <- function(
+    TT = 1000,
+    P = 2,
+    mu = 1,
+    Sigma_rho = 0.5,
+    ar_rho = 0.9,
+    tau = 0.5,
+    seed = NULL
+) {
+  
+  # The higher tau, the 'harder' the clustering
+  
+  if (!is.null(seed)) set.seed(seed)
+  # carica MASS per mvrnorm
+  if (!requireNamespace("MASS", quietly = TRUE)) {
+    stop("Package 'MASS' is required but not installed.")
+  }
+  
+  # vettori di media
+  mu1 <- rep(-mu, P)
+  mu2 <- rep(mu, P)
+  
+  # matrice di covarianza comune
+  Sigma <- matrix(Sigma_rho, nrow = P, ncol = P)
+  diag(Sigma) <- 1
+  
+  # pre-allocazioni
+  alpha <- numeric(TT)
+  pi_t  <- numeric(TT)
+  y_mat <- matrix(0, nrow = TT, ncol = P)
+  
+  # inizializza latente
+  alpha[1] <- rnorm(1, 0, tau)
+  pi_t[1]  <- pnorm(alpha[1])
+  
+  # simula AR(1) e pesi
+  for (t in 2:TT) {
+    alpha[t] <- ar_rho * alpha[t - 1] + rnorm(1, 0, tau)
+    pi_t[t]  <- pnorm(alpha[t])
+  }
+  
+  # estrai y_t dal mix
+  for (t in 1:TT) {
+    if (runif(1) < pi_t[t]) {
+      y_mat[t, ] <- MASS::mvrnorm(1, mu1, Sigma)
+    } else {
+      y_mat[t, ] <- MASS::mvrnorm(1, mu2, Sigma)
+    }
+  }
+  
+  MAP=I(pi_t<.5)+1
+  
+  # restituisci data.frame
+  df <- data.frame(time = 1:TT, 
+                   as.data.frame(y_mat),
+                   alpha = alpha, pi_1 = pi_t, MAP)
+  
+  
+  names(df)[(1:P)+1] <- paste0("Y", 1:P)
+  return(df)
+}
+
+
 
