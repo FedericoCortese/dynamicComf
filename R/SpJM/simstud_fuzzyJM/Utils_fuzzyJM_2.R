@@ -444,7 +444,7 @@ fuzzy_jump_cpp <- function(Y,
   
   library(Rcpp)
   Rcpp::sourceCpp("simplex_pgd.cpp")
-  
+
   K=as.integer(K)
   
   TT <- nrow(Y)
@@ -654,103 +654,93 @@ fuzzy_jump_cpp_parallel <- function(Y,
 }
 
 fuzzyJM_gap <- function(Y,
-                     K_grid    = 2:3,
-                     lambda_grid = seq(0.01, .5, .05),
-                     m_grid     = seq(1.01,2,length.out=3),
-                     tol       = NULL,
-                     max_iter   = 10,
-                     verbose   = FALSE,
-                     n_cores   = NULL,
-                     B         = 10,
-                     n_init=10) {
+                           K_grid,
+                           lambda_grid,
+                           m_grid,
+                           B          = 0,
+                           max_iter   = 5,
+                           n_init     = 10,
+                           tol        = 1e-16,
+                           verbose    = FALSE,
+                           mc.cores   = detectCores() - 1) {
   
-  require(foreach)
-  require(doParallel)
-  require(dplyr)
+  # build full grid of parameters + permutation index
+  grid <- expand.grid(
+    K      = K_grid,
+    lambda = lambda_grid,
+    m      = m_grid,
+    b      = 0:B,
+    stringsAsFactors = FALSE
+  )
   
-  # 1) build your parameter grid
-  grid <- expand.grid(K = K_grid, lambda = lambda_grid,m=m_grid, b = 0:B)
+  # worker for each combination
+  worker <- function(idx) {
+    params   <- grid[idx, ]
+    Ki       <- as.integer(params$K)
+    lam_i    <- params$lambda
+    mi       <- params$m
+    bi       <- params$b
+    
+    permuted <- bi != 0
+    Y_in     <- if (permuted) Y[sample(nrow(Y)), , drop = FALSE] else Y
+    
+    # safely fit model
+    fit_loss <- tryCatch({
+      fit <- fuzzy_jump_cpp(
+        Y        = Y_in,
+        K        = Ki,
+        lambda   = lam_i,
+        m        = mi,
+        max_iter = max_iter,
+        n_init   = n_init,
+        tol      = tol,
+        verbose  = verbose
+      )
+      log(fit$loss)
+    }, error = function(e) {
+      if (verbose) message("Error at idx=", idx, ": ", e$message)
+      NA_real_
+    })
+    
+    data.frame(
+      K         = Ki,
+      lambda    = lam_i,
+      m         = mi,
+      log_loss  = fit_loss,
+      permuted  = permuted,
+      stringsAsFactors = FALSE
+    )
+  }
   
-  # 2) set up cores
-  if (is.null(n_cores)) n_cores <- parallel::detectCores() - 1
-  cl <- makeCluster(n_cores)
-  registerDoParallel(cl)
-  clusterExport(cl, varlist = c("Y","grid","tol","max_iter","n_init"), envir = environment())
-  meta_list <- foreach(i = seq_len(nrow(grid)),
-                       .packages = c("poliscidata","Rcpp","StatMatch","cluster"),
-                       .export   = c("fuzzy_jump_cpp","initialize_states",
-                                     "order_states_condMed","weighted_median"),
-                       .errorhandling = "pass") %dopar% {
-                         params   <- grid[i, ]
-                         K_val    <- params$K
-                         lambda   <- params$lambda
-                         m_val    <- params$m
-                         b        <- params$b
-                         
-                         set.seed(1000*i + b)
-                         permuted <- (b != 0)
-                         Y_input  <- if (permuted) Y[sample(nrow(Y)), , drop = FALSE] else Y
-                         
-                         # wrap the model call in tryCatch
-                         tryCatch({
-                           res <- fuzzy_jump_cpp(
-                             Y        = Y_input,
-                             K        = K_val,
-                             lambda   = lambda,
-                             m        = m_val,
-                             tol      = tol,
-                             max_iter = max_iter,
-                             n_init   = n_init,
-                             verbose  = FALSE
-                           )
-                           data.frame(
-                             K         = K_val,
-                             lambda    = lambda,
-                             m         = m_val,
-                             log_loss  = log(res$loss),
-                             permuted  = permuted,
-                             error     = NA_character_,
-                             stringsAsFactors = FALSE
-                           )
-                         }, error = function(e) {
-                           data.frame(
-                             K         = K_val,
-                             lambda    = lambda,
-                             m         = m_val,
-                             log_loss  = NA_real_,
-                             permuted  = permuted,
-                             error     = e$message,
-                             stringsAsFactors = FALSE
-                           )
-                         })
-                       }
-  stopCluster(cl)
+  # run in parallel
+  raw_list <- mclapply(
+    seq_len(nrow(grid)),
+    worker,
+    mc.cores = mc.cores
+  )
   
-  meta_df <- bind_rows(meta_list)
+  df <- do.call(rbind, raw_list)
   
-  # Compute expected log-loss over permutations
-  avg_perm <- meta_df %>%
-    filter(permuted == TRUE) %>%
-    group_by(K, lambda, m) %>%
-    summarise(E_log_loss = mean(log_loss, na.rm = TRUE), .groups = "drop")
+  # compute E_log_loss for each (K, lambda, m) over permuted=TRUE
+  df$E_log_loss <- with(df,
+                        ave(
+                          log_loss,
+                          K, lambda, m,
+                          FUN = function(x) {
+                            # average of those x where permuted=TRUE in the same group
+                            mean(x[ df$permuted[which(df$K==unique(df$K) & 
+                                                        df$lambda==unique(df$lambda) & 
+                                                        df$m==unique(df$m)) ] ],
+                                 na.rm = TRUE)
+                          }
+                        )
+  )
   
-  # Extract non-permuted (b = 0) log-loss
-  non_perm <- meta_df %>%
-    filter(permuted == FALSE) %>%
-    select(K, lambda, m, log_loss)
+  # compute gap
+  df$gap <- df$E_log_loss - df$log_loss
   
-  # Join and compute gap
-  gap_df <- non_perm %>%
-    left_join(avg_perm, by = c("K", "lambda", "m")) %>%
-    rename(log_loss_nonperm = log_loss) %>%
-    mutate(
-      gap = E_log_loss - log_loss_nonperm
-    ) %>%
-    select(K, lambda, m, E_log_loss, log_loss_nonperm, gap)
-  
-  return( gap_df)
-  
-  
+  # return
+  df[, c("K","lambda","m","log_loss","E_log_loss","gap")]
 }
 
 # simstud gaussian AR(1) ---------------------------------------------------------------------
