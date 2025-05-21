@@ -73,7 +73,7 @@ res_list <- mclapply(seq_len(nrow(hp)), function(i) {
                         tol      = tol,
                         verbose  = FALSE)
   
-  # ritorna una lista
+  # restituisce una lista
   list(K        = Ki,
        lambda   = li,
        m        = mi,
