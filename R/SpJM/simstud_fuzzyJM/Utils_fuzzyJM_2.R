@@ -442,8 +442,8 @@ fuzzy_jump_cpp <- function(Y,
   # Y.orig: original data
   # condMM: state-conditional medians and modes
   
-  library(Rcpp)
-  Rcpp::sourceCpp("simplex_pgd.cpp")
+  # library(Rcpp)
+  # Rcpp::sourceCpp("simplex_pgd.cpp")
 
   K=as.integer(K)
   
