@@ -4,6 +4,8 @@ library(gower)
 library(poliscidata)
 library(StatMatch)
 library(cluster)
+library(dplyr)
+library(tidyr)
 
 
 # hard clustering ---------------------------------------------------------
@@ -11,7 +13,7 @@ library(cluster)
 source("Utils_fuzzyJM_2.R")
 
 TT = 1000
-P = 2
+P = 10
 mu = 1
 Sigma_rho = 0
 ar_rho = 0.99
@@ -181,11 +183,11 @@ ggplot(df_m, aes(x = lambda, y = gap, group = factor(K), color = factor(K))) +
 source("Utils_fuzzyJM_2.R")
 
 TT = 1000
-P = 2
+P = 10
 mu = 1
 Sigma_rho = 0
-ar_rho = 0.99
-tau = .1
+ar_rho = 0.8
+tau = .2
 
 soft_scen=simulate_fuzzy_mixture_mv(
   TT = TT,
@@ -344,3 +346,28 @@ ggplot(df_m, aes(x = lambda, y = gap, group = factor(K), color = factor(K))) +
     color = "K"
   ) +
   theme_minimal()
+
+K=2
+m=1.5
+lambda=.05
+fit <- fuzzy_jump_cpp(
+  Y,
+  K        = K,
+  lambda   = lambda,
+  m        = m,
+  max_iter = 10,
+  n_init   = 5,
+  tol      = 1e-8,
+  verbose  = T
+)
+
+true_S=cbind(soft_scen$pi_1,1-soft_scen$pi_1)
+hellinger_distance_matrix(fit$best_S,true_S)
+
+table(fit$MAP,soft_scen$MAP)
+
+plot(soft_scen$pi_1,type='l',col='red',ylim=c(0,1))
+lines(fit$best_S[,1],type='l',col='black')
+
+
+

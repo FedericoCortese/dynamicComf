@@ -10,6 +10,18 @@ hellinger_distance_vec <- function(p, q) {
   sqrt(sum((sqrt(p) - sqrt(q))^2)) / sqrt(2)
 }
 
+hellinger_distance_matrix=function(S,true_distr){
+  hellinger_ts <- apply(cbind(S, true_distr), 1, function(row) {
+    p <- row[1:2]
+    q <- row[3:4]
+    hellinger_distance_vec(p, q)
+  })
+  
+  return(mean(hellinger_ts))
+}
+
+
+
 
 compute_entropy <- function(prob_matrix, base = exp(1)) {
   # Ensure the input is a matrix
