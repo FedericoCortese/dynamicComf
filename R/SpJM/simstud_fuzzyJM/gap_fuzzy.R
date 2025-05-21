@@ -50,37 +50,56 @@ hp <- expand.grid(K = K_grid,
 
 # 2) Parallel apply
 res_list <- mclapply(seq_len(nrow(hp)), function(i) {
-  # estrai iper-parametri
-  Ki      <- hp$K[i]
-  li      <- hp$lambda[i]
-  mi      <- hp$m[i]
-  bi      <- hp$b[i]
+  Ki    <- hp$K[i]
+  li    <- hp$lambda[i]
+  mi    <- hp$m[i]
+  bi    <- hp$b[i]
   
-  # permuta Y se b != 0
-  Yinput <- if (bi == 0) {
-    Y
-  } else {
-    apply(Y, 2, sample)
+  Yinput <- if (bi == 0) Y else apply(Y, 2, sample)
+  
+  attempt <- 1
+  last_loss <- NA_real_
+  
+  repeat {
+    result <- tryCatch({
+      fit <- fuzzy_jump_cpp(
+        Yinput,
+        K        = Ki,
+        lambda   = li,
+        m        = mi,
+        max_iter = max_iter,
+        n_init   = n_init,
+        tol      = tol,
+        verbose  = FALSE
+      )
+      list(success = TRUE, loss = fit$loss)
+    }, error = function(e) {
+      message(sprintf("Row %d, attempt %d/%d failed: %s",
+                      i, attempt, max_retries, e$message))
+      list(success = FALSE, loss = NA_real_)
+    })
+    
+    if (result$success) {
+      last_loss <- result$loss
+      break
+    }
+    if (attempt >= max_retries) {
+      warning(sprintf("Row %d: reached max attempts (%d), setting loss=NA", i, max_retries))
+      break
+    }
+    attempt <- attempt + 1
+    Sys.sleep(0.1)
   }
   
-  # chiama fuzzy_jump_cpp
-  fit <- fuzzy_jump_cpp(Yinput,
-                        K        = Ki,
-                        lambda   = li,
-                        m        = mi,
-                        max_iter = max_iter,
-                        n_init   = n_init,
-                        tol      = tol,
-                        verbose  = FALSE)
-  
-  # restituisce una lista
-  list(K        = Ki,
-       lambda   = li,
-       m        = mi,
-       permuted = as.logical(bi),
-       loss     = fit$loss)
-}, mc.cores =ncores)
-
+  list(
+    K         = Ki,
+    lambda    = li,
+    m         = mi,
+    permuted  = as.logical(bi),
+    loss      = last_loss,
+    attempts  = attempt
+  )
+}, mc.cores = ncores)
 # 3) Trasforma in data.frame
 results <- do.call(rbind, lapply(res_list, as.data.frame))
 results <- as.data.frame(results)
