@@ -684,7 +684,7 @@ fuzzy_jump_cpp_parallel <- function(Y,
   parallel::stopCluster(cl)
   
   # pick & reorder
-  loss=best$loss
+  best_loss=best$loss
   best_mu=best$mu
   best_S  <- best$S
   oldMAP  <- apply(best_S,1,which.max)
@@ -717,7 +717,7 @@ fuzzy_jump_cpp_parallel <- function(Y,
   # XB
   XB=Jm/(TT*min(Dmat[lower.tri(Dmat)]))
   
-  list(best_S = best_S, MAP = MAP, Y = Y,loss=loss,
+  list(best_S = best_S, MAP = MAP, Y = Y, loss= best_loss,
        PE = PE, PB = PB, PB_lambda = PB_lambda, XB = XB
   )
 }
