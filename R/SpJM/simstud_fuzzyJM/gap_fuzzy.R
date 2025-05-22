@@ -186,7 +186,7 @@ TT = 1000
 P = 10
 mu = 1
 Sigma_rho = 0
-ar_rho = 0.8
+ar_rho = 0.9
 tau = .2
 
 soft_scen=simulate_fuzzy_mixture_mv(
@@ -358,7 +358,7 @@ fit <- fuzzy_jump_cpp_parallel(
   max_iter = 10,
   n_init   = 5,
   tol      = 1e-8,
-  ncores=29
+  ncores=19
 )
 
 true_S=cbind(soft_scen$pi_1,1-soft_scen$pi_1)
@@ -369,5 +369,24 @@ table(fit$MAP,soft_scen$MAP)
 plot(soft_scen$pi_1,type='l',col='red',ylim=c(0,1))
 lines(fit$best_S[,1],type='l',col='black')
 
+# Comparison with continuous JM
 
+cJM=cont_jumpR(Y, 
+               K, 
+               jump_penalty=.1, 
+               alpha=1,
+               initial_states=NULL,
+               max_iter=10, 
+               n_init=5, 
+               tol=1e-8, 
+               mode_loss=F,
+               grid_size=.01,
+               prll=T,
+               n_cores=19
+)
 
+hellinger_distance_matrix(cJM,true_S)
+table(apply(cJM,1,which.max),soft_scen$MAP)
+
+plot(soft_scen$pi_1,type='l',col='red',ylim=c(0,1))
+lines(cJM[,1],type='l',col='black')
