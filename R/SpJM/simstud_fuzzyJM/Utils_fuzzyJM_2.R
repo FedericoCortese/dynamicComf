@@ -579,7 +579,7 @@ fuzzy_jump_cpp_parallel <- function(Y,
                                     max_iter = 5, 
                                     n_init   = 10, 
                                     tol      = 1e-16, 
-                                    verbose  = FALSE) {
+                                    ncores=NULL) {
   # 1) Compile/load C++ solvers once in the master
   Rcpp::sourceCpp("simplex_pgd.cpp")
   
@@ -588,7 +588,10 @@ fuzzy_jump_cpp_parallel <- function(Y,
   # (assume initialize_states() and order_states_condMed() are in your GlobalEnv)
   
   # 3) Launch cluster
-  ncores <- max(1, parallel::detectCores() - 1)
+  if(is.na(ncores)){
+    ncores <- parallel::detectCores() - 1
+  }
+  
   cl     <- parallel::makeCluster(ncores)
   
   # 4) On *each* worker: load Rcpp, source the same C++ file, load packages
@@ -643,7 +646,6 @@ fuzzy_jump_cpp_parallel <- function(Y,
       V    <- gower.dist(Y, mu)
       loss <- sum(V * S^m) + lambda * sum(abs(S[-TT,] - S[-1,]))^2
       
-      if (verbose) message(sprintf("init %d, iter %d: loss=%.6e", init, it, loss))
       if (loss_old - loss < tol) break
       loss_old <- loss
     }

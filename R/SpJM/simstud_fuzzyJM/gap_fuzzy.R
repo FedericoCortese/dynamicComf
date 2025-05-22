@@ -350,7 +350,7 @@ ggplot(df_m, aes(x = lambda, y = gap, group = factor(K), color = factor(K))) +
 K=2
 m=1.5
 lambda=.05
-fit <- fuzzy_jump_cpp(
+fit <- fuzzy_jump_cpp_parallel(
   Y,
   K        = K,
   lambda   = lambda,
@@ -358,7 +358,7 @@ fit <- fuzzy_jump_cpp(
   max_iter = 10,
   n_init   = 5,
   tol      = 1e-8,
-  verbose  = T
+  ncores=29
 )
 
 true_S=cbind(soft_scen$pi_1,1-soft_scen$pi_1)
