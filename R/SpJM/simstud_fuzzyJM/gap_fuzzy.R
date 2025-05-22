@@ -79,7 +79,8 @@ res_list <- mclapply(seq_len(nrow(hp)), function(i) {
         tol      = tol,
         verbose  = FALSE
       )
-      list(success = TRUE, loss = fit$loss)
+      list(success = TRUE, loss = fit$loss,
+           PE=fit$PE,PB=fit$PB,PB_lambda=fit$PB_lambda,XB=fit$XB)
     }, error = function(e) {
       message(sprintf("Row %d, attempt %d/%d failed: %s",
                       i, attempt, max_retries, e$message))
@@ -88,6 +89,10 @@ res_list <- mclapply(seq_len(nrow(hp)), function(i) {
     
     if (result$success) {
       last_loss <- result$loss
+      PE <- result$PE
+      PB <- result$PB
+      PB_lambda <- result$PB_lambda
+      XB <- result$XB
       break
     }
     if (attempt >= max_retries) {
@@ -104,7 +109,11 @@ res_list <- mclapply(seq_len(nrow(hp)), function(i) {
     m         = mi,
     permuted  = as.logical(bi),
     loss      = last_loss,
-    attempts  = attempt
+    attempts  = attempt,
+    PE=PE,
+    PB=PB,
+    PB_lambda=PB_lambda,
+    XB=XB
   )
 }, mc.cores = ncores)
 end=Sys.time()
@@ -249,7 +258,8 @@ res_list <- mclapply(seq_len(nrow(hp)), function(i) {
         tol      = tol,
         verbose  = FALSE
       )
-      list(success = TRUE, loss = fit$loss)
+      list(success = TRUE, loss = fit$loss,
+           PE=fit$PE,PB=fit$PB,PB_lambda=fit$PB_lambda,XB=fit$XB)
     }, error = function(e) {
       message(sprintf("Row %d, attempt %d/%d failed: %s",
                       i, attempt, max_retries, e$message))
@@ -258,6 +268,10 @@ res_list <- mclapply(seq_len(nrow(hp)), function(i) {
     
     if (result$success) {
       last_loss <- result$loss
+      PE <- result$PE
+      PB <- result$PB
+      PB_lambda <- result$PB_lambda
+      XB <- result$XB
       break
     }
     if (attempt >= max_retries) {
@@ -274,7 +288,11 @@ res_list <- mclapply(seq_len(nrow(hp)), function(i) {
     m         = mi,
     permuted  = as.logical(bi),
     loss      = last_loss,
-    attempts  = attempt
+    attempts  = attempt,
+    PE=PE,
+    PB=PB,
+    PB_lambda=PB_lambda,
+    XB=XB
   )
 }, mc.cores = ncores)
 end=Sys.time()
