@@ -296,11 +296,13 @@ res_list <- mclapply(seq_len(nrow(hp)), function(i) {
   )
 }, mc.cores = ncores)
 end=Sys.time()
-start-end
+end-start
 # 3) Trasforma in data.frame
 results <- do.call(rbind, lapply(res_list, as.data.frame))
 results <- as.data.frame(results)
 
+
+# GAP
 gap_df <- results %>%
   # Escludiamo eventuali NA di loss
   filter(!is.na(loss)) %>%
@@ -365,8 +367,37 @@ ggplot(df_m, aes(x = lambda, y = gap, group = factor(K), color = factor(K))) +
   ) +
   theme_minimal()
 
+# Cluster validity indexes
+
+results_clean <- subset(results, permuted == FALSE)
+
+# Define the plotting function
+plot_by_level <- function(data, x, y, lev) {
+  ggplot(data, aes_string(x = x, y = y, color = lev, group = lev)) +
+    geom_line() +
+    geom_point() +
+    labs(
+      x = x,
+      y = y,
+      color = lev
+    ) +
+    theme_minimal()
+}
+
+# Example usage:
+m_levs=unique(results_clean$m)
+plot_by_level(results_clean[results_clean$m==m_levs[4],], x = "lambda", 
+              y = "XB", lev = "K")
+
+K_levs=unique(results_clean$K)
+plot_by_level(results_clean[results_clean$K==K_levs[3],], x = "lambda", 
+              y = "XB", lev = "m")
+
+
+# Fit
+
 K=2
-m=1.5
+m=1.25
 lambda=.05
 fit <- fuzzy_jump_cpp_parallel(
   Y,
