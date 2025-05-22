@@ -538,12 +538,13 @@ fuzzy_jump_cpp <- function(Y,
       S_old <- S
     }
     
-    list(S = S, loss = loss_old)
+    list(S = S, loss = loss_old,mu=mu)
   })
   
   best_idx <- which.min(sapply(res_list, function(x) x$loss))
   best_S <- res_list[[best_idx]]$S
   best_loss <- res_list[[best_idx]]$loss
+  best_mu <- res_list[[best_idx]]$mu
   
   MAP=apply(best_S, 1, which.max)
 
@@ -556,11 +557,38 @@ fuzzy_jump_cpp <- function(Y,
   # Reorder the columns of S accordingly
   best_S <- best_S[, new_order]
   
+  # Cluster validity indexes
+  # Partitioning entropy
+  PE=compute_entropy(best_S, base = exp(1))
+  
+  # PB
+  # E1 component
+  unc_med=apply(Y,2,median)
+  ref <- as.data.frame(t(unc_med))
+  colnames(ref) <- colnames(Y)
+  E1 <- sum(gower_dist(Y, ref))
+  
+  # DK component
+  Dmat <- gower.dist(centroids)
+  DK=sum(Dmat[lower.tri(Dmat)])
+  
+  # Jm component
+  Jm=sum(gower.dist(Y, best_mu) * best_S^m)
+  
+  PB=(DK*(1/K)*E1/Jm)^2
+  PB_lambda=(DK*(1/K)*E1/best_loss)^2
+  
+  # XB
+  XB=Jm/(TT*min(Dmat[lower.tri(Dmat)]))
   
   return(list(best_S=best_S,
               loss=best_loss,
               MAP=MAP,
-              Y=Y
+              Y=Y,
+              PE=PE,
+              PB=PB,
+              PB_lambda=PB_lambda,
+              XB=XB
   ))
 }
 
@@ -664,7 +692,33 @@ fuzzy_jump_cpp_parallel <- function(Y,
   new_ord <- apply(tab,1,which.max)
   best_S  <- best_S[, new_ord]
   
-  list(best_S = best_S, MAP = MAP, Y = Y,loss=loss)
+  # Cluster validity indexes
+  # Partitioning entropy
+  PE=compute_entropy(best_S, base = exp(1))
+  
+  # PB
+  # E1 component
+  unc_med=apply(Y,2,median)
+  ref <- as.data.frame(t(unc_med))
+  colnames(ref) <- colnames(Y)
+  E1 <- sum(gower_dist(Y, ref))
+  
+  # DK component
+  Dmat <- gower.dist(centroids)
+  DK=sum(Dmat[lower.tri(Dmat)])
+  
+  # Jm component
+  Jm=sum(gower.dist(Y, best_mu) * best_S^m)
+  
+  PB=(DK*(1/K)*E1/Jm)^2
+  PB_lambda=(DK*(1/K)*E1/best_loss)^2
+  
+  # XB
+  XB=Jm/(TT*min(Dmat[lower.tri(Dmat)]))
+  
+  list(best_S = best_S, MAP = MAP, Y = Y,loss=loss,
+       PE = PE, PB = PB, PB_lambda = PB_lambda, XB = XB
+  )
 }
 
 
