@@ -396,9 +396,11 @@ plot_by_level(results_clean[results_clean$K==K_levs[3],], x = "lambda",
 
 # Fit
 
+# search in the range (1,2.5)
+
 K=2
-m=1.25
-lambda=.05
+m=1.15
+lambda=0.1
 fit <- fuzzy_jump_cpp_parallel(
   Y,
   K        = K,
@@ -407,7 +409,7 @@ fit <- fuzzy_jump_cpp_parallel(
   max_iter = 10,
   n_init   = 5,
   tol      = 1e-8,
-  ncores=19
+  ncores=3
 )
 
 true_S=cbind(soft_scen$pi_1,1-soft_scen$pi_1)
