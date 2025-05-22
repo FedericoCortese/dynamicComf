@@ -569,7 +569,7 @@ fuzzy_jump_cpp <- function(Y,
   E1 <- sum(gower_dist(Y, ref))
   
   # DK component
-  Dmat <- gower.dist(centroids)
+  Dmat <- gower.dist(best_mu)
   DK=sum(Dmat[lower.tri(Dmat)])
   
   # Jm component
@@ -678,13 +678,14 @@ fuzzy_jump_cpp_parallel <- function(Y,
       loss_old <- loss
     }
     
-    list(loss = loss_old, S = S)
+    list(loss = loss_old, S = S,mu=mu)
   }
   
   parallel::stopCluster(cl)
   
   # pick & reorder
   loss=best$loss
+  best_mu=best$mu
   best_S  <- best$S
   oldMAP  <- apply(best_S,1,which.max)
   MAP     <- order_states_condMed(Y[,1], oldMAP)
@@ -704,7 +705,7 @@ fuzzy_jump_cpp_parallel <- function(Y,
   E1 <- sum(gower_dist(Y, ref))
   
   # DK component
-  Dmat <- gower.dist(centroids)
+  Dmat <- gower.dist(best_mu)
   DK=sum(Dmat[lower.tri(Dmat)])
   
   # Jm component
