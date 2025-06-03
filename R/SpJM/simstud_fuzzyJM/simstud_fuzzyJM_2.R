@@ -21,6 +21,7 @@ max_retries=50
 K_grid=2:3
 lambda_grid=seq(0,.5,length.out=11)
 m_grid=seq(1.01,2,length.out=5)
+seed=1:100
 
 TT=c(1000,2000)
 P=c(5,10)
@@ -29,7 +30,8 @@ hp <- expand.grid(K = K_grid,
                   lambda = lambda_grid,
                   m = m_grid,
                   TT=TT,
-                  P=P)
+                  P=P,
+                  seed=seed)
 
 mu=1
 Sigma_rho=0
@@ -44,6 +46,7 @@ res_list_soft_K2 <- mclapply(seq_len(nrow(hp)), function(i) {
   mi    <- hp$m[i]
   TTi    <- hp$TT[i]
   Pi    <- hp$P[i]
+  seeding <- hp$seed[i]
   
   soft_scen=simulate_fuzzy_mixture_mv(
     TT = TTi,
@@ -52,7 +55,7 @@ res_list_soft_K2 <- mclapply(seq_len(nrow(hp)), function(i) {
     Sigma_rho = Sigma_rho,
     ar_rho = ar_rho,
     tau = tau,
-    seed = set.seed(i)
+    seed = seedi
   )
   
   ground_truth=cbind(soft_scen$pi_1,1-soft_scen$pi_1)
