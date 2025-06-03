@@ -616,7 +616,7 @@ fuzzy_jump_cpp_parallel <- function(Y,
   # (assume initialize_states() and order_states_condMed() are in your GlobalEnv)
   
   # 3) Launch cluster
-  if(is.na(ncores)){
+  if(is.null(ncores)){
     ncores <- parallel::detectCores() - 1
   }
   
