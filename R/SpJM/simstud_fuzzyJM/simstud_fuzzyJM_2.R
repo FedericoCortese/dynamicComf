@@ -55,7 +55,7 @@ res_list_soft_K2 <- mclapply(seq_len(nrow(hp)), function(i) {
     seed = set.seed(i)
   )
   
-  ground_truth=data.frame(p1=soft_scen$pi_1,p2=1-soft_scen$pi_1)
+  ground_truth=cbind(soft_scen$pi_1,1-soft_scen$pi_1)
   
   Yinput=soft_scen[,(1:Pi)+1]
   

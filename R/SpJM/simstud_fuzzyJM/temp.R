@@ -173,12 +173,12 @@ mean(hellinger_ts)
 
 source("Utils_fuzzyJM_2.R")
 
-TT = 1000
-P = 5
+TT = 500
+P = 10
 mu = 1
 Sigma_rho = 0
-ar_rho = 0.99
-tau = .1
+ar_rho = 0.9
+tau = .2
 
 soft_scen=simulate_fuzzy_mixture_mv(
   TT = TT,
@@ -190,6 +190,7 @@ soft_scen=simulate_fuzzy_mixture_mv(
   seed = NULL
 )
 
+x11()
 plot(soft_scen$pi_1,type='l',col='red')
 
 Y=soft_scen[,(1:P)+1]
@@ -197,16 +198,20 @@ Y=soft_scen[,(1:P)+1]
 fjm_par_m1_soft=fuzzy_jump_cpp_parallel(Y, 
                                         K=2, 
                                         lambda = 0.1, 
-                                        m      = 1.01,
-                                        max_iter = 15, 
-                                        n_init   = 5, 
-                                        tol      = 1e-8, 
-                                        verbose  = FALSE
+                                        m      = 1.5,
+                                        max_iter = 10, 
+                                        n_init   = 10, 
+                                        tol      = 1e-8,
+                                        ncores   = NULL
+                                      
 )
 
 table(fjm_par_m1_soft$MAP,soft_scen$MAP)
 compute_entropy(fjm_par_m1_soft$best_S)
 
+
+
+x11()
 plot(fjm_par_m1_soft$best_S[,1],type='l')
 lines(soft_scen$pi_1,col='red')
 
