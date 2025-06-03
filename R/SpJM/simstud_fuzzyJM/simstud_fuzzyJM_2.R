@@ -21,7 +21,7 @@ max_retries=50
 K_grid=2:3
 lambda_grid=seq(0,.5,length.out=11)
 m_grid=seq(1.01,2,length.out=5)
-seed=1:100
+seed=1:50
 
 TT=c(1000,2000)
 P=c(5,10)
