@@ -46,7 +46,7 @@ res_list_soft_K2 <- mclapply(seq_len(nrow(hp)), function(i) {
   mi    <- hp$m[i]
   TTi    <- hp$TT[i]
   Pi    <- hp$P[i]
-  seeding <- hp$seed[i]
+  seedi <- hp$seed[i]
   
   soft_scen=simulate_fuzzy_mixture_mv(
     TT = TTi,
