@@ -40,7 +40,7 @@ res_cont <- cont_jump(
 res_fuzzy=fuzzy_jump_cpp(Y, 
                                      K=2, 
                                      lambda=1, 
-                                     m=1.25,
+                                     m=1.15,
                                      max_iter=10, 
                                      n_init=10, tol=1e-8, 
                                      verbose=T
@@ -54,6 +54,8 @@ true_S=cbind(soft_scen$pi_1, 1-soft_scen$pi_1)
 hellinger_distance_matrix(res_fuzzy$best_S,true_S)
 hellinger_distance_matrix(res_cont$best_S,true_S)
 
-plot(soft_scen$pi_1,type='l')
+plot(soft_scen$pi_1,type='l',ylab='Probability of State 1',xlab='Time')
+lines(1-res_cont$best_S[,1],col='grey')
 lines(res_fuzzy$best_S[,1],col='red')
-lines(1-res_cont$best_S[,1],col='blue')
+legend('bottomright',legend=c('True','Continuous JM','Fuzzy JM'),col=c('black','grey','red'),
+       lty=1, cex=.4,lwd=rep(2,3))
