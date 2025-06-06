@@ -42,7 +42,7 @@ tau = .2
 ncores=detectCores()-1
 
 start=Sys.time()
-res_list_soft_K2 <- mclapply(seq_len(nrow(hp)), function(i) {
+res_list_soft_K2_cont <- mclapply(seq_len(nrow(hp)), function(i) {
   Ki    <- hp$K[i]
   li    <- hp$lambda[i]
   mi    <- hp$m[i]
@@ -146,7 +146,7 @@ ncores=detectCores()-1
 
 
 start=Sys.time()
-res_list_hard_K2 <- mclapply(seq_len(nrow(hp)), function(i) {
+res_list_hard_K2_cont <- mclapply(seq_len(nrow(hp)), function(i) {
   Ki    <- hp$K[i]
   li    <- hp$lambda[i]
   mi    <- hp$m[i]
