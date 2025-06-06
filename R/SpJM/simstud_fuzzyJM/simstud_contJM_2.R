@@ -22,7 +22,6 @@ max_retries=50
 
 K_grid=2:3
 lambda_grid=seq(0,.5,length.out=11)
-m_grid=seq(1.01,2,length.out=5)
 seed=1:50
 
 TT=c(1000,2000)
@@ -30,7 +29,6 @@ P=c(5,10)
 
 hp <- expand.grid(K = K_grid,
                   lambda = lambda_grid,
-                  m = m_grid,
                   TT=TT,
                   P=P,
                   seed=seed)
@@ -45,7 +43,6 @@ start=Sys.time()
 res_list_soft_K2_cont <- mclapply(seq_len(nrow(hp)), function(i) {
   Ki    <- hp$K[i]
   li    <- hp$lambda[i]
-  mi    <- hp$m[i]
   TTi    <- hp$TT[i]
   Pi    <- hp$P[i]
   seedi <- hp$seed[i]
@@ -77,9 +74,9 @@ res_list_soft_K2_cont <- mclapply(seq_len(nrow(hp)), function(i) {
                              max_iter=max_iter, 
                              n_init=n_init, 
                              tol=tol, 
-                             mode_loss=T,
+                             mode_loss=F,
                              #method="euclidean",
-                             grid_size=.05
+                             grid_size=.025
       )
       list(success = TRUE, 
            S=fit$best_S)
@@ -106,13 +103,68 @@ res_list_soft_K2_cont <- mclapply(seq_len(nrow(hp)), function(i) {
     ground_truth=ground_truth,
     K         = Ki,
     lambda    = li,
-    m         = mi,
     attempts  = attempt
   )
 }, mc.cores = ncores)
 end=Sys.time()
 end-start
 
+#  load("C:/Users/federico/OneDrive - CNR/Comfort - HMM/simres_fuzzyJM_fuzzySTJM/res_list_soft_K2_cont.Rdata")
+
+lista_risultati <- lapply(res_list_soft_K2_cont, function(el) {
+  # estraggo S e ground_truth come vettori
+  cS  <- el$S
+  cGT <- el$ground_truth
+  
+  # calcolo la distanza di Hellinger
+  hd <- hellinger_distance_matrix(cS, cGT)
+  
+  # costruisco un piccolo data.frame con jhellinger_dist e tutti gli altri campi
+  data.frame(
+    jhellinger_dist = hd,
+    lambda          = el$lambda,
+    K               = el$K,
+    stringsAsFactors = FALSE
+  )
+})
+
+# 3. Combino tutti i data.frame in uno solo
+results_df_soft_K2_cont <- do.call(rbind, lista_risultati)
+
+results_df_soft_K2_cont$TT=hp$TT
+results_df_soft_K2_cont$P=hp$P
+results_df_soft_K2_cont$seed=hp$seed
+
+head(results_df_soft_K2_cont)
+
+avg_hd_soft_K2_cont<- results_df_soft_K2_cont %>%
+  group_by(TT, P, K, lambda, m) %>%
+  summarize(mean_hellinger = mean(jhellinger_dist), .groups = "drop")
+
+temp=avg_hd_soft_K2_cont
+temp=temp[temp$TT==1000,]
+temp=temp[temp$P==5,]
+temp=temp[temp$K==2,]
+temp=temp[,c(4,6)]
+
+ggplot(temp, aes(x = lambda, 
+                 y = mean_hellinger, 
+                 # color = factor(m), 
+                 # group = factor(m)
+                 )
+       ) +
+  geom_line(size = 1) +
+  scale_color_discrete(name = "m") +
+  labs(
+    x = expression(lambda),
+    y = "Mean Hellinger Distance"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "right",
+    legend.title      = element_text(face = "bold"),
+    legend.text       = element_text(size = 8)
+  )
 
 # K=2 hard contJM ---------------------------------------------------------------------
 
@@ -125,7 +177,6 @@ max_retries=50
 
 K_grid=2:3
 lambda_grid=seq(0,.5,length.out=11)
-m_grid=seq(1.01,2,length.out=5)
 seed=1:50
 
 TT=c(1000,2000)
@@ -133,7 +184,6 @@ P=c(5,10)
 
 hp <- expand.grid(K = K_grid,
                   lambda = lambda_grid,
-                  m = m_grid,
                   TT=TT,
                   P=P,
                   seed=seed)
@@ -149,7 +199,6 @@ start=Sys.time()
 res_list_hard_K2_cont <- mclapply(seq_len(nrow(hp)), function(i) {
   Ki    <- hp$K[i]
   li    <- hp$lambda[i]
-  mi    <- hp$m[i]
   TTi    <- hp$TT[i]
   Pi    <- hp$P[i]
   seedi <- hp$seed[i]
@@ -181,9 +230,9 @@ res_list_hard_K2_cont <- mclapply(seq_len(nrow(hp)), function(i) {
                        max_iter=max_iter, 
                        n_init=n_init, 
                        tol=tol, 
-                       mode_loss=T,
+                       mode_loss=F,
                        #method="euclidean",
-                       grid_size=.05
+                       grid_size=.025
       )
       list(success = TRUE, 
            S=fit$best_S)
@@ -210,7 +259,6 @@ res_list_hard_K2_cont <- mclapply(seq_len(nrow(hp)), function(i) {
     ground_truth=ground_truth,
     K         = Ki,
     lambda    = li,
-    m         = mi,
     attempts  = attempt
   )
 }, mc.cores = ncores)
