@@ -10,7 +10,7 @@ library(tidyr)
 ###
 
 source("Utils_fuzzyJM_2.R")
-
+sourceCpp("cont_jump.cpp")
 # K=2 soft contJM ---------------------------------------------------------------------
 
 max_iter   = 10
