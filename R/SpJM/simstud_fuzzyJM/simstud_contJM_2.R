@@ -69,7 +69,7 @@ res_list_soft_K2 <- mclapply(seq_len(nrow(hp)), function(i) {
   
   repeat {
     result <- tryCatch({
-      fit <- cont_jumpR(Yinput, 
+      fit <- cont_jump(as.matrix(Yinput), 
                              Ki, 
                              jump_penalty= li, 
                              alpha=2,
@@ -79,12 +79,9 @@ res_list_soft_K2 <- mclapply(seq_len(nrow(hp)), function(i) {
                              tol=tol, 
                              mode_loss=T,
                              #method="euclidean",
-                             grid_size=.05,
-                             prll=F,
-                             n_cores=NULL
+                             grid_size=.05
       )
-      list(success = TRUE, loss = fit$loss,
-           PE=fit$PE,PB=fit$PB,PB_lambda=fit$PB_lambda,XB=fit$XB,
+      list(success = TRUE, 
            S=fit$best_S)
     }, error = function(e) {
       message(sprintf("Row %d, attempt %d/%d failed: %s",
@@ -94,11 +91,6 @@ res_list_soft_K2 <- mclapply(seq_len(nrow(hp)), function(i) {
     
     if (result$success) {
       S= result$S
-      last_loss <- result$loss
-      PE <- result$PE
-      PB <- result$PB
-      PB_lambda <- result$PB_lambda
-      XB <- result$XB
       break
     }
     if (attempt >= max_retries) {
@@ -115,12 +107,7 @@ res_list_soft_K2 <- mclapply(seq_len(nrow(hp)), function(i) {
     K         = Ki,
     lambda    = li,
     m         = mi,
-    loss      = last_loss,
-    attempts  = attempt,
-    PE=PE,
-    PB=PB,
-    PB_lambda=PB_lambda,
-    XB=XB
+    attempts  = attempt
   )
 }, mc.cores = ncores)
 end=Sys.time()
@@ -157,6 +144,7 @@ ar_rho = 0.9
 tau = 5
 ncores=detectCores()-1
 
+
 start=Sys.time()
 res_list_hard_K2 <- mclapply(seq_len(nrow(hp)), function(i) {
   Ki    <- hp$K[i]
@@ -178,29 +166,26 @@ res_list_hard_K2 <- mclapply(seq_len(nrow(hp)), function(i) {
   
   ground_truth=cbind(hard_scen$pi_1,1-hard_scen$pi_1)
   
-  Yinput=soft_scen[,(1:Pi)+1]
+  Yinput=hard_scen[,(1:Pi)+1]
   
   attempt <- 1
   last_loss <- NA_real_
   
   repeat {
     result <- tryCatch({
-      fit <- cont_jumpR(Yinput, 
-                        Ki, 
-                        jump_penalty= li, 
-                        alpha=2,
-                        initial_states=NULL,
-                        max_iter=max_iter, 
-                        n_init=n_init, 
-                        tol=tol, 
-                        mode_loss=T,
-                        #method="euclidean",
-                        grid_size=.05,
-                        prll=F,
-                        n_cores=NULL
+      fit <- cont_jump(as.matrix(Yinput), 
+                       Ki, 
+                       jump_penalty= li, 
+                       alpha=2,
+                       initial_states=NULL,
+                       max_iter=max_iter, 
+                       n_init=n_init, 
+                       tol=tol, 
+                       mode_loss=T,
+                       #method="euclidean",
+                       grid_size=.05
       )
-      list(success = TRUE, loss = fit$loss,
-           PE=fit$PE,PB=fit$PB,PB_lambda=fit$PB_lambda,XB=fit$XB,
+      list(success = TRUE, 
            S=fit$best_S)
     }, error = function(e) {
       message(sprintf("Row %d, attempt %d/%d failed: %s",
@@ -210,11 +195,6 @@ res_list_hard_K2 <- mclapply(seq_len(nrow(hp)), function(i) {
     
     if (result$success) {
       S= result$S
-      last_loss <- result$loss
-      PE <- result$PE
-      PB <- result$PB
-      PB_lambda <- result$PB_lambda
-      XB <- result$XB
       break
     }
     if (attempt >= max_retries) {
@@ -231,12 +211,7 @@ res_list_hard_K2 <- mclapply(seq_len(nrow(hp)), function(i) {
     K         = Ki,
     lambda    = li,
     m         = mi,
-    loss      = last_loss,
-    attempts  = attempt,
-    PE=PE,
-    PB=PB,
-    PB_lambda=PB_lambda,
-    XB=XB
+    attempts  = attempt
   )
 }, mc.cores = ncores)
 end=Sys.time()
