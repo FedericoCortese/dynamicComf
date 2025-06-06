@@ -145,8 +145,39 @@ lista_risultati <- lapply(res_list_soft_K2, function(el) {
 })
 
 # 3. Combino tutti i data.frame in uno solo
-results_df <- do.call(rbind, lista_risultati)
+results_df_soft_K2_fuzzy <- do.call(rbind, lista_risultati)
+results_df_soft_K2_fuzzy$TT=hp$TT
+results_df_soft_K2_fuzzy$P=hp$P
+results_df_soft_K2_fuzzy$seed=hp$seed
 
+head(results_df_soft_K2_fuzzy)
+
+avg_hd_soft_K2_fuzzy <- results_df_soft_K2_fuzzy %>%
+  group_by(TT, P, K, lambda, m) %>%
+  summarize(mean_hellinger = mean(jhellinger_dist), .groups = "drop")
+
+temp=avg_hd_soft_K2_fuzzy
+temp=temp[temp$TT==1000,]
+temp=temp[temp$P==5,]
+temp=temp[temp$K==2,]
+temp=temp[,4:6]
+
+ggplot(temp, aes(x = lambda, 
+                 y = mean_hellinger, 
+                 color = factor(m), 
+                 group = factor(m))) +
+  geom_line(size = 1) +
+  scale_color_discrete(name = "m") +
+  labs(
+    x = expression(lambda),
+    y = "Mean Hellinger Distance"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "right",
+    legend.title      = element_text(face = "bold"),
+    legend.text       = element_text(size = 8)
+  )
 
 # K=2 hard ----------------------------------------------------------------
 
@@ -284,7 +315,40 @@ lista_risultati <- lapply(res_list_hard_K2, function(el) {
 })
 
 # 3. Combino tutti i data.frame in uno solo
-results_df <- do.call(rbind, lista_risultati)
+results_df_hard_K2_fuzzy <- do.call(rbind, lista_risultati)
+
+results_df_hard_K2_fuzzy$TT=hp$TT
+results_df_hard_K2_fuzzy$P=hp$P
+results_df_hard_K2_fuzzy$seed=hp$seed
+
+head(results_df_hard_K2_fuzzy)
+
+avg_hd_hard_K2_fuzzy <- results_df_hard_K2_fuzzy %>%
+  group_by(TT, P, K, lambda, m) %>%
+  summarize(mean_hellinger = mean(jhellinger_dist), .groups = "drop")
+
+temp=avg_hd_hard_K2_fuzzy
+temp=temp[temp$TT==1000,]
+temp=temp[temp$P==5,]
+temp=temp[temp$K==2,]
+temp=temp[,4:6]
+
+ggplot(temp, aes(x = lambda, 
+                 y = mean_hellinger, 
+                 color = factor(m), 
+                 group = factor(m))) +
+  geom_line(size = 1) +
+  scale_color_discrete(name = "m") +
+  labs(
+    x = expression(lambda),
+    y = "Mean Hellinger Distance"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "right",
+    legend.title      = element_text(face = "bold"),
+    legend.text       = element_text(size = 8)
+  )
 
 # K=3 ---------------------------------------------------------------------
 

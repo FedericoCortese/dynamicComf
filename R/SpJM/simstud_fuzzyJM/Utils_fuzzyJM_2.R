@@ -12,6 +12,10 @@ hellinger_distance_vec <- function(p, q) {
 }
 
 hellinger_distance_matrix=function(S,true_distr){
+  if(!is.matrix(S)){
+    # But it works only when K=2
+    S=cbind(S,1-S)
+  }
   hellinger_ts <- apply(cbind(S, true_distr), 1, function(row) {
     p <- row[1:2]
     q <- row[3:4]
