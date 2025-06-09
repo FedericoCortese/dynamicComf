@@ -75,27 +75,38 @@ df_long <- pivot_longer(
   values_to   = "Probability"
 )
 
-# 4) plot with ggplot
 ggplot(df_long, aes(x = Time, y = Probability, color = Series)) +
-  geom_line(size = .7) +
+  geom_line(size = 0.8) +
   scale_color_manual(
     values = c(
       "True"        = "black",
       "ContinuousJM" = "grey",
       "FuzzyJM"     = "red"
+    ),
+    labels = c(
+      "True"        = "True",
+      "ContinuousJM" = "cont JM",
+      "FuzzyJM"     = "fuzzy JM"
     )
   ) +
   labs(
     x = "Time",
-    y = "Probability of State 1"
+    y = "Probability of State 1",
+    color = NULL
   ) +
   theme_minimal() +
   theme(
-    # place legend in bottom-right corner:
-    legend.position       = c(0.95, 0.05),
-    legend.justification  = c(1, 0),
-    legend.background     = element_rect(fill = alpha("white", 1)),
-    legend.title          = element_blank(),
-    legend.text           = element_text(size = 8)
-  )
+    legend.position = "bottom",
+    legend.box.margin = margin(t = 5),
+    legend.background = element_blank(),
+    legend.key = element_blank(),
+    legend.title = element_blank(),
+    legend.text = element_text(size = 12),
+    axis.text = element_text(size = 11),
+    axis.title = element_text(size = 12)
+  ) +
+  guides(color = guide_legend(override.aes = list(size = 1.5)))
+
+
+
 
