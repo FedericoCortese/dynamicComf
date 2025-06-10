@@ -117,6 +117,12 @@ lista_risultati <- lapply(res_list_soft_K2_cont, function(el) {
   cS  <- el$S
   cGT <- el$ground_truth
   
+  MAP_true=apply(cS,1,which.max)
+  MAP_est=apply(cGT,1,which.max)
+  confusion <-table(MAP_true, MAP_est)
+  mapping <- apply(confusion, 1, which.max)
+  cS=cS[,mapping]
+  
   # calcolo la distanza di Hellinger
   hd <- hellinger_distance_matrix(cS, cGT)
   
@@ -142,32 +148,18 @@ head(results_df_soft_K2_cont)
 
 avg_hd_soft_K2_cont <- results_df_soft_K2_cont %>%
   group_by(TT, P, K, lambda) %>%
-  summarize(mean_hellinger = mean(jhellinger_dist), .groups = "drop")
-
-# Plot varying lambda
-plot_data <- avg_hd_soft_K2_cont %>%
-  filter(K == 2)
-
-# Create custom labeller for TT and P
-custom_labeller <- labeller(
-  TT = function(x) paste("T =", x),
-  P  = function(x) paste("P =", x)
-)
-
-# Plot
-ggplot(plot_data, aes(x = lambda, y = mean_hellinger)) +
-  geom_line(size = 1) +
-  facet_grid(TT ~ P, labeller = custom_labeller) +
-  labs(
-    x = expression(lambda),
-    y = "Mean Hellinger Distance"
-  ) +
-  theme_minimal() +
-  theme(
-    strip.text = element_text(face = "bold"),
-    legend.position = "bottom"
+  summarize(
+    mean_hellinger = mean(jhellinger_dist),
+    sd_hellinger = sd(jhellinger_dist),
+    .groups = "drop"
   )
 
+best_hd_soft_K2_fuzzy <- avg_hd_soft_K2_cont %>%
+  group_by(TT, P) %>%
+  slice_min(order_by = mean_hellinger, n = 1, with_ties = FALSE) %>%
+  ungroup()
+
+best_hd_soft_K2_fuzzy
 
 # K=2 hard contJM ---------------------------------------------------------------------
 
@@ -271,9 +263,16 @@ end-start
 
 
 lista_risultati <- lapply(res_list_hard_K2_cont, function(el) {
+  
   # estraggo S e ground_truth come vettori
   cS  <- el$S
   cGT <- el$ground_truth
+  
+  MAP_true=apply(cS,1,which.max)
+  MAP_est=apply(cGT,1,which.max)
+  confusion <-table(MAP_true, MAP_est)
+  mapping <- apply(confusion, 1, which.max)
+  cS=cS[,mapping]
   
   # calcolo la distanza di Hellinger
   hd <- hellinger_distance_matrix(cS, cGT)
@@ -300,29 +299,15 @@ head(results_df_hard_K2_cont)
 
 avg_hd_hard_K2_cont <- results_df_hard_K2_cont %>%
   group_by(TT, P, K, lambda) %>%
-  summarize(mean_hellinger = mean(jhellinger_dist), .groups = "drop")
-
-# Plot varying lambda
-plot_data <- avg_hd_hard_K2_cont %>%
-  filter(K == 2)
-
-# Create custom labeller for TT and P
-custom_labeller <- labeller(
-  TT = function(x) paste("T =", x),
-  P  = function(x) paste("P =", x)
-)
-
-# Plot
-ggplot(plot_data, aes(x = lambda, y = mean_hellinger)) +
-  geom_line(size = 1) +
-  facet_grid(TT ~ P, labeller = custom_labeller) +
-  labs(
-    x = expression(lambda),
-    y = "Mean Hellinger Distance"
-  ) +
-  theme_minimal() +
-  theme(
-    strip.text = element_text(face = "bold"),
-    legend.position = "bottom"
+  summarize(
+    mean_hellinger = mean(jhellinger_dist),
+    sd_hellinger = sd(jhellinger_dist),
+    .groups = "drop"
   )
 
+best_hd_hard_K2_cont <- avg_hd_hard_K2_cont %>%
+  group_by(TT, P) %>%
+  slice_min(order_by = mean_hellinger, n = 1, with_ties = FALSE) %>%
+  ungroup()
+
+best_hd_hard_K2_cont
