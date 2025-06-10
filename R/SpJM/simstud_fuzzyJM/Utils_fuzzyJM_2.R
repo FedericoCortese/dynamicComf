@@ -693,7 +693,192 @@ simulate_fuzzy_mixture_mv <- function(
 
 # Cross-val ---------------------------------------------------------------
 
-
+cv_sparse_jump <- function(
+    Y,
+    true_states,
+    K_grid=NULL,
+    m_grid=NULL,
+    lambda_grid=NULL,
+    n_folds = 5,
+    parallel=F,
+    n_cores=NULL
+) {
+  
+  # cv_sparse_jump: Cross-validate Sparse Jump Model parameters (K, kappa, lambda)
+  
+  # Arguments:
+  #   Y           - data matrix (N × P)
+  #   true_states - vector of true states for ARI computation
+  #   K_grid      - vector of candidate numbers of states
+  #   m_grid  - vector of candidate fuzzyness parameters
+  #   lambda_grid - vector of candidate lambdas
+  #   n_folds     - number of folds for cross-validation (default: 5)
+  #   parallel    - logical; TRUE for parallel execution (default: FALSE)
+  
+  # Value:
+  #   A data.frame with one row per (K, kappa, lambda) combination, containing:
+  #     K      - number of states tested
+  #     m  - fuzzyness hyperparameter value
+  #     lambda - jump penalty value
+  #     fARI    - mean fuzzy Adjusted Rand Index across folds
+  
+  
+  if(is.null(K_grid)) {
+    K_grid <- seq(2, 4, by = 1)  # Default range for K
+  }
+  
+  if(is.null(m_grid)) {
+    m_grid <- c(1.01,1.25,1.5,1.75,2)  # Default range for kappa
+  }
+  if(is.null(lambda_grid)) {
+    lambda_grid <- seq(0,1,.1)  # Default range for lambda
+  }
+  
+  # Libreria per fARI
+  library(fclust)
+  
+  N <- nrow(Y)
+  P <- ncol(Y)
+  
+  # Suddivido gli N campioni in n_folds blocchi contigui
+  fold_indices <- split(
+    1:N,
+    rep(1:n_folds, each = ceiling(N / n_folds), length.out = N)
+  )
+  
+  # Funzione che, per una tripla (K, m, lambda) e un fold (train_idx, val_idx),
+  # calcola l’fARI sui punti di validazione
+  fold_fari <- function(K, m, lambda, train_idx, val_idx) {
+    # 1) Fit del modello sparse_jump su soli dati di TRAIN
+    res <- fuzzy_jump_cpp(Y=as.matrix(Y[train_idx, , drop = FALSE]), 
+                     K=as.integer(K), 
+                     lambda=lambda, 
+                     m=m,
+                     max_iter=10, 
+                     n_init=10, tol=1e-8, 
+                     verbose=F
+                     
+      )
+    
+    states_train <- res$best_S
+    
+    
+    # 2) Calcolo dei centroidi (medi anche solo sulle feature selezionate)
+    #    Ogni riga di "centroids" è il centro per uno stato k = 1..K
+    centroids <- res$mu
+    
+    # 3) A ciascun punto assegna la probabilità di appartenere a ciascuno stato
+    #    (usando il reciproco della distanza di Gower tra il punto e i centroidi)
+    Y_val_feats     <- as.matrix(Y[val_idx, feat_idx, drop = FALSE])
+    pred_val_states <- matrix(0,nrow=length(val_idx),ncol=K)
+    
+    for (i in seq_along(val_idx)) {
+      dists <- rep(Inf, K)
+      for (k in 1:K) {
+        if (!any(is.na(centroids[k, ]))) {
+          # Essentially fuzzy cmeans distance
+          dists[k]= gower.dist(Y_val_feats[i, ], centroids[k, ])^(-2/(m-1))
+          #dists[k] <- sum((Y_val_feats[i, ] - centroids[k, ])^2)
+        }
+      }
+      pred_val_states[i,] <- dists/sum(dists)
+    }
+    
+    # ARI.F(VC=true_states[val_idx],U=clust$U)
+    
+    # 4) Calcolo ARI tra etichette vere e quelle predette sul blocco VAL
+    return(adjustedRandIndex(true_states[val_idx], pred_val_states))
+  }
+  
+  # Costruisco la griglia di tutte le combinazioni di (K, kappa, lambda)
+  grid <- expand.grid(
+    K      = K_grid,
+    m  = m_grid,
+    lambda = lambda_grid,
+    KEEP.OUT.ATTRS = FALSE,
+    stringsAsFactors = FALSE
+  )
+  
+  # Data.frame in cui raccogliere (K, kappa, lambda, media_ARI)
+  results <- data.frame(
+    K      = integer(0),
+    m  = integer(0),
+    lambda = numeric(0),
+    fARI    = numeric(0)
+  )
+  
+  # Loop su ciascuna riga della griglia
+  if (!parallel) {
+    # applichiamo una funzione su ogni riga di 'grid'
+    results_list <- lapply(seq_len(nrow(grid)), function(row) {
+      K_val     <- as.integer(grid$K[row])
+      m_val <- as.integer(grid$m[row])
+      lambda_val<-        grid$lambda[row]
+      
+      # calcolo ARI su ciascun fold
+      fari_vals <- numeric(n_folds)
+      for (f in seq_len(n_folds)) {
+        val_idx   <- fold_indices[[f]]
+        train_idx <- setdiff(seq_len(N), val_idx)
+        fari_vals[f] <- fold_fari(K_val, m_val, lambda_val, train_idx, val_idx)
+      }
+      mean_fari <- mean(fari_vals)
+      
+      # ritorno un data.frame di una sola riga
+      data.frame(
+        K      = K_val,
+        m  = m_val,
+        lambda = lambda_val,
+        fARI    = mean_fari,
+        stringsAsFactors = FALSE
+      )
+    })
+    
+    # combino tutti i data.frame in un unico data.frame
+    results <- do.call(rbind, results_list)
+  }
+  
+  
+  # 2) VERSIONE PARALLELA: usare mclapply()
+  if (parallel) {
+    if(is.null(n_cores)){
+      n_cores <- detectCores() - 1
+    }
+    
+    results_list <- mclapply(
+      seq_len(nrow(grid)),
+      function(row) {
+        K_val     <- as.integer(grid$K[row])
+        m_val <- as.integer(grid$m[row])
+        lambda_val<-        grid$lambda[row]
+        
+        # calcolo ARI su ciascun fold
+        fari_vals <- numeric(n_folds)
+        for (f in seq_len(n_folds)) {
+          val_idx   <- fold_indices[[f]]
+          train_idx <- setdiff(seq_len(N), val_idx)
+          fari_vals[f] <- fold_ari(K_val, m_val, lambda_val, train_idx, val_idx)
+        }
+        mean_fari <- mean(fari_vals)
+        
+        # ritorno un data.frame di una sola riga
+        data.frame(
+          K      = K_val,
+          m  = m_val,
+          lambda = lambda_val,
+          fARI    = mean_fari,
+          stringsAsFactors = FALSE
+        )
+      },
+      mc.cores = n_cores
+    )
+    
+    # combino tutti i data.frame in un unico data.frame
+    results <- do.call(rbind, results_list)
+  }
+  
+  return(results)
+}
 
 # continuous JM -----------------------------------------------------------
 
