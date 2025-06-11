@@ -690,7 +690,7 @@ fuzzy_jump_cpp <- function(Y,
 #   return(df)
 # }
 
-simulate_fuzzy_mixture_mv_K <- function(
+simulate_fuzzy_mixture_mv<- function(
     TT = 1000,
     P  = 2,
     K  = 2,
