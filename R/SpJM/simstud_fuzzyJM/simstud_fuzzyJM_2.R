@@ -109,6 +109,14 @@ res_list_soft_K2 <- mclapply(seq_len(nrow(hp)), function(i) {
     K         = Ki,
     lambda    = li,
     m         = mi,
+    TT = TTi,
+    P = Pi,
+    seed= seedi,
+    mu=mu, 
+    Sigma_rho=Sigma_rho,
+    ar_rho=ar_rho,
+    tau=tau,
+    phi=phi,
     loss      = last_loss,
     attempts  = attempt,
     PE=PE,
@@ -146,9 +154,9 @@ lista_risultati <- lapply(res_list_soft_K2, function(el) {
 
 # 3. Combino tutti i data.frame in uno solo
 results_df_soft_K2_fuzzy <- do.call(rbind, lista_risultati)
-results_df_soft_K2_fuzzy$TT=hp$TT
-results_df_soft_K2_fuzzy$P=hp$P
-results_df_soft_K2_fuzzy$seed=hp$seed
+# results_df_soft_K2_fuzzy$TT=hp$TT
+# results_df_soft_K2_fuzzy$P=hp$P
+# results_df_soft_K2_fuzzy$seed=hp$seed
 
 #save(results_df_soft_K2_fuzzy,file='hellinger_df_soft_K2_fuzzy.Rdata')
 
@@ -382,9 +390,9 @@ lista_risultati <- lapply(res_list_hard_K2, function(el) {
 # 3. Combino tutti i data.frame in uno solo
 results_df_hard_K2_fuzzy <- do.call(rbind, lista_risultati)
 
-results_df_hard_K2_fuzzy$TT=hp$TT
-results_df_hard_K2_fuzzy$P=hp$P
-results_df_hard_K2_fuzzy$seed=hp$seed
+# results_df_hard_K2_fuzzy$TT=hp$TT
+# results_df_hard_K2_fuzzy$P=hp$P
+# results_df_hard_K2_fuzzy$seed=hp$seed
 
 save(results_df_hard_K2_fuzzy,file='hellinger_df_hard_K2_fuzzy.Rdata')
 
