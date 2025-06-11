@@ -262,7 +262,7 @@ hp <- expand.grid(K = K_grid,
 
 mu=1
 Sigma_rho=0
-ar_rho = 0.9
+ar_rho = 0.99
 tau = 5
 ncores=detectCores()-1
 
@@ -336,6 +336,14 @@ res_list_hard_K2 <- mclapply(seq_len(nrow(hp)), function(i) {
     K         = Ki,
     lambda    = li,
     m         = mi,
+    TT = TTi,
+    P = Pi,
+    seed= seedi,
+    mu=mu, 
+    Sigma_rho=Sigma_rho,
+    ar_rho=ar_rho,
+    tau=tau,
+    phi=phi,
     loss      = last_loss,
     attempts  = attempt,
     PE=PE,
