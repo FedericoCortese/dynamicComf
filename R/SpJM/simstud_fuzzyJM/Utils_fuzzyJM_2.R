@@ -628,65 +628,128 @@ fuzzy_jump_cpp <- function(Y,
 # simstud gaussian AR(1) ---------------------------------------------------------------------
 
 
-simulate_fuzzy_mixture_mv <- function(
+# simulate_fuzzy_mixture_mv <- function(
+#     TT = 1000,
+#     P = 2,
+#     mu = 1,
+#     Sigma_rho = 0.5,
+#     ar_rho = 0.9,
+#     tau = 0.5,
+#     seed = NULL
+# ) {
+#   
+#   # The higher tau, the 'harder' the clustering
+#   
+#   if (!is.null(seed)) set.seed(seed)
+#   # carica MASS per mvrnorm
+#   if (!requireNamespace("MASS", quietly = TRUE)) {
+#     stop("Package 'MASS' is required but not installed.")
+#   }
+#   
+#   # vettori di media
+#   mu1 <- rep(-mu, P)
+#   mu2 <- rep(mu, P)
+#   
+#   # matrice di covarianza comune
+#   Sigma <- matrix(Sigma_rho, nrow = P, ncol = P)
+#   diag(Sigma) <- 1
+#   
+#   # pre-allocazioni
+#   alpha <- numeric(TT)
+#   pi_t  <- numeric(TT)
+#   y_mat <- matrix(0, nrow = TT, ncol = P)
+#   
+#   # inizializza latente
+#   alpha[1] <- rnorm(1, 0, tau)
+#   pi_t[1]  <- pnorm(alpha[1])
+#   
+#   # simula AR(1) e pesi
+#   for (t in 2:TT) {
+#     alpha[t] <- ar_rho * alpha[t - 1] + rnorm(1, 0, tau)
+#     pi_t[t]  <- pnorm(alpha[t])
+#   }
+#   
+#   # estrai y_t dal mix
+#   for (t in 1:TT) {
+#     if (runif(1) < pi_t[t]) {
+#       y_mat[t, ] <- MASS::mvrnorm(1, mu1, Sigma)
+#     } else {
+#       y_mat[t, ] <- MASS::mvrnorm(1, mu2, Sigma)
+#     }
+#   }
+#   
+#   MAP=I(pi_t<.5)+1
+#   
+#   # restituisci data.frame
+#   df <- data.frame(time = 1:TT, 
+#                    as.data.frame(y_mat),
+#                    alpha = alpha, pi_1 = pi_t, MAP)
+#   
+#   
+#   names(df)[(1:P)+1] <- paste0("Y", 1:P)
+#   return(df)
+# }
+
+simulate_fuzzy_mixture_mv_K <- function(
     TT = 1000,
-    P = 2,
+    P  = 2,
+    K  = 2,
     mu = 1,
-    Sigma_rho = 0.5,
-    ar_rho = 0.9,
-    tau = 0.5,
-    seed = NULL
+    Sigma_rho = 0,
+    ar_rho    = 0.9,
+    tau       = 0.5,
+    seed      = NULL
 ) {
-  
-  # The higher tau, the 'harder' the clustering
-  
   if (!is.null(seed)) set.seed(seed)
-  # carica MASS per mvrnorm
   if (!requireNamespace("MASS", quietly = TRUE)) {
     stop("Package 'MASS' is required but not installed.")
   }
   
-  # vettori di media
-  mu1 <- rep(-mu, P)
-  mu2 <- rep(mu, P)
+  # --- Generate K centroids spaced from -mu to +mu ---
+  mu_vals <- seq(-mu, mu, length.out = K)
+  mus     <- matrix(mu_vals, nrow = K, ncol = P, byrow = FALSE)
   
-  # matrice di covarianza comune
+  # --- Common covariance ---
   Sigma <- matrix(Sigma_rho, nrow = P, ncol = P)
   diag(Sigma) <- 1
   
-  # pre-allocazioni
-  alpha <- numeric(TT)
-  pi_t  <- numeric(TT)
-  y_mat <- matrix(0, nrow = TT, ncol = P)
+  # --- Storage ---
+  alpha_mat <- matrix(0, nrow = TT, ncol = K)
+  pi_mat    <- matrix(0, nrow = TT, ncol = K)
+  y_mat     <- matrix(0, nrow = TT, ncol = P)
   
-  # inizializza latente
-  alpha[1] <- rnorm(1, 0, tau)
-  pi_t[1]  <- pnorm(alpha[1])
+  # --- Initialize latent scores ---
+  alpha_mat[1, ] <- rnorm(K, 0, tau)
+  pi_mat[1, ]    <- exp(alpha_mat[1, ]) / sum(exp(alpha_mat[1, ]))
   
-  # simula AR(1) e pesi
+  # --- Simulate AR(1) + softmax weights ---
   for (t in 2:TT) {
-    alpha[t] <- ar_rho * alpha[t - 1] + rnorm(1, 0, tau)
-    pi_t[t]  <- pnorm(alpha[t])
+    alpha_mat[t, ] <- ar_rho * alpha_mat[t - 1, ] + rnorm(K, 0, tau)
+    ealpha <- exp(alpha_mat[t, ])
+    pi_mat[t, ] <- ealpha / sum(ealpha)
   }
   
-  # estrai y_t dal mix
+  # --- Draw from mixture ---
   for (t in 1:TT) {
-    if (runif(1) < pi_t[t]) {
-      y_mat[t, ] <- MASS::mvrnorm(1, mu1, Sigma)
-    } else {
-      y_mat[t, ] <- MASS::mvrnorm(1, mu2, Sigma)
-    }
+    k_t       <- which.max(rmultinom(1, size = 1, prob = pi_mat[t, ]))
+    y_mat[t,] <- MASS::mvrnorm(1, mu = mus[k_t, ], Sigma = Sigma)
   }
   
-  MAP=I(pi_t<.5)+1
+  # --- Build output ---
+  MAP <- max.col(pi_mat)
+  df <- data.frame(
+    time      = seq_len(TT),
+    y_mat,
+    alpha_mat,
+    pi_mat,
+    MAP       = MAP
+  )
   
-  # restituisci data.frame
-  df <- data.frame(time = 1:TT, 
-                   as.data.frame(y_mat),
-                   alpha = alpha, pi_1 = pi_t, MAP)
+  # Name columns
+  names(df)[2:(1+P)]          <- paste0("Y",   1:P)
+  names(df)[(2+P):(1+P+K)]    <- paste0("alpha_",1:K)
+  names(df)[(2+P+K):(1+P+2*K)]<- paste0("pi_",   1:K)
   
-  
-  names(df)[(1:P)+1] <- paste0("Y", 1:P)
   return(df)
 }
 
