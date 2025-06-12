@@ -590,33 +590,35 @@ fuzzy_jump_cpp <- function(Y,
   new_order <- apply(tab, 1, which.max)
   best_S <- best_S[, new_order]
   
-  # Compute cluster validity indices
-  PE <- compute_entropy(best_S, base = exp(1))
-  
-  unc_med <- apply(Y, 2, median)
-  ref <- as.data.frame(t(unc_med))
-  colnames(ref) <- colnames(Y)
-  E1 <- sum(gower_dist(Y, ref))
-  
-  Dmat <- gower.dist(best_mu)
-  DK <- sum(Dmat[lower.tri(Dmat)])
-  
-  Jm <- sum((gower.dist(Y, best_mu)) * (best_S^m))
-  
-  PB <- (DK * (1/K) * E1 / Jm)^2
-  PB_lambda <- (DK * (1/K) * E1 / best_loss)^2
-  
-  XB <- Jm / (TT * min(Dmat[lower.tri(Dmat)]))
+  # # Compute cluster validity indices
+  # PE <- compute_entropy(best_S, base = exp(1))
+  # 
+  # unc_med <- apply(Y, 2, median)
+  # ref <- as.data.frame(t(unc_med))
+  # colnames(ref) <- colnames(Y)
+  # E1 <- sum(gower_dist(Y, ref))
+  # 
+  # Dmat <- gower.dist(best_mu)
+  # DK <- sum(Dmat[lower.tri(Dmat)])
+  # 
+  # Jm <- sum((gower.dist(Y, best_mu)) * (best_S^m))
+  # 
+  # PB <- (DK * (1/K) * E1 / Jm)^2
+  # PB_lambda <- (DK * (1/K) * E1 / best_loss)^2
+  # 
+  # XB <- Jm / (TT * min(Dmat[lower.tri(Dmat)]))
   
   return(list(
     best_S    = best_S,
+    best_mu = best_mu,
     loss      = best_loss,
-    MAP       = MAP,
-    Y         = Y,
-    PE        = PE,
-    PB        = PB,
-    PB_lambda = PB_lambda,
-    XB        = XB
+    MAP       = MAP
+    # ,
+    # Y         = Y,
+    # PE        = PE,
+    # PB        = PB,
+    # PB_lambda = PB_lambda,
+    # XB        = XB
   ))
 }
 
@@ -756,192 +758,127 @@ simulate_fuzzy_mixture_mv<- function(
 
 # Cross-val ---------------------------------------------------------------
 
-cv_sparse_jump <- function(
+cv_fuzzy_jump <- function(
     Y,
     true_states,
-    K_grid=NULL,
-    m_grid=NULL,
-    lambda_grid=NULL,
+    K_grid = NULL,
+    m_grid = NULL,
+    lambda_grid = NULL,
     n_folds = 5,
-    parallel=F,
-    n_cores=NULL
+    parallel = FALSE,
+    n_cores = NULL
 ) {
+  # Cross-validate fuzzy jump model hyperparameters (K, m, lambda) via rolling-origin CV
   
-  # cv_sparse_jump: Cross-validate Sparse Jump Model parameters (K, kappa, lambda)
+  # Defaults
+  if (is.null(K_grid))      K_grid      <- seq(2, 4, by = 1)
+  if (is.null(m_grid))      m_grid      <- c(1.01, 1.25, 1.5, 1.75, 2)
+  if (is.null(lambda_grid)) lambda_grid <- seq(0, 1, by = 0.1)
   
-  # Arguments:
-  #   Y           - data matrix (N × P)
-  #   true_states - vector of true states for ARI computation
-  #   K_grid      - vector of candidate numbers of states
-  #   m_grid  - vector of candidate fuzzyness parameters
-  #   lambda_grid - vector of candidate lambdas
-  #   n_folds     - number of folds for cross-validation (default: 5)
-  #   parallel    - logical; TRUE for parallel execution (default: FALSE)
+  library(fclust)    # for fARI
+  library(cluster)   # for daisy (Gower distance)
+  library(parallel)  # for mclapply
   
-  # Value:
-  #   A data.frame with one row per (K, kappa, lambda) combination, containing:
-  #     K      - number of states tested
-  #     m  - fuzzyness hyperparameter value
-  #     lambda - jump penalty value
-  #     fARI    - mean fuzzy Adjusted Rand Index across folds
+  TT <- nrow(Y)
+  P  <- ncol(Y)
   
-  
-  if(is.null(K_grid)) {
-    K_grid <- seq(2, 4, by = 1)  # Default range for K
+  if(is.null(n_folds)){
+    n_folds <- round(TT*.1)
   }
   
-  if(is.null(m_grid)) {
-    m_grid <- c(1.01,1.25,1.5,1.75,2)  # Default range for kappa
-  }
-  if(is.null(lambda_grid)) {
-    lambda_grid <- seq(0,1,.1)  # Default range for lambda
-  }
-  
-  # Libreria per fARI
-  library(fclust)
-  
-  N <- nrow(Y)
-  P <- ncol(Y)
-  
-  # Suddivido gli N campioni in n_folds blocchi contigui
-  fold_indices <- split(
-    1:N,
-    rep(1:n_folds, each = ceiling(N / n_folds), length.out = N)
-  )
-  
-  # Funzione che, per una tripla (K, m, lambda) e un fold (train_idx, val_idx),
-  # calcola l’fARI sui punti di validazione
-  fold_fari <- function(K, m, lambda, train_idx, val_idx) {
-    # 1) Fit del modello sparse_jump su soli dati di TRAIN
-    res <- fuzzy_jump_cpp(Y=as.matrix(Y[train_idx, , drop = FALSE]), 
-                     K=as.integer(K), 
-                     lambda=lambda, 
-                     m=m,
-                     max_iter=10, 
-                     n_init=10, tol=1e-8, 
-                     verbose=F
-                     
-      )
+  # Function to compute fuzzy ARI for one fold
+  fold_pred <- function(K, m, lambda, train_idx, val_idx) {
+    # 1) Fit on training data
+    res <- fuzzy_jump_cpp(
+      Y        = as.matrix(Y[train_idx, , drop = FALSE]),
+      K        = as.integer(K),
+      lambda   = lambda,
+      m        = m,
+      max_iter = 8,
+      n_init   = 5,
+      tol      = 1e-6,
+      verbose  = FALSE
+    )
     
-    states_train <- res$best_S
+    # Retrieve learned state probabilities and centroids
+    S_train   <- res$best_S             # (length(train_idx) × K)
+    centroids <- res$best_mu                 # (K × P)
     
+    # 2) Forecast the next point using PGD on simplex
+    #    Compute Gower distances between new point and each centroid
+    g_dist <- gower.dist(Y[val_idx, , drop = FALSE], centroids)
     
-    # 2) Calcolo dei centroidi (medi anche solo sulle feature selezionate)
-    #    Ogni riga di "centroids" è il centro per uno stato k = 1..K
-    centroids <- res$mu
+    s_prev <- S_train[nrow(S_train), ]
+    pred_s <- optimize_pgd_1T(
+      init   = rep(1 / K, K),
+      g      = g_dist,
+      s_t1   = s_prev,
+      lambda = lambda,
+      m      = m
+    )$par
     
-    # 3) A ciascun punto assegna la probabilità di appartenere a ciascuno stato
-    #    (usando il reciproco della distanza di Gower tra il punto e i centroidi)
-    Y_val_feats     <- as.matrix(Y[val_idx, feat_idx, drop = FALSE])
-    pred_val_states <- matrix(0,nrow=length(val_idx),ncol=K)
-    
-    for (i in seq_along(val_idx)) {
-      dists <- rep(Inf, K)
-      for (k in 1:K) {
-        if (!any(is.na(centroids[k, ]))) {
-          # Essentially fuzzy cmeans distance
-          dists[k]= gower.dist(Y_val_feats[i, ], centroids[k, ])^(-2/(m-1))
-          #dists[k] <- sum((Y_val_feats[i, ] - centroids[k, ])^2)
-        }
-      }
-      pred_val_states[i,] <- dists/sum(dists)
-    }
-    
-    # ARI.F(VC=true_states[val_idx],U=clust$U)
-    
-    # 4) Calcolo ARI tra etichette vere e quelle predette sul blocco VAL
-    return(adjustedRandIndex(true_states[val_idx], pred_val_states))
+    # 3) Compute fuzzy ARI between true label and predicted membership
+    return(pred_s)
   }
   
-  # Costruisco la griglia di tutte le combinazioni di (K, kappa, lambda)
+  # Build hyperparameter grid
   grid <- expand.grid(
     K      = K_grid,
-    m  = m_grid,
+    m      = m_grid,
     lambda = lambda_grid,
+    fold = n_folds:1,
     KEEP.OUT.ATTRS = FALSE,
     stringsAsFactors = FALSE
   )
   
-  # Data.frame in cui raccogliere (K, kappa, lambda, media_ARI)
-  results <- data.frame(
-    K      = integer(0),
-    m  = integer(0),
-    lambda = numeric(0),
-    fARI    = numeric(0)
-  )
-  
-  # Loop su ciascuna riga della griglia
-  if (!parallel) {
-    # applichiamo una funzione su ogni riga di 'grid'
-    results_list <- lapply(seq_len(nrow(grid)), function(row) {
-      K_val     <- as.integer(grid$K[row])
-      m_val <- as.integer(grid$m[row])
-      lambda_val<-        grid$lambda[row]
-      
-      # calcolo ARI su ciascun fold
-      fari_vals <- numeric(n_folds)
-      for (f in seq_len(n_folds)) {
-        val_idx   <- fold_indices[[f]]
-        train_idx <- setdiff(seq_len(N), val_idx)
-        fari_vals[f] <- fold_fari(K_val, m_val, lambda_val, train_idx, val_idx)
-      }
-      mean_fari <- mean(fari_vals)
-      
-      # ritorno un data.frame di una sola riga
-      data.frame(
-        K      = K_val,
-        m  = m_val,
-        lambda = lambda_val,
-        fARI    = mean_fari,
-        stringsAsFactors = FALSE
-      )
-    })
+  #--- versione sequenziale
+  if(!parallel){
+  fold_results <- lapply(1:nrow(grid), function(i) {
     
-    # combino tutti i data.frame in un unico data.frame
-    results <- do.call(rbind, results_list)
-  }
-  
-  
-  # 2) VERSIONE PARALLELA: usare mclapply()
-  if (parallel) {
-    if(is.null(n_cores)){
-      n_cores <- detectCores() - 1
-    }
+    train_idx <- 1:(TT-grid$fold[i])
+    val_idx = TT-grid$fold[i]+1
+    K      <- grid$K[i]
+    m      <- grid$m[i]
+    lambda <- grid$lambda[i]
+    pred_s    <- fold_pred(K, m, lambda, train_idx, val_idx)
     
-    results_list <- mclapply(
-      seq_len(nrow(grid)),
-      function(row) {
-        K_val     <- as.integer(grid$K[row])
-        m_val <- as.integer(grid$m[row])
-        lambda_val<-        grid$lambda[row]
-        
-        # calcolo ARI su ciascun fold
-        fari_vals <- numeric(n_folds)
-        for (f in seq_len(n_folds)) {
-          val_idx   <- fold_indices[[f]]
-          train_idx <- setdiff(seq_len(N), val_idx)
-          fari_vals[f] <- fold_ari(K_val, m_val, lambda_val, train_idx, val_idx)
-        }
-        mean_fari <- mean(fari_vals)
-        
-        # ritorno un data.frame di una sola riga
-        data.frame(
-          K      = K_val,
-          m  = m_val,
-          lambda = lambda_val,
-          fARI    = mean_fari,
-          stringsAsFactors = FALSE
-        )
-      },
-      mc.cores = n_cores
+    list(
+      fold     = grid$fold[i],
+      K        = K,
+      m        = m,
+      lambda   = lambda,
+      pred_s   = pred_s
     )
-    
-    # combino tutti i data.frame in un unico data.frame
-    results <- do.call(rbind, results_list)
+  })
   }
   
-  return(results)
+  #--- versione parallela
+  if(parallel){
+  library(parallel)
+  n_cores <- if (is.null(n_cores)) detectCores() - 1 else n_cores
+  
+  fold_results <- mclapply(1:nrow(grid), function(i) {
+    train_idx <- 1:(TT-grid$fold[i])
+    val_idx = TT-grid$fold[i]+1
+    K      <- grid$K[i]
+    m      <- grid$m[i]
+    lambda <- grid$lambda[i]
+    pred_s    <- fold_pred(K, m, lambda, train_idx, val_idx)
+    
+    list(
+      fold     = grid$fold[i],
+      K        = K,
+      m        = m,
+      lambda   = lambda,
+      pred_s   = pred_s
+    )
+  }, mc.cores = n_cores)
+  }
+  return(fold_results)
 }
+
+
+
 
 # continuous JM -----------------------------------------------------------
 
