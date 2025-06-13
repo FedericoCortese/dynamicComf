@@ -259,7 +259,7 @@ lista_risultati <- lapply(res_list_hard_K2, function(el) {
     P               = el$P,
     seed            = el$seed,
     loss            = el$loss,
-    attempts        = el$attempts
+    attempts        = el$attempts,
     stringsAsFactors = FALSE
   )
 })
