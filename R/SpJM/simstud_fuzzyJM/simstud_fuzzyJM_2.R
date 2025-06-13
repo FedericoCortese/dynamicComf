@@ -359,7 +359,7 @@ res_list_soft_K3 <- mclapply(seq_len(nrow(hp)), function(i) {
 end=Sys.time()
 end-start
 
-save(res_list_soft_K2,file='res_list_soft_K3.Rdata')
+save(res_list_soft_K3,file='res_list_soft_K3.Rdata')
 
 lista_risultati <- lapply(res_list_soft_K3, function(el) {
   # estraggo S e ground_truth come vettori
@@ -478,6 +478,8 @@ res_list_hard_K3 <- mclapply(seq_len(nrow(hp)), function(i) {
 }, mc.cores = ncores)
 end=Sys.time()
 end-start
+
+save(res_list_hard_K3,file='res_list_hard_K3.Rdata')
 
 lista_risultati <- lapply(res_list_hard_K3, function(el) {
   # estraggo S e ground_truth come vettori
