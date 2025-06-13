@@ -380,10 +380,6 @@ lista_risultati <- lapply(res_list_soft_K3, function(el) {
     seed            = el$seed,
     loss            = el$loss,
     attempts        = el$attempts,
-    PE              = el$PE,
-    PB              = el$PB,
-    PB_lambda       = el$PB_lambda,
-    XB              = el$XB,
     stringsAsFactors = FALSE
   )
 })
@@ -502,10 +498,6 @@ lista_risultati <- lapply(res_list_hard_K3, function(el) {
     seed            = el$seed,
     loss            = el$loss,
     attempts        = el$attempts,
-    PE              = el$PE,
-    PB              = el$PB,
-    PB_lambda       = el$PB_lambda,
-    XB              = el$XB,
     stringsAsFactors = FALSE
   )
 })
