@@ -180,7 +180,7 @@ res_list_hard_K2 <- mclapply(seq_len(nrow(hp)), function(i) {
     seed = seedi
   )
   
-  ground_truth=soft_hard[,c("pi_1","pi_2")]
+  ground_truth=hard_scen[,c("pi_1","pi_2")]
   
   Yinput=hard_scen[,(1:Pi)+1]
   
