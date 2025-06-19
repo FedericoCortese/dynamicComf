@@ -26,7 +26,7 @@ hp <- expand.grid(K = K_grid,
 
 # K=2 soft ----------------------------------------------------------------
 
-# load("C:/Users/federico/OneDrive - CNR/Comfort - HMM/simres_fuzzyJM_fuzzySTJM/hellinger_df_soft_K2_fuzzy.Rdata")
+load("C:/Users/federico/OneDrive - CNR/Comfort - HMM/simres_fuzzyJM_fuzzySTJM/hellinger_df_soft_K2_fuzzy.Rdata")
 
 head(results_df_soft_K2_fuzzy)
 
