@@ -20,7 +20,7 @@ ncores   = 25
 max_retries=50
 
 K_grid=2:3
-lambda_grid=c(0,.5,1,5,10,50,100,1000)
+lambda_grid=c(0,.5,1,5,10,25,50,100)
 seed=1:50
 
 TT=c(1000,2000)
