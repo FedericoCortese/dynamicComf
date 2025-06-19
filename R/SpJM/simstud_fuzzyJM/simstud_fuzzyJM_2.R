@@ -177,7 +177,7 @@ lista_risultati <- mclapply(res_list_soft_K2, function(el) {
     attempts        = el$attempts,
     stringsAsFactors = FALSE
   )
-}, mc.cores = n_cores)
+}, mc.cores = ncores)
 
 # 3. Combino tutti i data.frame in uno solo
 results_df_soft_K2_fuzzy <- do.call(rbind, lista_risultati)
@@ -298,7 +298,7 @@ lista_risultati <- mclapply(res_list_hard_K2, function(el) {
     attempts        = el$attempts,
     stringsAsFactors = FALSE
   )
-}, mc.cores = n_cores)
+}, mc.cores = ncores)
 # 3. Combino tutti i data.frame in uno solo
 results_df_hard_K2_fuzzy <- do.call(rbind, lista_risultati)
 save(results_df_hard_K2_fuzzy,file='hellinger_df_hard_K2_fuzzy.Rdata')
@@ -421,7 +421,7 @@ lista_risultati <- mclapply(res_list_soft_K3, function(el) {
     attempts        = el$attempts,
     stringsAsFactors = FALSE
   )
-}, mc.cores = n_cores)
+}, mc.cores = ncores)
 # 3. Combino tutti i data.frame in uno solo
 results_df_soft_K3_fuzzy <- do.call(rbind, lista_risultati)
 save(results_df_soft_K3_fuzzy,file='hellinger_df_soft_K3_fuzzy.Rdata')
@@ -544,7 +544,7 @@ lista_risultati <- mclapply(res_list_hard_K3, function(el) {
     attempts        = el$attempts,
     stringsAsFactors = FALSE
   )
-}, mc.cores = n_cores)
+}, mc.cores = ncores)
 # 3. Combino tutti i data.frame in uno solo
 results_df_hard_K3_fuzzy <- do.call(rbind, lista_risultati)
 save(results_df_hard_K3_fuzzy,file='hellinger_df_hard_K3_fuzzy.Rdata')
