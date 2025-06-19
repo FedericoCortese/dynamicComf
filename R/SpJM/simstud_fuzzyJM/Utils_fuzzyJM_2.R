@@ -8,6 +8,9 @@ library(doParallel)
 library(gower)
 
 hellinger_distance_vec <- function(p, q) {
+  lp <- length(p); lq <- length(q)
+  if (lp < lq)       p <- c(p, rep(0, lq - lp))
+  else if (lq < lp)  q <- c(q, rep(0, lp - lq))
   sqrt(sum((sqrt(p) - sqrt(q))^2)) / sqrt(2)
 }
 
