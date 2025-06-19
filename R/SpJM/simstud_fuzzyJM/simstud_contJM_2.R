@@ -126,8 +126,8 @@ save(res_list_soft_K2_cont,file='res_cont_soft_K2.Rdata')
 
 lista_risultati <- mclapply(res_list_soft_K2_cont, function(el) {
   # estraggo S e ground_truth come vettori
-  cS  <- el$S
-  cGT <- el$ground_truth
+  cS  <- as.matrix(el$S)
+  cGT <- as.matrix(el$ground_truth)
   
   MAP_true=apply(cS,1,which.max)
   MAP_est=apply(cGT,1,which.max)
@@ -247,8 +247,8 @@ save(res_list_hard_K2_cont,file='res_cont_hard_K2.Rdata')
 
 lista_risultati <- mclapply(res_list_hard_K2_cont, function(el) {
   # estraggo S e ground_truth come vettori
-  cS  <- el$S
-  cGT <- el$ground_truth
+  cS  <- as.matrix(el$S)
+  cGT <- as.matrix(el$ground_truth)
   
   MAP_true=apply(cS,1,which.max)
   MAP_est=apply(cGT,1,which.max)
@@ -369,8 +369,8 @@ save(res_list_soft_K3_cont,file='res_cont_soft_K3.Rdata')
 
 lista_risultati <- mclapply(res_list_soft_K3_cont, function(el) {
   # estraggo S e ground_truth come vettori
-  cS  <- el$S
-  cGT <- el$ground_truth
+  cS  <- as.matrix(el$S)
+  cGT <- as.matrix(el$ground_truth)
   
   MAP_true=apply(cS,1,which.max)
   MAP_est=apply(cGT,1,which.max)
@@ -491,8 +491,8 @@ save(res_list_hard_K3_cont,file='res_cont_hard_K3.Rdata')
 
 lista_risultati <- mclapply(res_list_hard_K3_cont, function(el) {
   # estraggo S e ground_truth come vettori
-  cS  <- el$S
-  cGT <- el$ground_truth
+  cS  <- as.matrix(el$S)
+  cGT <- as.matrix(el$ground_truth)
   
   MAP_true=apply(cS,1,which.max)
   MAP_est=apply(cGT,1,which.max)
