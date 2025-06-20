@@ -634,7 +634,7 @@ fuzzy_jump_cpp <- function(Y,
 
 
 # simulate_fuzzy_mixture_mv <- function(
-#     TT = 1000,
+    #     TT = 1000,
 #     P = 2,
 #     mu = 1,
 #     Sigma_rho = 0.5,
@@ -836,46 +836,46 @@ cv_fuzzy_jump <- function(
   
   #--- versione sequenziale
   if(!parallel){
-  fold_results <- lapply(1:nrow(grid), function(i) {
-    
-    train_idx <- 1:(TT-grid$fold[i])
-    val_idx = TT-grid$fold[i]+1
-    K      <- grid$K[i]
-    m      <- grid$m[i]
-    lambda <- grid$lambda[i]
-    pred_s    <- fold_pred(K, m, lambda, train_idx, val_idx)
-    
-    list(
-      fold     = grid$fold[i],
-      K        = K,
-      m        = m,
-      lambda   = lambda,
-      pred_s   = pred_s
-    )
-  })
+    fold_results <- lapply(1:nrow(grid), function(i) {
+      
+      train_idx <- 1:(TT-grid$fold[i])
+      val_idx = TT-grid$fold[i]+1
+      K      <- grid$K[i]
+      m      <- grid$m[i]
+      lambda <- grid$lambda[i]
+      pred_s    <- fold_pred(K, m, lambda, train_idx, val_idx)
+      
+      list(
+        fold     = grid$fold[i],
+        K        = K,
+        m        = m,
+        lambda   = lambda,
+        pred_s   = pred_s
+      )
+    })
   }
   
   #--- versione parallela
   if(parallel){
-  library(parallel)
-  n_cores <- if (is.null(n_cores)) detectCores() - 1 else n_cores
-  
-  fold_results <- mclapply(1:nrow(grid), function(i) {
-    train_idx <- 1:(TT-grid$fold[i])
-    val_idx = TT-grid$fold[i]+1
-    K      <- grid$K[i]
-    m      <- grid$m[i]
-    lambda <- grid$lambda[i]
-    pred_s    <- fold_pred(K, m, lambda, train_idx, val_idx)
+    library(parallel)
+    n_cores <- if (is.null(n_cores)) detectCores() - 1 else n_cores
     
-    list(
-      fold     = grid$fold[i],
-      K        = K,
-      m        = m,
-      lambda   = lambda,
-      pred_s   = pred_s
-    )
-  }, mc.cores = n_cores)
+    fold_results <- mclapply(1:nrow(grid), function(i) {
+      train_idx <- 1:(TT-grid$fold[i])
+      val_idx = TT-grid$fold[i]+1
+      K      <- grid$K[i]
+      m      <- grid$m[i]
+      lambda <- grid$lambda[i]
+      pred_s    <- fold_pred(K, m, lambda, train_idx, val_idx)
+      
+      list(
+        fold     = grid$fold[i],
+        K        = K,
+        m        = m,
+        lambda   = lambda,
+        pred_s   = pred_s
+      )
+    }, mc.cores = n_cores)
   }
   return(fold_results)
 }

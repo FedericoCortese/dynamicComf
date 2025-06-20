@@ -16,16 +16,16 @@ simDat=sim_data_stud_t(seed=123,
                        P=P,
                        Pcat=NULL,
                        Ktrue=2,
-                       mu=1,
+                       mu=2,
                        rho=0,
                        nu=100,
                        phi=.8,
-                       pers=0.95)
+                       pers=0.99)
 
 Y=simDat$SimData
 true_stat=simDat$mchain
 
-plot(Y[,2],col=true_stat,pch=19)
+plot(Y[,2],col=true_stat,pch=19,type='l')
 
 
 
@@ -64,24 +64,62 @@ truth[t_out]=0
 x11()
 par(mfrow=c(4,3))
 for (i in 1:P) {
-  plot(Y[, i], col=truth+1, pch=19,ylab=i)
+  plot(Y[, i], col=truth+1, pch=19,ylab=i,ylim=c(-3,3))
 }
 
 # Y$X1=factor(round(Y$X1))
 # Y$X2=factor(round(Y$X2))
 
 
-zeta_grid=seq(0.1,.3,.1)
-lambda_grid=seq(0,.3,.1)
-K_grid=2:3
-B=2
+# zeta_grid=seq(0.1,.3,.1)
+# lambda_grid=seq(0,.3,.1)
+# K_grid=2:3
+# B=2
 
-prv=RJM_COSA_gap(Y,
-                 zeta_grid,
-                 lambda_grid,
-                 K_grid,
-                 tol=NULL,n_outer=15,alpha=.1,verbose=F,n_cores=NULL,
-                 B, knn=10,c=2,M=NULL)
+# prv=RJM_COSA_gap(Y,
+#                  zeta_grid,
+#                  lambda_grid,
+#                  K_grid,
+#                  tol=NULL,n_outer=15,alpha=.1,verbose=F,n_cores=NULL,
+#                  B, knn=10,c=2,M=NULL)
+source("Utils_sparse_robust_2.R")
+prv=robust_JM_COSA(Y=as.matrix(Y),
+                   zeta0=.2,
+                   lambda=.2,
+                   K=2,
+                   tol        = 1e-16,
+                   n_init     = 10,
+                   n_outer    = 20,
+                   alpha      = 0.1,
+                   verbose    = T,
+                   knn        = 10,
+                   c          = 5,
+                   M          = NULL)
+prv$W
+prv$s[prv$v<0.5]=0
+table(prv$s,truth)
+
+# cpp
+Rcpp::sourceCpp("rob_JM.cpp")
+library(cluster)
+prv_cpp=robust_JM_COSA(as.matrix(Y),
+                       zeta0=.2,
+                       lambda=.2,
+                       K=2,
+                       tol=1e-16,
+                       n_init =10,
+                       n_outer   = 20,
+                       alpha  = 0.1,
+                       verbose  = TRUE,
+                       knn       = 10,
+                       c      = 2.0
+                       ) 
+
+round(prv_cpp$W,2)
+
+prv_cpp$s[prv_cpp$v<0.1]=0
+
+table(prv_cpp$s,truth)
 
 library(ggplot2)
 
