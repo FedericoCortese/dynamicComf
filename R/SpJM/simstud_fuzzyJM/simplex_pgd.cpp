@@ -127,3 +127,40 @@ List optimize_pgd_2T(NumericVector init,
     _["value"] = obj
   );
 }
+
+
+// [[Rcpp::export]]
+NumericMatrix gower_dist(const NumericMatrix& Y,
+                         const NumericMatrix& mu) {
+  int n = Y.nrow();     // number of observations in Y
+  int p = Y.ncol();     // number of variables (columns)
+  int m = mu.nrow();    // number of rows in mu
+  
+  // Compute s_p: the range of each column of Y
+  NumericVector s_p(p);
+  for(int j = 0; j < p; ++j) {
+    double mn = Y(0, j), mx = Y(0, j);
+    for(int i = 1; i < n; ++i) {
+      if (Y(i, j) < mn) mn = Y(i, j);
+      if (Y(i, j) > mx) mx = Y(i, j);
+    }
+    s_p[j] = mx - mn;
+    if (s_p[j] == 0.0) s_p[j] = 1.0;  // avoid division by zero
+  }
+  
+  // Allocate output matrix V (n x m)
+  NumericMatrix V(n, m);
+  
+  // Compute the Gower distance (mean of standardized abs differences)
+  for(int i = 0; i < n; ++i) {
+    for(int j = 0; j < m; ++j) {
+      double acc = 0.0;
+      for(int k = 0; k < p; ++k) {
+        acc += std::abs(Y(i, k) - mu(j, k)) / s_p[k];
+      }
+      V(i, j) = acc / p;  // divide by number of variables to get the mean
+    }
+  }
+  
+  return V;
+}
