@@ -2,6 +2,16 @@ library(dplyr)
 library(tidyr)
 library(ggplot2)
 
+<<<<<<< HEAD
+=======
+max_iter   = 10
+n_init     = 10
+tol        = 1e-8
+verbose    = FALSE
+ncores   = 25
+max_retries=50
+
+>>>>>>> 705082e2ca4af0e77243b8cfc65f4d4157cb14b6
 K_grid=2:3
 lambda_grid=seq(0,.5,length.out=11)
 m_grid=seq(1.01,2,length.out=5)
@@ -19,7 +29,7 @@ hp <- expand.grid(K = K_grid,
 
 # K=2 soft ----------------------------------------------------------------
 
-# load("C:/Users/federico/OneDrive - CNR/Comfort - HMM/simres_fuzzyJM_fuzzySTJM/hellinger_df_soft_K2_fuzzy.Rdata")
+load("C:/Users/federico/OneDrive - CNR/Comfort - HMM/simres_fuzzyJM_fuzzySTJM/hellinger_df_soft_K2_fuzzy.Rdata")
 
 head(results_df_soft_K2_fuzzy)
 
@@ -38,10 +48,13 @@ best_hd_soft_K2_fuzzy <- avg_hd_soft_K2_fuzzy %>%
   slice_min(order_by = mean_hellinger, n = 1, with_ties = FALSE) %>%
   ungroup()
 
+best_hd_soft_K2_fuzzy
+
 # k-prot
 avg_lambda0_byTP <- avg_hd_soft_K2_fuzzy %>%
   filter(lambda == 0, m==1.01, K==2)
 
+avg_lambda0_byTP
 
 # Plot varying lambda
 plot_data <- avg_hd_soft_K2_fuzzy %>%
@@ -124,6 +137,9 @@ best_hd_soft_K2_fuzzy
 
 # K=2 hard ----------------------------------------------------------------
 
+load("C:/Users/federico/OneDrive - CNR/Comfort - HMM/simres_fuzzyJM_fuzzySTJM/hellinger_df_hard_K2_fuzzy.Rdata")
+
+
 head(results_df_hard_K2_fuzzy)
 
 avg_hd_hard_K2_fuzzy <- results_df_hard_K2_fuzzy %>%
@@ -141,10 +157,13 @@ best_hd_hard_K2_fuzzy <- avg_hd_hard_K2_fuzzy %>%
   slice_min(order_by = mean_hellinger, n = 1, with_ties = FALSE) %>%
   ungroup()
 
+best_hd_hard_K2_fuzzy
+
 # k-prot
 avg_lambda0_byTP <- avg_hd_hard_K2_fuzzy %>%
   filter(lambda == 0, m==1.01, K==2) 
 
+avg_lambda0_byTP
 
 # Plot varying lambda
 plot_data <- avg_hd_hard_K2_fuzzy %>%
@@ -228,7 +247,12 @@ best_hd_hard_K2_cont
 
 # K=3 soft ----------------------------------------------------------------
 
+<<<<<<< HEAD
 #load("D:/CNR/OneDrive - CNR/Comfort - HMM/simres_fuzzyJM_fuzzySTJM/hellinger_df_soft_K3_fuzzy.Rdata")
+=======
+load("C:/Users/federico/OneDrive - CNR/Comfort - HMM/simres_fuzzyJM_fuzzySTJM/hellinger_df_soft_K3_fuzzy.Rdata")
+
+>>>>>>> 705082e2ca4af0e77243b8cfc65f4d4157cb14b6
 head(results_df_soft_K3_fuzzy)
 
 avg_hd_soft_K3_fuzzy <- results_df_soft_K3_fuzzy %>%
@@ -289,7 +313,11 @@ ggplot(plot_data, aes(x = lambda, y = mean_hellinger,
 
 # Plot varying m
 plot_data <- avg_hd_soft_K3_fuzzy %>%
+<<<<<<< HEAD
   filter(lambda == 0.40) %>%
+=======
+  filter(lambda == 0.1) %>%
+>>>>>>> 705082e2ca4af0e77243b8cfc65f4d4157cb14b6
   mutate(K = factor(K))  # ensure K is treated as categorical for color/legend
 
 # Custom facet labels
@@ -354,7 +382,12 @@ best_hd_soft_K3_fuzzy
 
 # K=3 hard ----------------------------------------------------------------
 
+<<<<<<< HEAD
 #load("D:/CNR/OneDrive - CNR/Comfort - HMM/simres_fuzzyJM_fuzzySTJM/hellinger_df_hard_K3_fuzzy.Rdata")
+=======
+load("C:/Users/federico/OneDrive - CNR/Comfort - HMM/simres_fuzzyJM_fuzzySTJM/hellinger_df_hard_K3_fuzzy.Rdata")
+
+>>>>>>> 705082e2ca4af0e77243b8cfc65f4d4157cb14b6
 head(results_df_hard_K3_fuzzy)
 
 avg_hd_hard_K3_fuzzy <- results_df_hard_K3_fuzzy %>%
@@ -382,7 +415,11 @@ avg_lambda0_byTP
 
 # Plot varying lambda
 plot_data <- avg_hd_hard_K3_fuzzy %>%
+<<<<<<< HEAD
   filter(K == 2, m %in% unique(results_df_hard_K3_fuzzy$m)) %>%
+=======
+  filter(K == 3, m %in% unique(hp$m)) %>%
+>>>>>>> 705082e2ca4af0e77243b8cfc65f4d4157cb14b6
   mutate(m_label = case_when(
     m == 1.01   ~ "m = 1.01",
     m == 1.2575 ~ "m = 1.25",

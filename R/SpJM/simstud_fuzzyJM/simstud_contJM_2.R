@@ -20,7 +20,7 @@ ncores   = 25
 max_retries=50
 
 K_grid=2:3
-lambda_grid=c(0,.5,1,5,10,50,100,1000)
+lambda_grid=c(0,.5,1,5,10,25,50,100)
 seed=1:50
 
 TT=c(1000,2000)
@@ -124,10 +124,10 @@ end-start
 
 save(res_list_soft_K2_cont,file='res_cont_soft_K2.Rdata')
 
-lista_risultati <- lapply(res_list_soft_K2_cont, function(el) {
+lista_risultati <- mclapply(res_list_soft_K2_cont, function(el) {
   # estraggo S e ground_truth come vettori
-  cS  <- el$S
-  cGT <- el$ground_truth
+  cS  <- as.matrix(el$S)
+  cGT <- as.matrix(el$ground_truth)
   
   MAP_true=apply(cS,1,which.max)
   MAP_est=apply(cGT,1,which.max)
@@ -136,7 +136,11 @@ lista_risultati <- lapply(res_list_soft_K2_cont, function(el) {
   cS=cS[,mapping]
   
   # calcolo la distanza di Hellinger
-  hd <- hellinger_distance_matrix(cS, cGT)
+  hd <- mean(vapply(
+    seq_len(nrow(cS)),
+    function(i) hellinger_distance_vec(cS[i, ], cGT[i, ]),
+    numeric(1)
+  ))
   
   # costruisco un piccolo data.frame con jhellinger_dist e tutti gli altri campi
   data.frame(
@@ -145,7 +149,7 @@ lista_risultati <- lapply(res_list_soft_K2_cont, function(el) {
     K               = el$K,
     stringsAsFactors = FALSE
   )
-})
+},mc.cores = ncores)
 
 # 3. Combino tutti i data.frame in uno solo
 results_df_soft_K2_cont <- do.call(rbind, lista_risultati)
@@ -241,10 +245,10 @@ end-start
 
 save(res_list_hard_K2_cont,file='res_cont_hard_K2.Rdata')
 
-lista_risultati <- lapply(res_list_hard_K2_cont, function(el) {
+lista_risultati <- mclapply(res_list_hard_K2_cont, function(el) {
   # estraggo S e ground_truth come vettori
-  cS  <- el$S
-  cGT <- el$ground_truth
+  cS  <- as.matrix(el$S)
+  cGT <- as.matrix(el$ground_truth)
   
   MAP_true=apply(cS,1,which.max)
   MAP_est=apply(cGT,1,which.max)
@@ -253,7 +257,11 @@ lista_risultati <- lapply(res_list_hard_K2_cont, function(el) {
   cS=cS[,mapping]
   
   # calcolo la distanza di Hellinger
-  hd <- hellinger_distance_matrix(cS, cGT)
+  hd <- mean(vapply(
+    seq_len(nrow(cS)),
+    function(i) hellinger_distance_vec(cS[i, ], cGT[i, ]),
+    numeric(1)
+  ))
   
   # costruisco un piccolo data.frame con jhellinger_dist e tutti gli altri campi
   data.frame(
@@ -262,7 +270,7 @@ lista_risultati <- lapply(res_list_hard_K2_cont, function(el) {
     K               = el$K,
     stringsAsFactors = FALSE
   )
-})
+},mc.cores = ncores)
 
 # 3. Combino tutti i data.frame in uno solo
 results_df_hard_K2_cont <- do.call(rbind, lista_risultati)
@@ -359,10 +367,10 @@ end-start
 
 save(res_list_soft_K3_cont,file='res_cont_soft_K3.Rdata')
 
-lista_risultati <- lapply(res_list_soft_K3_cont, function(el) {
+lista_risultati <- mclapply(res_list_soft_K3_cont, function(el) {
   # estraggo S e ground_truth come vettori
-  cS  <- el$S
-  cGT <- el$ground_truth
+  cS  <- as.matrix(el$S)
+  cGT <- as.matrix(el$ground_truth)
   
   MAP_true=apply(cS,1,which.max)
   MAP_est=apply(cGT,1,which.max)
@@ -371,7 +379,11 @@ lista_risultati <- lapply(res_list_soft_K3_cont, function(el) {
   cS=cS[,mapping]
   
   # calcolo la distanza di Hellinger
-  hd <- hellinger_distance_matrix(cS, cGT)
+  hd <- mean(vapply(
+    seq_len(nrow(cS)),
+    function(i) hellinger_distance_vec(cS[i, ], cGT[i, ]),
+    numeric(1)
+  ))
   
   # costruisco un piccolo data.frame con jhellinger_dist e tutti gli altri campi
   data.frame(
@@ -380,7 +392,7 @@ lista_risultati <- lapply(res_list_soft_K3_cont, function(el) {
     K               = el$K,
     stringsAsFactors = FALSE
   )
-})
+},mc.cores = ncores)
 
 # 3. Combino tutti i data.frame in uno solo
 results_df_soft_K3_cont <- do.call(rbind, lista_risultati)
@@ -477,10 +489,10 @@ end-start
 
 save(res_list_hard_K3_cont,file='res_cont_hard_K3.Rdata')
 
-lista_risultati <- lapply(res_list_hard_K3_cont, function(el) {
+lista_risultati <- mclapply(res_list_hard_K3_cont, function(el) {
   # estraggo S e ground_truth come vettori
-  cS  <- el$S
-  cGT <- el$ground_truth
+  cS  <- as.matrix(el$S)
+  cGT <- as.matrix(el$ground_truth)
   
   MAP_true=apply(cS,1,which.max)
   MAP_est=apply(cGT,1,which.max)
@@ -489,7 +501,11 @@ lista_risultati <- lapply(res_list_hard_K3_cont, function(el) {
   cS=cS[,mapping]
   
   # calcolo la distanza di Hellinger
-  hd <- hellinger_distance_matrix(cS, cGT)
+  hd <- mean(vapply(
+    seq_len(nrow(cS)),
+    function(i) hellinger_distance_vec(cS[i, ], cGT[i, ]),
+    numeric(1)
+  ))
   
   # costruisco un piccolo data.frame con jhellinger_dist e tutti gli altri campi
   data.frame(
@@ -498,7 +514,7 @@ lista_risultati <- lapply(res_list_hard_K3_cont, function(el) {
     K               = el$K,
     stringsAsFactors = FALSE
   )
-})
+},mc.cores = ncores)
 
 # 3. Combino tutti i data.frame in uno solo
 results_df_hard_K3_cont <- do.call(rbind, lista_risultati)

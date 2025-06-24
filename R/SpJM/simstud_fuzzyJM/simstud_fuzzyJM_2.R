@@ -124,13 +124,45 @@ end-start
 
 save(res_list_soft_K2,file='res_list_soft_K2.Rdata')
 
-lista_risultati <- lapply(res_list_soft_K2, function(el) {
-  # estraggo S e ground_truth come vettori
-  cS  <- el$S
-  cGT <- el$ground_truth
+# lista_risultati <- lapply(res_list_soft_K2, function(el) {
+#   # estraggo S e ground_truth come vettori
+#   cS  <- as.matrix(el$S)
+#   cGT <- as.matrix(el$ground_truth)
+#   
+#   # calcolo la distanza di Hellinger
+#   #hd <- hellinger_distance_matrix(cS, cGT)
+#   hd <- mean(hellinger_per_row <- vapply(
+#     seq_len(nrow(cS)),
+#     function(i) hellinger_distance_vec(cS[i,], cGT[i,]),
+#     numeric(1)
+#   ))
+#   
+#   # costruisco un piccolo data.frame con jhellinger_dist e tutti gli altri campi
+#   data.frame(
+#     jhellinger_dist = hd,
+#     lambda          = el$lambda,
+#     K               = el$K,
+#     m               = el$m,
+#     TT              = el$TT,
+#     P               = el$P,
+#     seed            = el$seed,
+#     loss            = el$loss,
+#     attempts        = el$attempts,
+#     stringsAsFactors = FALSE
+#   )
+# })
+
+lista_risultati <- mclapply(res_list_soft_K2, function(el) {
+  # estraggo S e ground_truth come matrici
+  cS  <- as.matrix(el$S)
+  cGT <- as.matrix(el$ground_truth)
   
-  # calcolo la distanza di Hellinger
-  hd <- hellinger_distance_matrix(cS, cGT)
+  # calcolo la distanza di Hellinger riga per riga
+  hd <- mean(vapply(
+    seq_len(nrow(cS)),
+    function(i) hellinger_distance_vec(cS[i, ], cGT[i, ]),
+    numeric(1)
+  ))
   
   # costruisco un piccolo data.frame con jhellinger_dist e tutti gli altri campi
   data.frame(
@@ -145,7 +177,7 @@ lista_risultati <- lapply(res_list_soft_K2, function(el) {
     attempts        = el$attempts,
     stringsAsFactors = FALSE
   )
-})
+}, mc.cores = ncores)
 
 # 3. Combino tutti i data.frame in uno solo
 results_df_soft_K2_fuzzy <- do.call(rbind, lista_risultati)
@@ -241,14 +273,18 @@ res_list_hard_K2 <- mclapply(seq_len(nrow(hp)), function(i) {
 end=Sys.time()
 end-start
 
-lista_risultati <- lapply(res_list_hard_K2, function(el) {
-  # estraggo S e ground_truth come vettori
-  cS  <- el$S
-  cGT <- el$ground_truth
-
-  # calcolo la distanza di Hellinger
-  hd <- hellinger_distance_matrix(cS, cGT)
-
+lista_risultati <- mclapply(res_list_hard_K2, function(el) {
+  # estraggo S e ground_truth come matrici
+  cS  <- as.matrix(el$S)
+  cGT <- as.matrix(el$ground_truth)
+  
+  # calcolo la distanza di Hellinger riga per riga
+  hd <- mean(vapply(
+    seq_len(nrow(cS)),
+    function(i) hellinger_distance_vec(cS[i, ], cGT[i, ]),
+    numeric(1)
+  ))
+  
   # costruisco un piccolo data.frame con jhellinger_dist e tutti gli altri campi
   data.frame(
     jhellinger_dist = hd,
@@ -262,8 +298,7 @@ lista_risultati <- lapply(res_list_hard_K2, function(el) {
     attempts        = el$attempts,
     stringsAsFactors = FALSE
   )
-})
-
+}, mc.cores = ncores)
 # 3. Combino tutti i data.frame in uno solo
 results_df_hard_K2_fuzzy <- do.call(rbind, lista_risultati)
 save(results_df_hard_K2_fuzzy,file='hellinger_df_hard_K2_fuzzy.Rdata')
@@ -361,13 +396,17 @@ end-start
 
 save(res_list_soft_K3,file='res_list_soft_K3.Rdata')
 
-lista_risultati <- lapply(res_list_soft_K3, function(el) {
-  # estraggo S e ground_truth come vettori
-  cS  <- el$S
-  cGT <- el$ground_truth
+lista_risultati <- mclapply(res_list_soft_K3, function(el) {
+  # estraggo S e ground_truth come matrici
+  cS  <- as.matrix(el$S)
+  cGT <- as.matrix(el$ground_truth)
   
-  # calcolo la distanza di Hellinger
-  hd <- hellinger_distance_matrix(cS, cGT)
+  # calcolo la distanza di Hellinger riga per riga
+  hd <- mean(vapply(
+    seq_len(nrow(cS)),
+    function(i) hellinger_distance_vec(cS[i, ], cGT[i, ]),
+    numeric(1)
+  ))
   
   # costruisco un piccolo data.frame con jhellinger_dist e tutti gli altri campi
   data.frame(
@@ -382,8 +421,7 @@ lista_risultati <- lapply(res_list_soft_K3, function(el) {
     attempts        = el$attempts,
     stringsAsFactors = FALSE
   )
-})
-
+}, mc.cores = ncores)
 # 3. Combino tutti i data.frame in uno solo
 results_df_soft_K3_fuzzy <- do.call(rbind, lista_risultati)
 save(results_df_soft_K3_fuzzy,file='hellinger_df_soft_K3_fuzzy.Rdata')
@@ -481,13 +519,17 @@ end-start
 
 save(res_list_hard_K3,file='res_list_hard_K3.Rdata')
 
-lista_risultati <- lapply(res_list_hard_K3, function(el) {
-  # estraggo S e ground_truth come vettori
-  cS  <- el$S
-  cGT <- el$ground_truth
+lista_risultati <- mclapply(res_list_hard_K3, function(el) {
+  # estraggo S e ground_truth come matrici
+  cS  <- as.matrix(el$S)
+  cGT <- as.matrix(el$ground_truth)
   
-  # calcolo la distanza di Hellinger
-  hd <- hellinger_distance_matrix(cS, cGT)
+  # calcolo la distanza di Hellinger riga per riga
+  hd <- mean(vapply(
+    seq_len(nrow(cS)),
+    function(i) hellinger_distance_vec(cS[i, ], cGT[i, ]),
+    numeric(1)
+  ))
   
   # costruisco un piccolo data.frame con jhellinger_dist e tutti gli altri campi
   data.frame(
@@ -502,8 +544,7 @@ lista_risultati <- lapply(res_list_hard_K3, function(el) {
     attempts        = el$attempts,
     stringsAsFactors = FALSE
   )
-})
-
+}, mc.cores = ncores)
 # 3. Combino tutti i data.frame in uno solo
 results_df_hard_K3_fuzzy <- do.call(rbind, lista_risultati)
 save(results_df_hard_K3_fuzzy,file='hellinger_df_hard_K3_fuzzy.Rdata')

@@ -1,24 +1,24 @@
 initialize_states <- function(Y, K) {
   n <- nrow(Y)
-  
+
   ### Repeat the following few times?
   centr_indx=sample(1:n, 1)
   centroids <- Y[centr_indx, , drop = FALSE]  # Seleziona il primo centroide a caso
-  
+
   closest_dist <- as.matrix(cluster::daisy(Y, metric = "gower"))
   closest_dist <- closest_dist[centr_indx,]
-  
+
   for (i in 2:K) {
     prob <- closest_dist / sum(closest_dist)
     next_centr_indx <- sample(1:n, 1, prob = prob)
     next_centroid <- Y[next_centr_indx, , drop = FALSE]
     centroids <- rbind(centroids, next_centroid)
   }
-  
-  # Faster solution 
+
+  # Faster solution
   dist_matrix <- StatMatch::gower.dist(Y, centroids)
   init_stats <- apply(dist_matrix, 1, which.min)
-  
+
   return(init_stats)
 }
 
@@ -34,8 +34,7 @@ Mode <- function(x,na.rm=T) {
 # Rcpp --------------------------------------------------------------------
 
 library(Rcpp)
-Rcpp::sourceCpp("weight_inv_exp_dist.cpp")
-Rcpp::sourceCpp("wcd.cpp")
+Rcpp::sourceCpp("robJM_R.cpp")
 
 
 # OLD -------------------------------------------------------------------------
@@ -657,112 +656,221 @@ JM_COSA=function(Y,zeta0,lambda,K,tol,n_outer=20,alpha=.1,verbose=F,Ts=NULL){
   return(list(W=W,s=s,medoids=medoids))
 }
 
-robust_JM_COSA=function(Y,zeta0,lambda,K,tol,n_outer=20,alpha=.1,
-                        verbose=F,knn=10,c=2,M=NULL){
+robust_JM_COSA <- function(Y,
+                           zeta0,
+                           lambda,
+                           K,
+                           tol     = NULL,
+                           n_init  = 10,
+                           n_outer = 20,
+                           alpha   = 0.1,
+                           verbose = FALSE,
+                           knn     = 10,
+                           c       = 2,
+                           M       = NULL) {
   library(Rcpp)
-  Rcpp::sourceCpp("weight_inv_exp_dist.cpp")
-  Rcpp::sourceCpp("wcd.cpp")
-  P=ncol(Y)
-  TT=nrow(Y)
-
+ 
+  Rcpp::sourceCpp("robJM_R.cpp")
+  
+  P  <- ncol(Y)
+  TT <- nrow(Y)
   Gamma <- lambda * (1 - diag(K))
-  W=matrix(1/P,nrow=K,ncol=P)
-  W_old=W
   
-  zeta=zeta0
-  
-  # Ottimizzare questo che segue??
-  s=initialize_states(Y,K)
-  
-  loss_old=1e10
-  
-  for (outer in 1:n_outer){
+  run_one <- function(init_id) {
+    # 1) initial W, zeta, s
+    W        <- matrix(1/P, nrow=K, ncol=P)
+    W_old    <- W
+    zeta     <- zeta0
+    loss_old <- Inf
+    s        <- initialize_states(Y, K)
     
-    # subsample=sample(1:TT,Ts,replace = F)
-    # Ys=Y[subsample,]
-    # ss=s[subsample]
-    
-    v1=v_1(W[s,]*Y,knn=knn,c=c,M=M)
-    v2=v_1(Y,knn=knn,c=c,M=M)
-    
-    v=apply(cbind(v1,v2),1,min)
-    
-    #Compute distances
-    DW=weight_inv_exp_dist(as.matrix(Y * v),
-                           s,
-                           W,zeta)
-    medoids=cluster::pam(x=DW,k=K,diss=TRUE)
-    
-    # Questo se lavoro su tutto il dato
-    loss_by_state=DW[,medoids$id.med]
-    
-    # Questo se lavoro su sottocampioni per ottimizzare i tempi
-    #loss_by_state=weight_inv_exp_dist_medoids(Y, Ymedoids, s, W, zeta)
-    
-    V <- loss_by_state
-    for (t in (TT-1):1) {
-      V[t-1,] <- loss_by_state[t-1,] + apply(V[t,] + Gamma, 2, min)
-    }
-    s_old=s
-    s[1] <- which.min(V[1,])
-    for (t in 2:TT) {
-      s[t] <- which.min(V[t,] + Gamma[s[t-1],])
-    }
-    loss <- min(V[1,])
-    if (length(unique(s)) < K) {
-      s=s_old
-      break
-    }
-    
-    epsilon <- loss_old - loss
-    if (!is.null(tol)) {
-      if (epsilon < tol) {
+    for (outer in seq_len(n_outer)) {
+      # 2) local scales
+      v1 <- v_1(W[s, , drop=FALSE] * Y, knn=knn, c=c, M=M)
+      v2 <- v_1(Y,                     knn=knn, c=c, M=M)
+      v  <- pmin(v1, v2)
+      
+      # 3) weighted distances + PAM
+      DW      <- weight_inv_exp_dist(as.matrix(Y * v), s, W, zeta)
+      pam_out <- cluster::pam(DW, k=K, diss=TRUE)
+      medoids <- pam_out$id.med
+      
+      # 4) build loss-by-state
+      loss_by_state <- DW[, medoids, drop=FALSE]  # TT x K
+      
+      # 5) DP forward: V[t,j] = loss[t,j] + min_i( V[t+1,i] + Gamma[i,j] )
+      V <- loss_by_state
+      for (t in (TT-1):1) {
+        for (j in seq_len(K)) {
+          # look at row t+1 of V plus column j of Gamma:
+          V[t, j] <- loss_by_state[t, j] +
+            min( V[t+1, ] + Gamma[, j] )
+        }
+      }
+      
+      # 6) backtrack to get s
+      s_old <- s
+      # first time‐point
+      s[1] <- which.min(V[1, ])
+      loss  <- V[1, s[1]]
+      # subsequent
+      for (t in 2:TT) {
+        prev <- s[t-1]
+        # pick state j minimizing V[t,j] + penalty from prev
+        scores <- V[t, ] + Gamma[prev, ]
+        s[t] <- which.min(scores)
+      }
+      
+      # 7) must have all K states or revert
+      if (length(unique(s)) < K) {
+        s <- s_old
         break
       }
-    } 
-    # else if (all(s == s_old)) {
-    #   break
-    # }
-    loss_old <- loss
-    #}
-    
-    # Compute weights
-    
-    Spk=WCD(s,as.matrix(Y * v),K)
-    wcd=exp(-Spk/zeta0)
-    W=wcd/rowSums(wcd)
-    
-    #}
-    
-    #}
-    
-    eps_W=mean((W-W_old)^2)
-    
-    if (!is.null(tol)) {
-      if (eps_W < tol) {
-        break
+      
+      # 8) loss‐convergence
+      if (!is.null(tol) && (loss_old - loss) < tol) break
+      loss_old <- loss
+      
+      # 9) update W via WCD + exp
+      Spk <- WCD(s, as.matrix(Y * v), K)
+      wcd <- exp(-Spk / zeta0)
+      W   <- wcd / rowSums(wcd)
+      
+      # 10) W‐convergence
+      epsW <- mean((W - W_old)^2)
+      if (!is.null(tol) && epsW < tol) break
+      W_old <- W
+      
+      # 11) bump zeta
+      zeta <- zeta + alpha * zeta0
+      
+      if (verbose) {
+        cat(sprintf("init %2d, outer %2d → loss=%.4e, epsW=%.4e, zeta=%.3f\n",
+                    init_id, outer, loss, epsW, zeta))
       }
     }
     
-    W_old=W
-    zeta=zeta+alpha*zeta0
-
-    # print(W)
-    # print(epsilon)
-    # print(eps_W)
-    # print(zeta)
-    # print(Spk)
-    # print(zeta0)
-    # print(range(DW))
-    
-    if (verbose) {
-      cat(sprintf('Iteration %d: %.6e\n', outer, loss))
-      #cat(sprintf('Out iteration %d (# inn iterations %d): %.6e\n', outer, inner, eps_W))
-    }
-    
+    list(W      = W,
+         s      = s,
+         medoids= medoids,
+         v      = v,
+         loss   = loss)
   }
-  return(list(W=W,s=s,medoids=medoids,v=v,loss=loss))
+  
+  # run n_init times, pick the one with smallest loss
+  res_list <- lapply(seq_len(n_init), run_one)
+  losses   <- vapply(res_list, `[[`, numeric(1), "loss")
+  res_list[[ which.min(losses) ]]
 }
+
+
+
+# robust_JM_COSA=function(Y,zeta0,lambda,K,tol,n_outer=20,alpha=.1,
+#                         verbose=F,knn=10,c=2,M=NULL){
+#   library(Rcpp)
+#   Rcpp::sourceCpp("weight_inv_exp_dist.cpp")
+#   Rcpp::sourceCpp("wcd.cpp")
+#   P=ncol(Y)
+#   TT=nrow(Y)
+# 
+#   Gamma <- lambda * (1 - diag(K))
+#   W=matrix(1/P,nrow=K,ncol=P)
+#   W_old=W
+#   
+#   zeta=zeta0
+#   
+#   # Multiple initialization, keep best one (lower loss)
+#   s=initialize_states(Y,K)
+#   
+#   loss_old=1e10
+#   
+#   for (outer in 1:n_outer){
+#     
+#     # subsample=sample(1:TT,Ts,replace = F)
+#     # Ys=Y[subsample,]
+#     # ss=s[subsample]
+#     
+#     v1=v_1(W[s,]*Y,knn=knn,c=c,M=M)
+#     v2=v_1(Y,knn=knn,c=c,M=M)
+#     
+#     v=apply(cbind(v1,v2),1,min)
+#     
+#     #Compute distances
+#     DW=weight_inv_exp_dist(as.matrix(Y * v),
+#                            s,
+#                            W,zeta)
+#     medoids=cluster::pam(x=DW,k=K,diss=TRUE)
+#     
+#     # Questo se lavoro su tutto il dato
+#     loss_by_state=DW[,medoids$id.med]
+#     
+#     # Questo se lavoro su sottocampioni per ottimizzare i tempi
+#     #loss_by_state=weight_inv_exp_dist_medoids(Y, Ymedoids, s, W, zeta)
+#     
+#     V <- loss_by_state
+#     for (t in (TT-1):1) {
+#       V[t-1,] <- loss_by_state[t-1,] + apply(V[t,] + Gamma, 2, min)
+#     }
+#     s_old=s
+#     s[1] <- which.min(V[1,])
+#     for (t in 2:TT) {
+#       s[t] <- which.min(V[t,] + Gamma[s[t-1],])
+#     }
+#     loss <- min(V[1,])
+#     if (length(unique(s)) < K) {
+#       s=s_old
+#       break
+#     }
+#     
+#     epsilon <- loss_old - loss
+#     if (!is.null(tol)) {
+#       if (epsilon < tol) {
+#         break
+#       }
+#     } 
+#     # else if (all(s == s_old)) {
+#     #   break
+#     # }
+#     loss_old <- loss
+#     #}
+#     
+#     # Compute weights
+#     
+#     Spk=WCD(s,as.matrix(Y * v),K)
+#     wcd=exp(-Spk/zeta0)
+#     W=wcd/rowSums(wcd)
+#     
+#     #}
+#     
+#     #}
+#     
+#     eps_W=mean((W-W_old)^2)
+#     
+#     if (!is.null(tol)) {
+#       if (eps_W < tol) {
+#         break
+#       }
+#     }
+#     
+#     W_old=W
+#     zeta=zeta+alpha*zeta0
+# 
+#     # print(W)
+#     # print(epsilon)
+#     # print(eps_W)
+#     # print(zeta)
+#     # print(Spk)
+#     # print(zeta0)
+#     # print(range(DW))
+#     
+#     if (verbose) {
+#       cat(sprintf('Iteration %d: %.6e\n', outer, loss))
+#       #cat(sprintf('Out iteration %d (# inn iterations %d): %.6e\n', outer, inner, eps_W))
+#     }
+#     
+#   }
+#   return(list(W=W,s=s,medoids=medoids,v=v,loss=loss))
+# }
 
 RJM_COSA_gap=function(Y,
                       zeta_grid=seq(0.1,.7,.1),
