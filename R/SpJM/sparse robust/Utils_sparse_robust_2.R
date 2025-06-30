@@ -682,6 +682,7 @@ robust_JM_COSA <- function(Y,
     W_old    <- W
     zeta     <- zeta0
     loss_old <- Inf
+    #s = sample(1:K,TT,replace=T)
     s        <- initialize_states(Y, K)
     
     for (outer in seq_len(n_outer)) {

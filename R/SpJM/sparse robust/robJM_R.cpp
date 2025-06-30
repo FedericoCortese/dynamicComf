@@ -40,6 +40,7 @@ NumericMatrix gower_dist(const NumericMatrix& Y,
   return V;
 }
 
+
 // helper to compute median of a std::vector<double>
 // includes the diagonal zero entry as in your R code
 double median_vec(std::vector<double>& v) {

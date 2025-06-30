@@ -54,9 +54,10 @@ Y[,6:P]=mvtnorm::rmvt(TT,
 
 # Introduce outliers
 set.seed(1)
+out_sigma=100
 N_out=TT*0.02
 t_out=sample(1:TT,size=N_out)
-Y[t_out,]=Y[t_out,]+rnorm(N_out*P,0,10)
+Y[t_out,]=Y[t_out,]+rnorm(N_out*P,0,out_sigma)
 
 truth=simDat$mchain
 truth[t_out]=0
@@ -83,6 +84,7 @@ for (i in 1:P) {
 #                  tol=NULL,n_outer=15,alpha=.1,verbose=F,n_cores=NULL,
 #                  B, knn=10,c=2,M=NULL)
 source("Utils_sparse_robust_2.R")
+startR=Sys.time()
 prv=robust_JM_COSA(Y=as.matrix(Y),
                    zeta0=.2,
                    lambda=.2,
@@ -95,13 +97,17 @@ prv=robust_JM_COSA(Y=as.matrix(Y),
                    knn        = 10,
                    c          = 5,
                    M          = NULL)
+endR=Sys.time()
+print(endR-startR)
+
 prv$W
 prv$s[prv$v<0.5]=0
 table(prv$s,truth)
 
-# cpp
+# cpp NOT RELIABLE
 Rcpp::sourceCpp("rob_JM.cpp")
 library(cluster)
+startCpp=Sys.time()
 prv_cpp=robust_JM_COSA(as.matrix(Y),
                        zeta0=.2,
                        lambda=.2,
@@ -114,14 +120,14 @@ prv_cpp=robust_JM_COSA(as.matrix(Y),
                        knn       = 10,
                        c      = 2.0
                        ) 
+endCpp=Sys.time()
+print(endCpp-startCpp)
 
 round(prv_cpp$W,2)
 
-prv_cpp$s[prv_cpp$v<0.1]=0
+prv_cpp$s[prv_cpp$v<0.5]=0
 
 table(prv_cpp$s,truth)
-
-library(ggplot2)
 
 x11()
 ggplot(prv$gap_stats, 
