@@ -18,6 +18,7 @@ tol=1e-16
 n_outer=10
 verbose=T
 lambda=seq(0,.5,.1)
+nseed=50
 
 TT=1000
 P=10
@@ -25,7 +26,7 @@ P=10
 c=5
 
 hp=expand.grid(
-  seed=seed,
+  seed=1:nseed,
   zeta0=zeta0,
   K=K,
   lambda=lambda,
