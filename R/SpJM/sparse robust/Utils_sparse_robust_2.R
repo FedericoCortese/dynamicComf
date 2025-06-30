@@ -789,7 +789,7 @@ robust_JM_COSA <- function(Y,
   mif=which.max(apply(best_W,2,sum))
   
   # Re‐order states based on most important feature state-conditional median
-  best_s <- order_states_condMed(Y[, mif], best_s)
+  new_best_s <- order_states_condMed(Y[, mif], best_s)
   
   tab <- table(best_s, new_best_s)
   new_order <- apply(tab, 1, which.max)
@@ -797,7 +797,7 @@ robust_JM_COSA <- function(Y,
   best_W <- best_W[new_order,]
   
   ret_list=list(W = best_W,
-                s = best_s,
+                s = new_best_s,
                 medoids = best_medoids,
                 v = best_v,
                 loss = best_loss,
