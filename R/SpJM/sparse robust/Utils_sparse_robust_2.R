@@ -929,7 +929,9 @@ RJM_COSA_gap=function(Y,
   
   # B is the number of permutations
   
-  grid <- expand.grid(zeta0 = zeta_grid, lambda = lambda_grid, K = K_grid, b = 0:B)
+  grid <- expand.grid(zeta0 = zeta_grid, 
+                      lambda = lambda_grid, 
+                      K = K_grid, b = 0:B)
   
   library(foreach)
   library(doParallel)

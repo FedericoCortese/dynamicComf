@@ -25,6 +25,7 @@ P=10
 c=5
 
 hp=expand.grid(
+  seed=seed,
   zeta0=zeta0,
   K=K,
   lambda=lambda,
@@ -38,6 +39,7 @@ ncores=parallel::detectCores()-1
 start=Sys.time()
 res_list_K2 <- mclapply(seq_len(nrow(hp)), function(i) {
   
+  seed <- hp$seed[i]
   zeta0    <- hp$zeta0[i]
   K        <- hp$K[i]
   lambda   <- hp$lambda[i]
@@ -45,6 +47,7 @@ res_list_K2 <- mclapply(seq_len(nrow(hp)), function(i) {
   P        <- hp$P[i]
   c        <- hp$c[i]
   
+  set.seed(seed)
   simDat=sim_data_stud_t(seed=123,
                          TT=TT,
                          P=P,
@@ -122,6 +125,7 @@ res_list_K2 <- mclapply(seq_len(nrow(hp)), function(i) {
   ARI_W=mclust::adjustedRandIndex(W_ind,W_truth)
   
   res <- list(
+    seed = seed,
     zeta0 = zeta0,
     K = K,
     lambda = lambda,
