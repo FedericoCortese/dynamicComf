@@ -1,3 +1,19 @@
+order_states_condMed=function(y,s){
+  
+  # This function organizes states by assigning 1 to the state with the smallest conditional median for vector y
+  # and sequentially numbering each new state as 2, 3, etc., incrementing by 1 for each newly observed state.
+  
+  #Slong=c(t(S))
+  # condMeans=sort(tapply(y,Slong,mean,na.rm=T))
+  condMed=sort(tapply(y,s,median,na.rm=T))
+  
+  states_temp=match(s,names(condMed))
+  
+  #states_temp=matrix(states_temp,nrow=nrow(S),byrow = T)
+  
+  return(states_temp)
+}
+
 initialize_states <- function(Y, K) {
   n <- nrow(Y)
 
@@ -761,7 +777,38 @@ robust_JM_COSA <- function(Y,
   # run n_init times, pick the one with smallest loss
   res_list <- lapply(seq_len(n_init), run_one)
   losses   <- vapply(res_list, `[[`, numeric(1), "loss")
-  res_list[[ which.min(losses) ]]
+  best_run <- res_list[[ which.min(losses) ]]
+  
+  best_s   <- best_run$s
+  best_loss<- best_run$loss
+  best_W = best_run$W
+  best_medoids  <- Y[best_run$medoids,]
+  best_v <- best_run$v
+  
+  # Most important features (mif)
+  mif=which.max(apply(best_W,2,sum))
+  
+  # Re‐order states based on most important feature state-conditional median
+  best_s <- order_states_condMed(Y[, mif], best_s)
+  
+  tab <- table(best_s, new_best_s)
+  new_order <- apply(tab, 1, which.max)
+  
+  best_W <- best_W[new_order,]
+  
+  ret_list=list(W = best_W,
+                s = best_s,
+                medoids = best_medoids,
+                v = best_v,
+                loss = best_loss,
+                zeta0 = zeta0,
+                lambda = lambda,
+                c = c,
+                knn=knn,
+                M = M)
+  
+  return(ret_list)
+  
 }
 
 
