@@ -109,7 +109,7 @@ res_list_K2 <- mclapply(seq_len(nrow(hp)), function(i) {
                      lambda=lambda,
                      K=K,
                      tol        = 1e-16,
-                     n_init     = 2,
+                     n_init     = 5,
                      n_outer    = 10,
                      alpha      = 0.1,
                      verbose    = F,
