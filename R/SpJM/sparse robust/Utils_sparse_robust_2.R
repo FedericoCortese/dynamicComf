@@ -766,7 +766,7 @@ simulate_sparse_hmm <- function(seed,
 
 
 
-robust_sparse_jum <- function(Y,
+robust_sparse_jump <- function(Y,
                            zeta0,
                            lambda,
                            K,
@@ -987,7 +987,7 @@ cv_robust_sparse_jump <- function(
   # calcola l’ARI sui punti di validazione
   fold_ari <- function(K, kappa, lambda, train_idx, val_idx) {
     # 1) Fit del modello sparse_jump su soli dati di TRAIN
-    res <- robust_sparse_jum(Y=as.matrix(Y[train_idx, , drop = FALSE]),
+    res <- robust_sparse_jump(Y=as.matrix(Y[train_idx, , drop = FALSE]),
                           zeta0=zeta0,
                           lambda=lambda,
                           K=K,
@@ -1208,7 +1208,7 @@ gap_robust_sparse_jump=function(
     }
     # Fit the model
     
-    fit=robust_sparse_jum(Y,
+    fit=robust_sparse_jump(Y,
                        zeta0=zeta0,
                        lambda=lambda,
                        K=K,

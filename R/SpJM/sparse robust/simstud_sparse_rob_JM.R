@@ -136,7 +136,7 @@ res_list_K2 <- mclapply(seq_len(nrow(hp)), function(i) {
   ############
   
   
-  fit=robust_JM_COSA(Y=as.matrix(simDat$Y),
+  fit=robust_sparse_jump(Y=as.matrix(simDat$Y),
                      zeta0=zeta0,
                      lambda=lambda,
                      K=K,
