@@ -672,7 +672,7 @@ JM_COSA=function(Y,zeta0,lambda,K,tol,n_outer=20,alpha=.1,verbose=F,Ts=NULL){
   return(list(W=W,s=s,medoids=medoids))
 }
 
-robust_JM_COSA <- function(Y,
+robust_sparse_jum <- function(Y,
                            zeta0,
                            lambda,
                            K,
@@ -811,6 +811,392 @@ robust_JM_COSA <- function(Y,
   
 }
 
+cv_robust_sparse_jump <- function(
+    Y,
+    true_states,
+    K_grid=NULL,
+    zeta0=NULL,
+    lambda_grid=NULL,
+    n_folds = 5,
+    parallel=F,
+    n_cores=NULL,
+    cv_method="blocked-cv",
+    knn=10,
+    c=5,
+    M=NULL
+) {
+  
+  # cv_sparse_jump: Cross-validate Sparse Jump Model parameters (K and lambda)
+  
+  # Arguments:
+  #   Y           - data matrix (N × P)
+  #   true_states - vector of true states for ARI computation
+  #   K_grid      - vector of candidate numbers of states
+  #   zeta0       - sparsity hyperparameter (if NULL it is set to 0.2)
+  #   lambda_grid - vector of candidate lambdas
+  #   n_folds     - number of folds for cross-validation (default: 5)
+  #   parallel    - logical; TRUE for parallel execution (default: FALSE)
+  #   n_cores     - number of cores to use for parallel execution (default:  NULL)
+  #   cv_method   - method for cross-validation: "blocked-cv" or "forward-chain"
+  #   knn         - number of nearest neighbors for LOF (default: 10)
+  #   c           - lower threshold for LOF (default: 5)
+  #   M           - upper threshold for LOF (default: NULL, uses median + mad)
+  
+  
+  # Value:
+  #   A data.frame with one row per (K, zeta0, lambda) combination, containing:
+  #     K      - number of states tested
+  #     zeta0  - sparsity hyperparameter value
+  #     lambda - jump penalty value
+  #     ARI    - mean Adjusted Rand Index across folds
+  
+  
+  if(is.null(K_grid)) {
+    K_grid <- seq(2, 4, by = 1)  # Default range for K
+  }
+  
+  
+  if(is.null(lambda_grid)) {
+    lambda_grid <- seq(0,1,.1)  # Default range for lambda
+  }
+  
+  if(is.null(zeta0)) {
+    zeta0 <- 0.2  # Default sparsity hyperparameter
+  }
+  
+  # Libreria per ARI
+  library(mclust)
+  
+  N <- nrow(Y)
+  P <- ncol(Y)
+  
+  # Suddivido gli N campioni in n_folds blocchi contigui
+  if(cv_method=="blocked-cv"){
+    fold_indices <- split(
+      1:N,
+      rep(1:n_folds, each = ceiling(N / n_folds), length.out = N)
+    )
+    
+  }
+  else if(cv_method=="forward-chain"){
+    fold_indices <- lapply(seq_len(n_folds), function(k) {
+      idx_end <- N - (k - 1)
+      1:(idx_end-1)
+    })
+    names(fold_indices) <- as.character(seq_len(n_folds))
+  }
+  else{
+    stop("cv_method must be either 'blocked-cv' or 'forward-chain'")
+  }
+  
+  # Funzione che, per una tripla (K, kappa, lambda) e un fold (train_idx, val_idx),
+  # calcola l’ARI sui punti di validazione
+  fold_ari <- function(K, kappa, lambda, train_idx, val_idx) {
+    # 1) Fit del modello sparse_jump su soli dati di TRAIN
+    res <- robust_sparse_jum(Y=as.matrix(Y[train_idx, , drop = FALSE]),
+                          zeta0=zeta0,
+                          lambda=lambda,
+                          K=K,
+                          tol        = 1e-16,
+                          n_init     = 5,
+                          n_outer    = 10,
+                          alpha      = 0.1,
+                          verbose    = F,
+                          knn        = knn,
+                          c          = c,
+                          M          = M)
+    states_train <- res$s
+    feat_idx     <- which(colSums(res$W) > 0.025)
+    
+    # Se non vengono selezionate feature, restituisco ARI = 0
+    if (length(feat_idx) == 0) {
+      return(0)
+    }
+    
+    # 2) Extract medoids
+    medoids=res$medoids[,feat_idx]
+    
+    # 3) Assegno ciascun punto in VAL a uno stato: 
+    #    lo stato k che minimizza la distanza gower su feature selezionate
+    Y_val_feats     <- as.matrix(Y[val_idx, feat_idx, drop = FALSE])
+    pred_val_states <- integer(length(val_idx))
+    
+    dists<- gower_dist(Y_val_feats,medoids)
+    
+    pred_val_states<- apply(dists,1,which.min)
+    
+    
+    # 4) Calcolo ARI tra etichette vere e quelle predette sul blocco VAL
+    return(
+      adjustedRandIndex(true_states[val_idx], pred_val_states)
+    )
+  }
+  
+  # Costruisco la griglia di tutte le combinazioni di (K, kappa, lambda)
+  grid <- expand.grid(
+    K      = K_grid,
+    # For kappa we take a representative value, we will select kappa later based on GAP stat
+    zeta0  = zeta0,
+    lambda = lambda_grid,
+    KEEP.OUT.ATTRS = FALSE,
+    stringsAsFactors = FALSE
+  )
+  
+  # Data.frame in cui raccogliere (K, kappa, lambda, media_ARI)
+  results <- data.frame(
+    K      = integer(0),
+    zeta0  = integer(0),
+    lambda = numeric(0),
+    ARI    = numeric(0)
+  )
+  
+  # Loop su ciascuna riga della griglia
+  if (!parallel) {
+    # applichiamo una funzione su ogni riga di 'grid'
+    results_list <- lapply(seq_len(nrow(grid)), function(row) {
+      K_val     <- grid$K[row]
+      zeta0_val <- grid$zeta0[row]
+      lambda_val<- grid$lambda[row]
+      
+      # calcolo ARI su ciascun fold
+      ari_vals <- numeric(n_folds)
+      for (f in seq_len(n_folds)) {
+        val_idx   <- fold_indices[[f]]
+        train_idx <- setdiff(seq_len(N), val_idx)
+        ari_vals[f] <- fold_ari(K_val, zeta0_val, lambda_val, train_idx, val_idx)
+      }
+      mean_ari <- mean(ari_vals)
+      
+      # restituisco un data.frame di una sola riga
+      data.frame(
+        K      = K_val,
+        zeta0  = zeta0,
+        lambda = lambda_val,
+        ARI    = mean_ari,
+        stringsAsFactors = FALSE
+      )
+    })
+    
+    # combino tutti i data.frame in un unico data.frame
+    results <- do.call(rbind, results_list)
+  }
+  
+  
+  # 2) VERSIONE PARALLELA: usare mclapply()
+  if (parallel) {
+    if(is.null(n_cores)){
+      n_cores <- detectCores() - 1
+    }
+    
+    results_list <- mclapply(
+      seq_len(nrow(grid)),
+      function(row) {
+        K_val     <- as.integer(grid$K[row])
+        zeta0_val <- as.integer(grid$zeta0[row])
+        lambda_val<-        grid$lambda[row]
+        
+        # calcolo ARI su ciascun fold
+        ari_vals <- numeric(n_folds)
+        for (f in seq_len(n_folds)) {
+          val_idx   <- fold_indices[[f]]
+          train_idx <- setdiff(seq_len(N), val_idx)
+          ari_vals[f] <- fold_ari(K_val, zeta0_val, lambda_val, train_idx, val_idx)
+        }
+        mean_ari <- mean(ari_vals)
+        
+        # ritorno un data.frame di una sola riga
+        data.frame(
+          K      = K_val,
+          zeta0  = zeta0,
+          lambda = lambda_val,
+          ARI    = mean_ari,
+          stringsAsFactors = FALSE
+        )
+      },
+      mc.cores = n_cores
+    )
+    
+    # combino tutti i data.frame in un unico data.frame
+    results <- do.call(rbind, results_list)
+  }
+  
+  
+  return(results)
+}
+
+permute_gap <- function(Y) {
+  if (!is.matrix(Y)) {
+    stop("Input Y must be a matrix.")
+  }
+  TT <- nrow(Y)
+  P <- ncol(Y)
+  
+  Y_perm <- apply(Y, 2, function(col) {
+    sample(col, size = TT, replace = FALSE)
+  })
+  
+  if (P == 1) {
+    Y_perm <- matrix(Y_perm, nrow = T, ncol = 1)
+  }
+  
+  rownames(Y_perm) <- rownames(Y)
+  colnames(Y_perm) <- colnames(Y)
+  
+  return(Y_perm)
+}
+
+gap_robust_sparse_jump=function(
+    Y,
+    K_grid=NULL,
+    zeta0_grid=NULL,
+    lambda=0,
+    B=10,
+    parallel=F,
+    n_cores=NULL,
+    knn=10,
+    c=5,
+    M=NULL
+){
+  
+  # gap_robust_sparse_jump: Compute the Gap Statistic for Robust Sparse Jump Model
+  
+  # Arguments:
+  #   Y           - data matrix (N × P)
+  #   K_grid      - vector of candidate numbers of states (default: seq(2, 4, by = 1))
+  #   zeta0_grid  - vector of candidate kappa values (default: seq(0.05, 0.4, by = 0.05))
+  #   lambda      - jump penalty value (default: 0.2)
+  #   B           - number of bootstrap samples (default: 10)
+  #   parallel    - logical; TRUE for parallel execution (default: FALSE)
+  #   n_cores     - number of cores to use for parallel execution (default: NULL)
+  #   knn         - number of nearest neighbors for LOF (default: 10)
+  #   c           - lower threshold for LOF (default: 5)
+  #   M           - upper threshold for LOF (default: NULL, uses median + mad)
+  
+  # Value:
+  #   A list containing:
+  #     gap_stats - data.frame with Gap Statistic results
+  #     plot_res  - ggplot object of Gap Statistic vs zeta0
+  #     meta_df   - data.frame with detailed results for each (K, zeta0, lambda, b)
+  
+  
+  if(is.null(K_grid)) {
+    K_grid <- seq(2, 4, by = 1)  # Default range for K
+  }
+  
+  
+  if(is.null(zeta0_grid)) {
+    zeta0_grid <- seq(0.05,.4,.05)  # Default range for lambda
+  }
+  
+  if(is.null(lambda)){
+    lambda=0.2
+  }
+  
+  # Libreria per ARI
+  library(mclust)
+  
+  N <- nrow(Y)
+  P <- ncol(Y)
+  
+  grid <- expand.grid(zeta0 = zeta0_grid, 
+                      lambda = lambda, 
+                      K = K_grid, 
+                      b = 0:B)
+  
+  gap_one_run=function(zeta0,lambda,K,b){
+    if (b == 0) {
+      Y_input <- Y
+      permuted <- FALSE
+    } else {
+      # Permute features for kappa
+      Y_input <- permute_gap(Y)
+      permuted <- TRUE
+    }
+    # Fit the model
+    
+    fit=robust_sparse_jum(Y,
+                       zeta0=zeta0,
+                       lambda=lambda,
+                       K=K,
+                       tol     = NULL,
+                       n_init  = 5,
+                       n_outer = 20,
+                       alpha   = 0.1,
+                       verbose = FALSE,
+                       knn     = knn,
+                       c       = c,
+                       M       = M)
+    
+    return(list(loss=fit$loss,
+                K=K,
+                permuted=permuted,
+                zeta0=zeta0,
+                lambda=lambda
+    ))
+    
+  }
+  
+  if(parallel){
+    if(is.null(n_cores)){
+      n_cores <- parallel::detectCores() - 1
+    }
+    results <- parallel::mclapply(seq_len(nrow(grid)), function(i) {
+      params <- grid[i, ]
+      gap_one_run(
+        zeta0 = params$zeta0,
+        lambda= params$lambda,
+        K     = params$K,
+        b     = params$b
+      )
+    }, mc.cores = mc_cores)
+  }
+  else{
+    results <- lapply(seq_len(nrow(grid)), function(i) {
+      params <- grid[i, ]
+      gap_one_run(
+        zeta0 = params$zeta0,
+        lambda= params$lambda,
+        K     = params$K,
+        b     = params$b
+      )
+    })
+  }
+  
+  meta_df <- do.call(rbind.data.frame, c(results, make.row.names = FALSE))
+  
+  library(dplyr)
+  gap_stats <- meta_df %>%
+    group_by(K, zeta0) %>%
+    summarise(
+      log_O = log(loss[!permuted]),
+      log_O_star_mean = mean(log(loss[permuted])),
+      se_log_O_star=sd(log(loss[permuted])),
+      GAP =  log_O - log_O_star_mean,
+      .groups = 'drop'
+    )
+  
+  library(ggplot2)
+  
+  plot_res=ggplot(gap_stats, aes(x = zeta0, y = GAP, color = factor(K))) +
+    geom_line() +
+    geom_point() +
+    scale_color_discrete(name = "Number of clusters\n(K)") +
+    labs(
+      x = expression(kappa),
+      y = "Gap Statistic"
+    ) +
+    theme_minimal() +
+    theme(
+      plot.title = element_text(hjust = 0.5),
+      legend.position = "right"
+    )
+  
+  return(list(gap_stats=gap_stats,
+              plot_res=plot_res,
+              meta_df=meta_df))
+  
+  
+}
 
 
 # robust_JM_COSA=function(Y,zeta0,lambda,K,tol,n_outer=20,alpha=.1,
@@ -920,100 +1306,100 @@ robust_JM_COSA <- function(Y,
 #   return(list(W=W,s=s,medoids=medoids,v=v,loss=loss))
 # }
 
-RJM_COSA_gap=function(Y,
-                      zeta_grid=seq(0.1,.7,.1),
-                      lambda_grid=seq(0,1,.1),
-                      K_grid=2:6,
-                      tol=NULL,n_outer=20,alpha=.1,verbose=F,n_cores=NULL,
-                      B=10, knn=10,c=2,M=NULL){
-  
-  # B is the number of permutations
-  
-  grid <- expand.grid(zeta0 = zeta_grid, 
-                      lambda = lambda_grid, 
-                      K = K_grid, b = 0:B)
-  
-  library(foreach)
-  library(doParallel)
-  
-  if(is.null(n_cores)){
-    n_cores <- parallel::detectCores() - 1
-  } 
-  
-  # Set up cluster
-  cl <- makeCluster(n_cores)
-  registerDoParallel(cl)
-  
-  results_list <- foreach(i = 1:nrow(grid), .combine = 'list',
-                          .packages = c("cluster","Rcpp","DescTools"),
-                          .multicombine = TRUE,
-                          .export = c("Y", "robust_JM_COSA", 
-                                      #"WCD", "weight_inv_exp_dist",
-                                      "initialize_states",
-                                      "v_1","lof_star",
-                                      "grid", "tol", "n_outer", "alpha",
-                                      "knn","c","M")) %dopar% {
-                                        K_val <- grid$K[i]
-                                        zeta_val <- grid$zeta0[i]
-                                        lambda_val=grid$lambda[i]
-                                        b <- grid$b[i]
-                                        
-                                        set.seed(b + 1000 * i)
-                                        
-                                        if (b == 0) {
-                                          Y_input <- Y
-                                          permuted <- FALSE
-                                        } else {
-                                          # Permute features for zeta0
-                                          Y_input <- apply(Y, 2, sample)
-                                          # Permute rows for lambda
-                                          Y_input <- Y_input[ sample(nrow(Y_input),
-                                                                     size = nrow(Y_input),
-                                                                     replace = FALSE), ]
-                                          permuted <- TRUE
-                                        }
-                                        
-                                        res <- robust_JM_COSA(Y_input, zeta0 = zeta_val, 
-                                                              lambda = lambda_val, K = K_val, tol = tol,
-                                                              n_outer = n_outer, alpha = alpha, verbose = FALSE,
-                                                              knn=knn,c=c,M=M)
-                                        
-                                        list(
-                                          meta = data.frame(zeta0 = zeta_val, lambda=lambda_val,K = K_val, 
-                                                            loss = res$loss, permuted = permuted),
-                                          cosa = if (!permuted) list(zeta0 = zeta_val, lambda=lambda_val,K = K_val, 
-                                                                     W = res$W, s = res$s, 
-                                                                     medoids = res$medoids$medoids,
-                                                                     v=res$v) else NULL
-                                        )
-                                      }
-  
-  
-  stopCluster(cl)
-  
-  # Flatten results
-  meta_df <- do.call(rbind, lapply(results_list, `[[`, "meta"))
-  cosa_results <- Filter(Negate(is.null), lapply(results_list, `[[`, "cosa"))
-  
-  
-  # Compute GAP
-  library(dplyr)
-  gap_stats <- meta_df %>%
-    group_by(K, zeta0) %>%
-    summarise(
-      log_O = log(loss[!permuted]),
-      log_O_star_mean = mean(log(loss[permuted])),
-      se_log_O_star=sd(log(loss[permuted])),
-      GAP = log_O_star_mean - log_O,
-      .groups = 'drop'
-    )
-  
-  return(list(
-    gap_stats = gap_stats,
-    cosa_results = cosa_results
-  ))
-  
-}
+# RJM_COSA_gap=function(Y,
+#                       zeta_grid=seq(0.1,.7,.1),
+#                       lambda_grid=seq(0,1,.1),
+#                       K_grid=2:6,
+#                       tol=NULL,n_outer=20,alpha=.1,verbose=F,n_cores=NULL,
+#                       B=10, knn=10,c=2,M=NULL){
+#   
+#   # B is the number of permutations
+#   
+#   grid <- expand.grid(zeta0 = zeta_grid, 
+#                       lambda = lambda_grid, 
+#                       K = K_grid, b = 0:B)
+#   
+#   library(foreach)
+#   library(doParallel)
+#   
+#   if(is.null(n_cores)){
+#     n_cores <- parallel::detectCores() - 1
+#   } 
+#   
+#   # Set up cluster
+#   cl <- makeCluster(n_cores)
+#   registerDoParallel(cl)
+#   
+#   results_list <- foreach(i = 1:nrow(grid), .combine = 'list',
+#                           .packages = c("cluster","Rcpp","DescTools"),
+#                           .multicombine = TRUE,
+#                           .export = c("Y", "robust_JM_COSA", 
+#                                       #"WCD", "weight_inv_exp_dist",
+#                                       "initialize_states",
+#                                       "v_1","lof_star",
+#                                       "grid", "tol", "n_outer", "alpha",
+#                                       "knn","c","M")) %dopar% {
+#                                         K_val <- grid$K[i]
+#                                         zeta_val <- grid$zeta0[i]
+#                                         lambda_val=grid$lambda[i]
+#                                         b <- grid$b[i]
+#                                         
+#                                         set.seed(b + 1000 * i)
+#                                         
+#                                         if (b == 0) {
+#                                           Y_input <- Y
+#                                           permuted <- FALSE
+#                                         } else {
+#                                           # Permute features for zeta0
+#                                           Y_input <- apply(Y, 2, sample)
+#                                           # Permute rows for lambda
+#                                           Y_input <- Y_input[ sample(nrow(Y_input),
+#                                                                      size = nrow(Y_input),
+#                                                                      replace = FALSE), ]
+#                                           permuted <- TRUE
+#                                         }
+#                                         
+#                                         res <- robust_JM_COSA(Y_input, zeta0 = zeta_val, 
+#                                                               lambda = lambda_val, K = K_val, tol = tol,
+#                                                               n_outer = n_outer, alpha = alpha, verbose = FALSE,
+#                                                               knn=knn,c=c,M=M)
+#                                         
+#                                         list(
+#                                           meta = data.frame(zeta0 = zeta_val, lambda=lambda_val,K = K_val, 
+#                                                             loss = res$loss, permuted = permuted),
+#                                           cosa = if (!permuted) list(zeta0 = zeta_val, lambda=lambda_val,K = K_val, 
+#                                                                      W = res$W, s = res$s, 
+#                                                                      medoids = res$medoids$medoids,
+#                                                                      v=res$v) else NULL
+#                                         )
+#                                       }
+#   
+#   
+#   stopCluster(cl)
+#   
+#   # Flatten results
+#   meta_df <- do.call(rbind, lapply(results_list, `[[`, "meta"))
+#   cosa_results <- Filter(Negate(is.null), lapply(results_list, `[[`, "cosa"))
+#   
+#   
+#   # Compute GAP
+#   library(dplyr)
+#   gap_stats <- meta_df %>%
+#     group_by(K, zeta0) %>%
+#     summarise(
+#       log_O = log(loss[!permuted]),
+#       log_O_star_mean = mean(log(loss[permuted])),
+#       se_log_O_star=sd(log(loss[permuted])),
+#       GAP = log_O_star_mean - log_O,
+#       .groups = 'drop'
+#     )
+#   
+#   return(list(
+#     gap_stats = gap_stats,
+#     cosa_results = cosa_results
+#   ))
+#   
+# }
 
 plot_W=function(W){
   library(reshape)
