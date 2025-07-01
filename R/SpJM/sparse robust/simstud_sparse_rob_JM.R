@@ -9,15 +9,15 @@ library(tidyr)
 
 source("Utils_sparse_robust_2.R")
 
-zeta0=seq(0.1,0.5,0.05)
+zeta0=seq(0.05,0.1,0.15,0.2,0.25,0.30)
 alpha=.1
 
 # Check how to modify final evaluation to include also K>2
 K=2
 tol=1e-16
 n_outer=10
-verbose=T
-lambda=seq(0,.5,.1)
+verbose=F
+lambda=seq(0,1,.2)
 nseed=50
 
 TT=1000
@@ -49,7 +49,7 @@ res_list_K2 <- mclapply(seq_len(nrow(hp)), function(i) {
   c        <- hp$c[i]
   
   set.seed(seed)
-  simDat=sim_data_stud_t(seed=123,
+  simDat=sim_data_stud_t(seed=seed,
                          TT=TT,
                          P=P,
                          Pcat=NULL,
@@ -88,7 +88,7 @@ res_list_K2 <- mclapply(seq_len(nrow(hp)), function(i) {
                         df = nu, delta = rep(0,P-5))
   
   # Introduce outliers
-  set.seed(123)
+  set.seed(seed)
   out_sigma=100
   N_out=TT*0.02
   t_out=sample(1:TT,size=N_out)
@@ -145,3 +145,72 @@ res_list_K2 <- mclapply(seq_len(nrow(hp)), function(i) {
 end=Sys.time()
 
 print(end-start)
+
+#save(res_list_K2,file='simple_simstud_rob_JM_K2.Rdata')
+
+load("C:/Users/federico/OneDrive - CNR/Comfort - HMM/simres_robJM/simple_simstud_rob_JM_K2.Rdata")
+
+df_results_robJM_K2 <- do.call(rbind, lapply(res_list_K2, function(x) {
+  x_sel <- x[c("seed", "zeta0", "K", "lambda", "TT", "P", "c", "ARI_s", "ARI_W")]
+  as.data.frame(x_sel, stringsAsFactors = FALSE)
+}))
+
+library(dplyr)
+
+av_results_robJM_K2 <- df_results_robJM_K2 %>%
+  group_by(zeta0, K, lambda, TT, P, c) %>%
+  summarise(
+    mean_ARI_s  = mean(ARI_s),
+    sd_ARI_s    = sd(ARI_s),
+    mean_ARI_W  = mean(ARI_W),
+    sd_ARI_W    = sd(ARI_W),
+    n           = n(),        # numero di repliche (semi)
+    .groups     = "drop"
+  )
+
+
+library(plotly)
+
+# Supponendo che av_results_robJM_K2 sia il tuo tibble
+
+# 1) superfice 3D per mean_ARI_s
+fig_s <- plot_ly(
+  data = av_results_robJM_K2,
+  x = ~lambda, y = ~zeta0, z = ~mean_ARI_s,
+  type = "mesh3d",
+  intensity = ~mean_ARI_s,
+  colors = colorRamp(c("blue", "yellow", "red"))
+) %>%
+  layout(
+    scene = list(
+      xaxis = list(title = "λ"),
+      yaxis = list(title = "ζ₀"),
+      zaxis = list(title = "Mean ARI[s]")
+    ),
+    title = " "
+  )
+
+# 2) superfice 3D per mean_ARI_W
+fig_W <- plot_ly(
+  data = av_results_robJM_K2,
+  x = ~lambda, y = ~zeta0, z = ~mean_ARI_W,
+  type = "mesh3d",
+  intensity = ~mean_ARI_W,
+  colors = colorRamp(c("blue", "yellow", "red"))
+) %>%
+  layout(
+    scene = list(
+      xaxis = list(title = "λ"),
+      yaxis = list(title = "ζ₀"),
+      zaxis = list(title = "Mean ARI[W]")
+    ),
+    title = " "
+  )
+
+# Per visualizzarli uno sotto l'altro:
+fig_s
+fig_W
+
+
+
+
