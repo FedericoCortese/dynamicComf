@@ -13,7 +13,7 @@ zeta0=seq(0.05,0.1,0.15,0.2,0.25,0.30)
 alpha=.1
 
 # Check how to modify final evaluation to include also K>2
-K=2
+K=2:3
 tol=1e-16
 n_outer=10
 verbose=F
@@ -175,7 +175,7 @@ library(plotly)
 
 # 1) superfice 3D per mean_ARI_s
 fig_s <- plot_ly(
-  data = av_results_robJM_K2,
+  data = av_results_robJM_K2[av_results_robJM_K2$K==2,],
   x = ~lambda, y = ~zeta0, z = ~mean_ARI_s,
   type = "mesh3d",
   intensity = ~mean_ARI_s,
@@ -192,7 +192,7 @@ fig_s <- plot_ly(
 
 # 2) superfice 3D per mean_ARI_W
 fig_W <- plot_ly(
-  data = av_results_robJM_K2,
+  data = av_results_robJM_K2[av_results_robJM_K2$K==2,],
   x = ~lambda, y = ~zeta0, z = ~mean_ARI_W,
   type = "mesh3d",
   intensity = ~mean_ARI_W,
