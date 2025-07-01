@@ -25,6 +25,15 @@ P=10
 
 c=5
 
+mu=2
+rho=0
+nu=100
+pers = 0.99
+
+noise_df    = 4
+out_pct     = 0.02
+out_scale   = 100
+
 hp=expand.grid(
   seed=1:nseed,
   zeta0=zeta0,
@@ -37,6 +46,11 @@ hp=expand.grid(
 
 ncores=parallel::detectCores()-1
 
+rel_=list()
+rel_[[1]]=c(1,2,3)
+rel_[[2]]=c(3,4,5)
+rel_[[3]]=c(5,6,7)
+
 start=Sys.time()
 res_list_K2 <- mclapply(seq_len(nrow(hp)), function(i) {
   
@@ -48,61 +62,79 @@ res_list_K2 <- mclapply(seq_len(nrow(hp)), function(i) {
   P        <- hp$P[i]
   c        <- hp$c[i]
   
-  set.seed(seed)
-  simDat=sim_data_stud_t(seed=seed,
-                         TT=TT,
-                         P=P,
-                         Pcat=NULL,
-                         Ktrue=2,
-                         mu=2,
-                         rho=0,
-                         nu=100,
-                         phi=.8,
-                         pers=0.99)
+  # Substitute above with
+  simulate_sparse_hmm(seed=seed,
+                      TT=TT, 
+                      P=P, K=K,
+                      rel=rel_,
+                      mu   = mu,
+                      rho  = rho,
+                      nu   = nu,
+                      phi  = 0.8,
+                      pers = pers,
+                      noise_df    = noise_df,
+                      out_pct     = out_pct,
+                      out_scale   = out_scale)
   
-  Y=simDat$SimData
-  true_stat=simDat$mchain
+  ######
+  # set.seed(seed)
+  # simDat=sim_data_stud_t(seed=seed,
+  #                        TT=TT,
+  #                        P=P,
+  #                        Pcat=NULL,
+  #                        Ktrue=2,
+  #                        mu=2,
+  #                        rho=0,
+  #                        nu=100,
+  #                        phi=.8,
+  #                        pers=0.99)
+  # 
+  # Y=simDat$SimData
+  # true_stat=simDat$mchain
+  # 
+  # nu=4
+  # # For State 1, only features 1,2 and 3 are relevant, the rest are noise
+  # indx=which(true_stat!=1)
+  # Sigma <- matrix(0,ncol=P-3,nrow=P-3)
+  # diag(Sigma)=5
+  # Y[indx,-(1:3)]=mvtnorm::rmvt(length(indx),
+  #                              sigma = (nu-2)*Sigma/nu,
+  #                              df = nu, delta = rep(0,P-3))
+  # 
+  # # For State 2, only features 3,4 and 5 are relevant, the rest are noise
+  # indx=which(true_stat!=2)
+  # Y[indx,-(3:5)]=mvtnorm::rmvt(length(indx),
+  #                              sigma = (nu-2)*Sigma/nu,
+  #                              df = nu, delta = rep(0,P-3))
+  # 
+  # 
+  # Sigma <- matrix(0,ncol=P-5,nrow=P-5)
+  # diag(Sigma)=5
+  # 
+  # # All other features are noise
+  # Y[,6:P]=mvtnorm::rmvt(TT,
+  #                       sigma = (nu-2)*Sigma/nu,
+  #                       df = nu, delta = rep(0,P-5))
+  # 
+  # # Introduce outliers
+  # set.seed(seed)
+  # out_sigma=100
+  # N_out=TT*0.02
+  # t_out=sample(1:TT,size=N_out)
+  # Y[t_out,]=Y[t_out,]+rnorm(N_out*P,0,out_sigma)
+  # 
+  # # Set the truth for latent states sequence
+  # truth=simDat$mchain
+  # truth[t_out]=0
+  # ###
+  # 
+  # # Set the truth for features
+  # W_truth=matrix(F,nrow=K,ncol=P)
+  # W_truth[,3]=T
+  # W_truth[1,1:2]=T
+  # W_truth[2,4:5]=T
+  ############
   
-  nu=4
-  # For State 1, only features 1,2 and 3 are relevant, the rest are noise
-  indx=which(true_stat!=1)
-  Sigma <- matrix(0,ncol=P-3,nrow=P-3)
-  diag(Sigma)=5
-  Y[indx,-(1:3)]=mvtnorm::rmvt(length(indx),
-                               sigma = (nu-2)*Sigma/nu,
-                               df = nu, delta = rep(0,P-3))
-  
-  # For State 2, only features 3,4 and 5 are relevant, the rest are noise
-  indx=which(true_stat!=2)
-  Y[indx,-(3:5)]=mvtnorm::rmvt(length(indx),
-                               sigma = (nu-2)*Sigma/nu,
-                               df = nu, delta = rep(0,P-3))
-  
-  
-  Sigma <- matrix(0,ncol=P-5,nrow=P-5)
-  diag(Sigma)=5
-  
-  # All other features are noise
-  Y[,6:P]=mvtnorm::rmvt(TT,
-                        sigma = (nu-2)*Sigma/nu,
-                        df = nu, delta = rep(0,P-5))
-  
-  # Introduce outliers
-  set.seed(seed)
-  out_sigma=100
-  N_out=TT*0.02
-  t_out=sample(1:TT,size=N_out)
-  Y[t_out,]=Y[t_out,]+rnorm(N_out*P,0,out_sigma)
-  
-  # Set the truth for latent states sequence
-  truth=simDat$mchain
-  truth[t_out]=0
-  
-  # Set the truth for features
-  W_truth=matrix(F,nrow=K,ncol=P)
-  W_truth[,3]=T
-  W_truth[1,1:2]=T
-  W_truth[2,4:5]=T
   
   fit=robust_JM_COSA(Y=as.matrix(Y),
                      zeta0=zeta0,

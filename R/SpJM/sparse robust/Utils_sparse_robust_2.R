@@ -672,6 +672,100 @@ JM_COSA=function(Y,zeta0,lambda,K,tol,n_outer=20,alpha=.1,verbose=F,Ts=NULL){
   return(list(W=W,s=s,medoids=medoids))
 }
 
+simulate_sparse_hmm <- function(seed,
+                                TT, P, K,
+                                rel,
+                                mu   = 2,
+                                rho  = 0,
+                                nu   = 100,
+                                phi  = 0.8,
+                                pers = 0.99,
+                                noise_df    = 4,
+                                out_pct     = 0.02,
+                                out_scale   = 100) {
+  #' Simulate data from a Student-t HMM with selective features and outliers
+  #'
+  #' Arguments:
+  #'   seed         Integer; random seed for reproducibility.
+  #'   TT           Integer; number of time-series observations.
+  #'   P            Integer; total number of features.
+  #'   K            Integer; number of hidden states.
+  #'   rel          List of length K; for each state k (1…K), rel[[k]] is an integer vector
+  #'                of 1-based feature indices that are relevant in state k.
+  #'   mu           Numeric; location parameter passed to sim_data_stud_t.
+  #'   rho          Numeric; autocorrelation parameter for sim_data_stud_t.
+  #'   nu           Numeric; degrees of freedom for the Student-t in sim_data_stud_t.
+  #'   phi          Numeric; AR-parameter for sim_data_stud_t.
+  #'   pers         Numeric; persistence parameter for sim_data_stud_t.
+  #'   noise_df     Numeric; degrees of freedom for the Student-t used to generate noise
+  #'                on irrelevant features.
+  #'   out_pct      Numeric in [0,1]; fraction of observations to turn into outliers.
+  #'   out_scale    Numeric; standard deviation of the additive normal outlier noise.
+  #'
+  #' Value:
+  #'   A list with components:
+  #'     • Y        — Numeric matrix of dimension TT × P containing the simulated data.
+  #'     • truth    — Integer vector of length TT giving the true latent state (1…K),
+  #'                  with 0 marking observations designated as outliers.
+  #'     • rel_list — The same list rel provided as input, indicating per-state relevant features.
+  #'
+  
+  noise_scale =  sqrt((noise_df-2))
+  set.seed(seed)
+  # 1) genera la catena di stati e i dati base student-t
+  simDat <- sim_data_stud_t(seed  = seed,
+                            TT    = TT,
+                            P     = P,
+                            Pcat  = NULL,
+                            Ktrue = K,
+                            mu    = mu,
+                            rho   = rho,
+                            nu    = nu,
+                            phi   = phi,
+                            pers  = pers)
+  Y0    <- as.matrix(simDat$SimData)
+  truth <- simDat$mchain
+  
+  # 2) costruisci Y: per ogni cella (i,j), se j in rel[[ truth[i] ]] 
+  #    tieni Y0[i,j], altrimenti campiona rumore t_student( df=noise_df )*noise_scale
+  Y <- matrix(NA_real_, nrow = TT, ncol = P)
+  for (i in seq_len(TT)) {
+    k <- truth[i]
+    # feature rilevanti per stato k
+    keep <- rel[[k]]
+    # tutte le altre
+    drop <- setdiff(seq_len(P), keep)
+    # preserva le rilevanti…
+    Y[i, keep] <- Y0[i, keep]
+    # …e genera rumore indipendente sulle irrilevanti
+    Y[i, drop] <- rt(length(drop), df = noise_df) * noise_scale
+  }
+  
+  # 3) genera outlier: sovrascrive outlier_pct*TT righe con un rumore gaussiano di sd=out_scale
+  N_out <- ceiling(out_pct * TT)
+  out_idx <- sample.int(TT, N_out)
+  Y[out_idx, ] <- Y[out_idx, ] + matrix(rnorm(N_out * P, sd = out_scale),
+                                        nrow = N_out, ncol = P)
+  # marca gli outlier con stato 0
+  truth[out_idx] <- 0
+  
+  W_truth <- matrix(FALSE, nrow = K, ncol = P)
+  
+  for (k in seq_len(K)) {
+    W_truth[k, rel_[[k]]] <- TRUE
+  }
+  
+  # restituisci
+  list(
+    Y         = Y,
+    truth     = truth,
+    rel_list  = rel,
+    W_truth   = W_truth
+  )
+}
+
+
+
 robust_sparse_jum <- function(Y,
                            zeta0,
                            lambda,

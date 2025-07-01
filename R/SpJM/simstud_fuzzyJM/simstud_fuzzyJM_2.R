@@ -306,7 +306,7 @@ save(results_df_hard_K2_fuzzy,file='hellinger_df_hard_K2_fuzzy.Rdata')
 
 # K=3 soft ----------------------------------------------------------------
 
-mu=1
+mu=3
 Sigma_rho=0
 ar_rho = 0.99
 tau = .2
@@ -315,12 +315,15 @@ Ktrue=3
 
 start=Sys.time()
 res_list_soft_K3 <- mclapply(seq_len(nrow(hp)), function(i) {
+  # i= 480
   Ki    <- hp$K[i]
   li    <- hp$lambda[i]
   mi    <- hp$m[i]
   TTi    <- hp$TT[i]
   Pi    <- hp$P[i]
   seedi <- hp$seed[i]
+  
+  # head(hp)
   
   soft_scen=simulate_fuzzy_mixture_mv(
     TT = TTi,
@@ -335,7 +338,11 @@ res_list_soft_K3 <- mclapply(seq_len(nrow(hp)), function(i) {
   
   ground_truth=soft_scen[,c("pi_1","pi_2","pi_3")]
   
+  # matplot(ground_truth, type='l', pch=1, col=1:3)
+  
   Yinput=soft_scen[,(1:Pi)+1]
+  
+  # plot(Yinput[,1], type='p', pch=1, col=soft_scen$MAP)
   
   attempt <- 1
   last_loss <- NA_real_
