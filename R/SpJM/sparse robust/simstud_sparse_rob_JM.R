@@ -52,7 +52,7 @@ rel_[[2]]=c(3,4,5)
 rel_[[3]]=c(5,6,7)
 
 start=Sys.time()
-res_list_K2 <- mclapply(seq_len(nrow(hp)), function(i) {
+res_list_K3 <- mclapply(seq_len(nrow(hp)), function(i) {
   
   seed <- hp$seed[i]
   zeta0    <- hp$zeta0[i]
@@ -180,18 +180,18 @@ end=Sys.time()
 
 print(end-start)
 
-#save(res_list_K2,file='simple_simstud_rob_JM_K2.Rdata')
+#save(res_list_K3,file='simple_simstud_rob_JM_K3.Rdata')
 
-load("C:/Users/federico/OneDrive - CNR/Comfort - HMM/simres_robJM/simple_simstud_rob_JM_K2.Rdata")
+load("C:/Users/federico/OneDrive - CNR/Comfort - HMM/simres_robJM/simple_simstud_rob_JM_K3.Rdata")
 
-df_results_robJM_K2 <- do.call(rbind, lapply(res_list_K2, function(x) {
+df_results_robJM_K3 <- do.call(rbind, lapply(res_list_K3, function(x) {
   x_sel <- x[c("seed", "zeta0", "K", "lambda", "TT", "P", "c", "ARI_s", "ARI_W")]
   as.data.frame(x_sel, stringsAsFactors = FALSE)
 }))
 
 library(dplyr)
 
-av_results_robJM_K2 <- df_results_robJM_K2 %>%
+av_results_robJM_K3 <- df_results_robJM_K3 %>%
   group_by(zeta0, K, lambda, TT, P, c) %>%
   summarise(
     mean_ARI_s  = mean(ARI_s),
@@ -205,11 +205,11 @@ av_results_robJM_K2 <- df_results_robJM_K2 %>%
 
 library(plotly)
 
-# Supponendo che av_results_robJM_K2 sia il tuo tibble
+# Supponendo che av_results_robJM_K3 sia il tuo tibble
 
 # 1) superfice 3D per mean_ARI_s
 fig_s <- plot_ly(
-  data = av_results_robJM_K2[av_results_robJM_K2$K==2,],
+  data = av_results_robJM_K3[av_results_robJM_K3$K==2,],
   x = ~lambda, y = ~zeta0, z = ~mean_ARI_s,
   type = "mesh3d",
   intensity = ~mean_ARI_s,
@@ -226,7 +226,7 @@ fig_s <- plot_ly(
 
 # 2) superfice 3D per mean_ARI_W
 fig_W <- plot_ly(
-  data = av_results_robJM_K2[av_results_robJM_K2$K==2,],
+  data = av_results_robJM_K3[av_results_robJM_K3$K==3,],
   x = ~lambda, y = ~zeta0, z = ~mean_ARI_W,
   type = "mesh3d",
   intensity = ~mean_ARI_W,
