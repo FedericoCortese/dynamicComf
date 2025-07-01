@@ -63,7 +63,7 @@ res_list_K2 <- mclapply(seq_len(nrow(hp)), function(i) {
   c        <- hp$c[i]
   
   # Substitute above with
-  simulate_sparse_hmm(seed=seed,
+  simDat=simulate_sparse_hmm(seed=seed,
                       TT=TT, 
                       P=P, K=K,
                       rel=rel_,
@@ -136,7 +136,7 @@ res_list_K2 <- mclapply(seq_len(nrow(hp)), function(i) {
   ############
   
   
-  fit=robust_JM_COSA(Y=as.matrix(Y),
+  fit=robust_JM_COSA(Y=as.matrix(simDat$Y),
                      zeta0=zeta0,
                      lambda=lambda,
                      K=K,
@@ -154,6 +154,8 @@ res_list_K2 <- mclapply(seq_len(nrow(hp)), function(i) {
   
   W_ind=fit$W>0.01
   
+  truth=simDat$truth
+  W_truth=simDat$W_truth
   ARI_s=mclust::adjustedRandIndex(est_s,truth)
   ARI_W=mclust::adjustedRandIndex(W_ind,W_truth)
   
