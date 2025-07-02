@@ -14,7 +14,10 @@ order_states_condMed=function(y,s){
   return(states_temp)
 }
 
-initialize_states <- function(Y, K) {
+initialize_states <- function(Y, K, centr=FALSE) {
+  
+  # centr: if TRUE, the functionoutputs initialized centroids
+  
   n <- nrow(Y)
 
   ### Repeat the following few times?
@@ -34,8 +37,15 @@ initialize_states <- function(Y, K) {
   # Faster solution
   dist_matrix <- StatMatch::gower.dist(Y, centroids)
   init_stats <- apply(dist_matrix, 1, which.min)
-
-  return(init_stats)
+  
+  if(centr){
+    return(list(centroids=centroids,
+                dist_matrix=dist_matrix,
+                init_stats=init_stats))
+  }
+  else{
+    return(init_stats)
+  }
 }
 
 Mode <- function(x,na.rm=T) {
@@ -764,7 +774,24 @@ simulate_sparse_hmm <- function(seed,
   )
 }
 
-
+get_feat_type <- function(Y) {
+  # Y: data.frame or matrix
+  types <- sapply(Y, function(col) {
+    if (is.numeric(col)) {
+      # numeric or integer
+      0L
+    } else if (is.ordered(col)) {
+      # ordered factor
+      2L
+    } else if (is.factor(col) || is.character(col)) {
+      # unordered factor or character
+      1L
+    } else {
+      stop(sprintf("Unsupported column type: %s", class(col)[1]))
+    }
+  })
+  unname(as.integer(types))
+}
 
 robust_sparse_jump <- function(Y,
                            zeta0,
@@ -784,6 +811,22 @@ robust_sparse_jump <- function(Y,
   
   P  <- ncol(Y)
   TT <- nrow(Y)
+  
+  # Create original copy of Y
+  Y_origin=Y
+  
+  feat_type <- get_feat_type(Y)
+  
+  # Transform Y into a numeric matrix
+  Y=as.matrix(
+    data.frame(
+      lapply(Y, function(col) {
+        if (is.factor(col)||is.character(col)) as.integer(as.character(col))
+        else              as.numeric(col)
+      })
+    )
+  )
+  
   Gamma <- lambda * (1 - diag(K))
   
   run_one <- function(init_id) {
@@ -792,8 +835,14 @@ robust_sparse_jump <- function(Y,
     W_old    <- W
     zeta     <- zeta0
     loss_old <- Inf
-    #s = sample(1:K,TT,replace=T)
-    s        <- initialize_states(Y, K)
+    
+    s=initialize_states(Y_origin, K)
+    
+    # DW      <- weight_inv_exp_dist(Y, s, W, zeta, 
+    #                                feat_type=feat_type)
+    # 
+    # The following is crazy slow
+    # v2 <- v_1(DW,knn=knn, c=c, M=M)
     
     for (outer in seq_len(n_outer)) {
       # 2) local scales
@@ -802,7 +851,8 @@ robust_sparse_jump <- function(Y,
       v  <- pmin(v1, v2)
       
       # 3) weighted distances + PAM
-      DW      <- weight_inv_exp_dist(as.matrix(Y * v), s, W, zeta)
+      DW      <- weight_inv_exp_dist(Y * v, s, W, zeta, 
+                                     feat_type=feat_type)
       pam_out <- cluster::pam(DW, k=K, diss=TRUE)
       medoids <- pam_out$id.med
       
@@ -843,7 +893,7 @@ robust_sparse_jump <- function(Y,
       loss_old <- loss
       
       # 9) update W via WCD + exp
-      Spk <- WCD(s, as.matrix(Y * v), K)
+      Spk <- WCD(s, Y * v, K, feat_type=feat_type)
       wcd <- exp(-Spk / zeta0)
       W   <- wcd / rowSums(wcd)
       
