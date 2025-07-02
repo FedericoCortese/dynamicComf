@@ -14,17 +14,23 @@ order_states_condMed=function(y,s){
   return(states_temp)
 }
 
-initialize_states <- function(Y, K, centr=FALSE) {
+initialize_states <- function(Y, K, centr=FALSE,feat_type=NULL) {
   
   # centr: if TRUE, the functionoutputs initialized centroids
   
   n <- nrow(Y)
+  P= ncol(Y)
+  
+  if(is.null(feat_type)){
+    feat_type=rep(0,P)
+  }
 
   ### Repeat the following few times?
   centr_indx=sample(1:n, 1)
   centroids <- Y[centr_indx, , drop = FALSE]  # Seleziona il primo centroide a caso
 
-  closest_dist <- as.matrix(cluster::daisy(Y, metric = "gower"))
+  # closest_dist <- as.matrix(cluster::daisy(Y, metric = "gower"))
+  closest_dist <- gower_dist(Y, Y,feat_type = feat_type)
   closest_dist <- closest_dist[centr_indx,]
 
   for (i in 2:K) {
@@ -35,7 +41,7 @@ initialize_states <- function(Y, K, centr=FALSE) {
   }
 
   # Faster solution
-  dist_matrix <- StatMatch::gower.dist(Y, centroids)
+  dist_matrix <- gower_dist(Y, centroids,feat_type = feat_type)
   init_stats <- apply(dist_matrix, 1, which.min)
   
   if(centr){
@@ -812,9 +818,6 @@ robust_sparse_jump <- function(Y,
   P  <- ncol(Y)
   TT <- nrow(Y)
   
-  # Create original copy of Y
-  Y_origin=Y
-  
   feat_type <- get_feat_type(Y)
   
   # Transform Y into a numeric matrix
@@ -836,13 +839,7 @@ robust_sparse_jump <- function(Y,
     zeta     <- zeta0
     loss_old <- Inf
     
-    s=initialize_states(Y_origin, K)
-    
-    # DW      <- weight_inv_exp_dist(Y, s, W, zeta, 
-    #                                feat_type=feat_type)
-    # 
-    # The following is crazy slow
-    # v2 <- v_1(DW,knn=knn, c=c, M=M)
+    s=initialize_states(Y, K)
     
     for (outer in seq_len(n_outer)) {
       # 2) local scales

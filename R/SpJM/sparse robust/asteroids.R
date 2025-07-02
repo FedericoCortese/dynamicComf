@@ -27,6 +27,7 @@ df_2014OL339=trans_theta(df_2014OL339)
 unique(df_2014OL339$type)
 plot(df_2014OL339$theta,type='p',col=df_2014OL339$type+2)
 
+
 # propagation_2015SO2_new_v2
 df_2015SO2=read.table("data_asteroids/propagation_2015SO2_new_v2.txt",header = T)
 df_2015SO2=trans_theta(df_2015SO2)

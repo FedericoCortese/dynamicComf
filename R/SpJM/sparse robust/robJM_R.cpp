@@ -6,6 +6,89 @@ using namespace Rcpp;
 
 // [[Rcpp::export]]
 NumericMatrix gower_dist(const NumericMatrix& Y,
+                         const NumericMatrix& mu,
+                         Nullable<IntegerVector> feat_type = R_NilValue) {
+  int n = Y.nrow();            // observations
+  int p = Y.ncol();            // features
+  int m = mu.nrow();           // prototypes
+  
+  // 1. Handle NULL feat_type -> all continuous
+  IntegerVector ft;
+  if (feat_type.isNotNull()) {
+    ft = feat_type.get();
+    if (ft.size() != p)
+      stop("feat_type must have length = ncol(Y)");
+  } else {
+    ft = IntegerVector(p, 0);
+  }
+  
+  // 2. Compute s_p: range for all features
+  std::vector<double> s_p(p);
+  for (int j = 0; j < p; ++j) {
+    double mn = Y(0, j), mx = Y(0, j);
+    for (int i = 1; i < n; ++i) {
+      if (Y(i, j) < mn) mn = Y(i, j);
+      if (Y(i, j) > mx) mx = Y(i, j);
+    }
+    s_p[j] = mx - mn;
+    if (s_p[j] == 0.0) s_p[j] = 1.0;
+  }
+  
+  // 3. Precompute ordinal levels and ranks
+  std::vector< std::vector<int> > ord_rank_Y(p);
+  std::vector< std::vector<int> > ord_rank_mu(p);
+  std::vector<int> M(p, 1);
+  for (int j = 0; j < p; ++j) {
+    if (ft[j] == 2) {
+      std::vector<double> vals;
+      vals.reserve(n + m);
+      for (int i = 0; i < n; ++i) vals.push_back(Y(i, j));
+      for (int u = 0; u < m; ++u) vals.push_back(mu(u, j));
+      std::sort(vals.begin(), vals.end());
+      vals.erase(std::unique(vals.begin(), vals.end()), vals.end());
+      int levels = vals.size();
+      M[j] = levels > 1 ? levels : 1;
+      ord_rank_Y[j].resize(n);
+      ord_rank_mu[j].resize(m);
+      for (int i = 0; i < n; ++i) {
+        ord_rank_Y[j][i] = std::lower_bound(vals.begin(), vals.end(), Y(i, j)) - vals.begin();
+      }
+      for (int u = 0; u < m; ++u) {
+        ord_rank_mu[j][u] = std::lower_bound(vals.begin(), vals.end(), mu(u, j)) - vals.begin();
+      }
+    }
+  }
+  
+  // 4. Compute Gower distances
+  NumericMatrix V(n, m);
+  for (int i = 0; i < n; ++i) {
+    for (int u = 0; u < m; ++u) {
+      double acc = 0.0;
+      for (int j = 0; j < p; ++j) {
+        double diff;
+        if (ft[j] == 0) {
+          // continuous: range-based
+          diff = std::abs(Y(i, j) - mu(u, j)) / s_p[j];
+        } else if (ft[j] == 1) {
+          // categorical
+          diff = (Y(i, j) != mu(u, j)) ? 1.0 : 0.0;
+        } else {
+          // ordinal
+          double denom = double(M[j] - 1);
+          diff = denom > 0.0 ? std::abs(ord_rank_Y[j][i] - ord_rank_mu[j][u]) / denom : 0.0;
+        }
+        acc += diff;
+      }
+      V(i, u) = acc / p;  // divide by number of variables
+    }
+  }
+  
+  return V;
+}
+
+
+// [[Rcpp::export]]
+NumericMatrix gower_dist_old(const NumericMatrix& Y,
                          const NumericMatrix& mu) {
   int n = Y.nrow();     // number of observations in Y
   int p = Y.ncol();     // number of variables (columns)
@@ -54,12 +137,17 @@ double median_vec(std::vector<double>& v) {
 }
 
 // [[Rcpp::export]]
-NumericVector LOF_cpp(const NumericMatrix& D, int knn) {
-  int n = D.nrow();
-  if (D.ncol() != n) stop("D must be a square matrix");
+NumericVector LOF_gower(const NumericMatrix& Y,
+                        int knn,
+                        Nullable<IntegerVector> feat_type = R_NilValue) {
+  int n = Y.nrow();
+  if (Y.ncol() != Y.nrow()) stop("Y must be square (same number of rows as columns) for LOF computation via Gower");
   if (knn < 1 || knn >= n) stop("knn must satisfy 1 <= knn < n");
   
-  // 1. Compute k-distance and neighbor sets N_k(i)
+  // 1. Compute Gower dissimilarity matrix
+  NumericMatrix D = gower_dist(Y, Y, feat_type);
+  
+  // 2. Compute k-distance and neighbor sets N_k(i)
   std::vector<double> kdist(n);
   std::vector<std::vector<int>> neigh(n);
   for (int i = 0; i < n; ++i) {
@@ -80,29 +168,27 @@ NumericVector LOF_cpp(const NumericMatrix& D, int knn) {
     }
   }
   
-  // 2. Compute local reachability density (lrd)
+  // 3. Compute local reachability density (lrd)
   std::vector<double> lrd(n);
   for (int i = 0; i < n; ++i) {
     double sum_reach = 0.0;
+    int ni = neigh[i].size();
     for (int j : neigh[i]) {
       double reach_dist = std::max(kdist[j], D(i, j));
       sum_reach += reach_dist;
     }
-    if (sum_reach <= 0.0) {
-      lrd[i] = R_PosInf;
-    } else {
-      lrd[i] = neigh[i].size() / sum_reach;
-    }
+    lrd[i] = (sum_reach > 0.0) ? (double)ni / sum_reach : R_PosInf;
   }
   
-  // 3. Compute LOF for each point
+  // 4. Compute LOF for each point
   NumericVector lof(n);
   for (int i = 0; i < n; ++i) {
     double sum_ratio = 0.0;
+    int ni = neigh[i].size();
     for (int j : neigh[i]) {
       sum_ratio += lrd[j] / lrd[i];
     }
-    lof[i] = sum_ratio / neigh[i].size();
+    lof[i] = (ni > 0) ? sum_ratio / ni : NA_REAL;
   }
   
   return lof;
