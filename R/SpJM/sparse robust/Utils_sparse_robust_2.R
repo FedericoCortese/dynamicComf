@@ -843,13 +843,23 @@ robust_sparse_jump <- function(Y,
     
     for (outer in seq_len(n_outer)) {
       # 2) local scales
-      v1 <- v_1(W[s, , drop=FALSE] * Y, knn=knn, c=c, M=M)
-      v2 <- v_1(Y,                     knn=knn, c=c, M=M)
-      v  <- pmin(v1, v2)
+      # v1 <- v_1(W[s, , drop=FALSE] * Y, knn=knn, c=c, M=M)
+      # v2 <- v_1(Y,                     knn=knn, c=c, M=M)
+      # v  <- pmin(v1, v2)
       
+      # Only this because I cannot weight categorical or ordinal variables
+      v=v_1(Y,                     knn=knn, c=c, M=M)
+      V=v %*% t(v)  
       # 3) weighted distances + PAM
-      DW      <- weight_inv_exp_dist(Y * v, s, W, zeta, 
+      
+      # DW      <- weight_inv_exp_dist(Y * v, s, W, zeta, 
+      #                                feat_type=feat_type)
+      
+      DW      <- V*weight_inv_exp_dist(Y, s, W, zeta, 
                                      feat_type=feat_type)
+      
+      # Weight DWs instead
+      
       pam_out <- cluster::pam(DW, k=K, diss=TRUE)
       medoids <- pam_out$id.med
       
