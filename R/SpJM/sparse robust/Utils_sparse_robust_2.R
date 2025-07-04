@@ -941,17 +941,18 @@ robust_sparse_jump <- function(Y,
     
     s=initialize_states(Y, K,feat_type=feat_type,scale=scale)
     
+    # Only this because I cannot weight categorical or ordinal variables
+    v=v_1(Y,                     knn=knn, c=c, M=M,scale=scale)
+    # v=rep(1,TT)
+    VV=v %*% t(v)
+    VV=sqrt(VV)
+    
     for (outer in seq_len(n_outer)) {
       # 2) local scales
       # v1 <- v_1(W[s, , drop=FALSE] * Y, knn=knn, c=c, M=M)
       # v2 <- v_1(Y,                     knn=knn, c=c, M=M)
       # v  <- pmin(v1, v2)
       
-      # Only this because I cannot weight categorical or ordinal variables
-      v=v_1(Y,                     knn=knn, c=c, M=M,scale=scale)
-      # v=rep(1,TT)
-      VV=v %*% t(v)
-      VV=sqrt(VV)
       
       # 3) weighted distances + PAM
       
