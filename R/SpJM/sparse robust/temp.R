@@ -7,7 +7,7 @@ verbose=T
 
 TT=1000
 P=10
-K=2
+K=3
 
 rel=list()
 rel[[1]]=c(1,2,3)
