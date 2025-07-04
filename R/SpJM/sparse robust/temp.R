@@ -1,11 +1,11 @@
 source("Utils_sparse_robust_2.R")
 
 alpha=.1
-zeta0=0.15
-lambda=0.3
+zeta0=0.2
+lambda=0.2
 verbose=T
 
-TT=1000
+TT=2000
 P=10
 K=3
 
