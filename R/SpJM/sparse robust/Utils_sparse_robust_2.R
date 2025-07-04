@@ -908,7 +908,9 @@ robust_sparse_jump <- function(Y,
                            knn     = 10,
                            c       = 5,
                            M       = NULL,
-                           scale="i") {
+                           scale="i",
+                           parallel=F,
+                           n_cores=NULL) {
   library(Rcpp)
  
   Rcpp::sourceCpp("robJM_R.cpp")
@@ -1026,7 +1028,20 @@ robust_sparse_jump <- function(Y,
   }
   
   # run n_init times, pick the one with smallest loss
-  res_list <- lapply(seq_len(n_init), run_one)
+  if(parallel){
+    if(is.null(n_cores)){
+      n_cores=parallel::detectCores()-1
+    }
+    res_list=mclapply(
+      seq_len(n_init),
+      run_one,
+      mc.cores = n_cores
+    )
+  }
+  else{
+    res_list <- lapply(seq_len(n_init), run_one)
+    
+  }
   losses   <- vapply(res_list, `[[`, numeric(1), "loss")
   best_run <- res_list[[ which.min(losses) ]]
   
