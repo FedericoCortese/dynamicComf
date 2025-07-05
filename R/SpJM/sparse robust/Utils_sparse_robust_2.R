@@ -14,38 +14,28 @@ order_states_condMed=function(y,s){
   return(states_temp)
 }
 
-# initialize_states <- function(Y, K, feat_type=NULL) {
-#   
-#   # centr: if TRUE, the functionoutputs initialized centroids
-#   
-#   TT <- nrow(Y)
-#   P= ncol(Y)
-#   
-#   if(is.null(feat_type)){
-#     feat_type=rep(0,P)
-#   }
+# initialize_states <- function(Y, K) {
+#   n <- nrow(Y)
 # 
 #   ### Repeat the following few times?
-#   centr_indx=sample(1:TT, 1)
+#   centr_indx=sample(1:n, 1)
 #   centroids <- Y[centr_indx, , drop = FALSE]  # Seleziona il primo centroide a caso
 # 
-#   #closest_dist_old <- as.matrix(cluster::daisy(Y, metric = "gower"))
-#   closest_dist <- gower_dist(Y, Y,feat_type = feat_type,scale="m")
+#   closest_dist <- as.matrix(cluster::daisy(Y, metric = "gower"))
 #   closest_dist <- closest_dist[centr_indx,]
 # 
 #   for (i in 2:K) {
 #     prob <- closest_dist / sum(closest_dist)
-#     next_centr_indx <- sample(1:TT, 1, prob = prob)
+#     next_centr_indx <- sample(1:n, 1, prob = prob)
 #     next_centroid <- Y[next_centr_indx, , drop = FALSE]
 #     centroids <- rbind(centroids, next_centroid)
 #   }
 # 
 #   # Faster solution
-#   dist_matrix <- gower_dist(Y, centroids,feat_type = feat_type,scale="m")
+#   dist_matrix <- StatMatch::gower.dist(Y, centroids)
 #   init_stats <- apply(dist_matrix, 1, which.min)
-#   
-#   return(init_stats)
 # 
+#   return(init_stats)
 # }
 
 Mode <- function(x,na.rm=T) {
@@ -56,12 +46,6 @@ Mode <- function(x,na.rm=T) {
   ux[which.max(tabulate(match(x, ux)))]
   
 }
-
-# Rcpp --------------------------------------------------------------------
-
-library(Rcpp)
-Rcpp::sourceCpp("robJM_R.cpp")
-
 
 # OLD -------------------------------------------------------------------------
 
@@ -489,120 +473,20 @@ lof_star=function(x,knn){
   return(lof_st)
 }
 
-v_1_R <- function(Y, knn = 10, c = 2, M = NULL, feat_type = NULL,scale="i") {
-  # Y           : data frame or matrix (T x P)
-  # knn         : number of neighbors
-  # c           : cutoff for modified score (default 2)
-  # M           : optional fixed M; if NULL, compute per-point from neighbors
-  # feat_type   : vector of 0/1/2 for cont/cat/ord (default all continuous)
-  
-  T <- nrow(Y)
-  P <- ncol(Y)
-  if (is.null(feat_type)) feat_type <- rep(0L, P)
-  
-  # 1) Gower dissimilarity
-  D <- gower_dist(as.matrix(Y), as.matrix(Y), feat_type = feat_type,scale=scale)
-  
-  # 2) k-distance and neighborhoods
-  d_knn <- numeric(T)
-  N_knn <- vector("list", T)
-  for(i in seq_len(T)) {
-    # distance to all others, sorted
-    dists <- sort(D[i, -i])
-    d_knn[i] <- dists[knn]
-    # include ties, exclude self
-    N_knn[[i]] <- which(D[i, ] <= d_knn[i] & seq_len(T) != i)
-  }
-  
-  # 3) Reachability distances
-  reach_dist <- vector("list", T)
-  for(i in seq_len(T)) {
-    o <- N_knn[[i]]
-    reach_dist[[i]] <- vapply(o,
-                              function(j) max(d_knn[j], D[i, j]),
-                              numeric(1)
-    )
-  }
-  
-  # 4) Local Reachability Density
-  lrd <- sapply(reach_dist, function(rd) {
-    if (length(rd) == 0) NA_real_ else 1/mean(rd)
-  })
-  
-  # 5) Standard LOF
-  lof <- numeric(T)
-  for(i in seq_len(T)) {
-    o <- N_knn[[i]]
-    if (length(o) == 0 || is.na(lrd[i])) {
-      lof[i] <- NA_real_
-    } else {
-      lof[i] <- mean(lrd[o] / lrd[i])
-    }
-  }
-  
-  # 6) Scaled LOF*
-  lof_star <- numeric(T)
-  for(i in seq_len(T)) {
-    o <- N_knn[[i]]
-    if (length(o) < 2 || is.na(lof[i])) {
-      lof_star[i] <- NA_real_
-    } else {
-      mu_nb <- mean(lof[o])
-      sd_nb <- sd(lof[o])
-      if (sd_nb == 0) sd_nb <- 1
-      lof_star[i] <- (lof[i] - mu_nb) / sd_nb
-    }
-  }
-  
-  # 7) Modified score v_t
-  v <- numeric(T)
-  for(i in seq_len(T)) {
-    ls <- lof_star[i]
-    o  <- N_knn[[i]]
-    if (is.na(ls) || length(o) == 0) {
-      v[i] <- NA_real_; next
-    }
-    
-    # Determine M_i
-    if (!is.null(M)) {
-      M_i <- M
-    } else {
-      # use neighbors' lof*
-      nb_star <- lof_star[o]
-      med_nb  <- median(nb_star, na.rm = TRUE)
-      mad_nb  <- median(abs(nb_star - med_nb), na.rm = TRUE)
-      M_i     <- med_nb + mad_nb
-    }
-    
-    # piecewise
-    if (ls <= M_i) {
-      v[i] <- 1
-    } else if (ls >= c) {
-      v[i] <- 0
-    } else {
-      t <- (ls - M_i) / (c - M_i)
-      v[i] <- (1 - t^2)^2
-    }
-  }
-  
-  return(v)
-}
-
-
-v_1_old=function(x,knn=10,c=2,M=NULL){
-
-  lof_st=lof_star(x,knn)
-
-  if(is.null(M)){
-    M=median(lof_st)+mad(lof_st)
-  }
-
-  v=rep(1,dim(x)[1])
-  v[lof_st>=c]=0
-  indx=which(M<lof_st&lof_st<c)
-  v[indx]=(1-((lof_st[indx]-M)/(c-M))^2)^2
-  return(v)
-}
+# v_1=function(x,knn=10,c=2,M=NULL){
+#   
+#   lof_st=lof_star(x,knn)
+#   
+#   if(is.null(M)){
+#     M=median(lof_st)+mad(lof_st)
+#   }
+#   
+#   v=rep(1,dim(x)[1])
+#   v[lof_st>=c]=0
+#   indx=which(M<lof_st&lof_st<c)
+#   v[indx]=(1-((lof_st[indx]-M)/(c-M))^2)^2
+#   return(v)
+# }
 
 # robust_COSA=function(Y,zeta0,K,tol=NULL,n_outer=20,alpha=.1,verbose=F,knn=10,c=2,M=NULL){
 #   
@@ -790,7 +674,7 @@ simulate_sparse_hmm <- function(seed,
                                 nu   = 100,
                                 phi  = 0.8,
                                 pers = 0.99,
-                                sd_noise    = 400,
+                                noise_df    = 4,
                                 out_pct     = 0.02,
                                 out_scale   = 100) {
   #' Simulate data from a Student-t HMM with selective features and outliers
@@ -807,7 +691,7 @@ simulate_sparse_hmm <- function(seed,
   #'   nu           Numeric; degrees of freedom for the Student-t in sim_data_stud_t.
   #'   phi          Numeric; AR-parameter for sim_data_stud_t.
   #'   pers         Numeric; persistence parameter for sim_data_stud_t.
-  #'   sd_noise     Numeric; s.d. of a Normal distribution used to generate noise
+  #'   noise_df     Numeric; degrees of freedom for the Student-t used to generate noise
   #'                on irrelevant features.
   #'   out_pct      Numeric in [0,1]; fraction of observations to turn into outliers.
   #'   out_scale    Numeric; standard deviation of the additive normal outlier noise.
@@ -820,7 +704,7 @@ simulate_sparse_hmm <- function(seed,
   #'     • rel_list — The same list rel provided as input, indicating per-state relevant features.
   #'
   
- 
+  noise_scale =  sqrt((noise_df-2))
   set.seed(seed)
   # 1) genera la catena di stati e i dati base student-t
   simDat <- sim_data_stud_t(seed  = seed,
@@ -848,24 +732,21 @@ simulate_sparse_hmm <- function(seed,
     # preserva le rilevanti…
     Y[i, keep] <- Y0[i, keep]
     # …e genera rumore indipendente sulle irrilevanti
-    Y[i, drop] <- rnorm(length(drop),mean=rnorm(1), sd=sd_noise) 
+    Y[i, drop] <- rt(length(drop), df = noise_df) * noise_scale
   }
   
   # 3) genera outlier: sovrascrive outlier_pct*TT righe con un rumore gaussiano di sd=out_scale
-  if(out_pct>0){
-    N_out <- ceiling(out_pct * TT)
-    out_idx <- sample.int(TT, N_out)
-    Y[out_idx, ] <- Y[out_idx, ] + matrix(rnorm(N_out * P, sd = out_scale),
-                                          nrow = N_out, ncol = P)
-    # marca gli outlier con stato 0
-    truth[out_idx] <- 0
-  }
-  
+  N_out <- ceiling(out_pct * TT)
+  out_idx <- sample.int(TT, N_out)
+  Y[out_idx, ] <- Y[out_idx, ] + matrix(rnorm(N_out * P, sd = out_scale),
+                                        nrow = N_out, ncol = P)
+  # marca gli outlier con stato 0
+  truth[out_idx] <- 0
   
   W_truth <- matrix(FALSE, nrow = K, ncol = P)
   
   for (k in seq_len(K)) {
-    W_truth[k, rel[[k]]] <- TRUE
+    W_truth[k, rel_[[k]]] <- TRUE
   }
   
   # restituisci
@@ -877,24 +758,10 @@ simulate_sparse_hmm <- function(seed,
   )
 }
 
-get_feat_type <- function(Y) {
-  # Y: data.frame or matrix
-  types <- apply(Y,2, function(col) {
-    if (is.numeric(col)) {
-      # numeric or integer
-      0L
-    } else if (is.ordered(col)) {
-      # ordered factor
-      2L
-    } else if (is.factor(col) || is.character(col)) {
-      # unordered factor or character
-      1L
-    } else {
-      stop(sprintf("Unsupported column type: %s", class(col)[1]))
-    }
-  })
-  unname(as.integer(types))
-}
+library(Rcpp)
+
+Rcpp::sourceCpp("robJM.cpp")
+
 
 robust_sparse_jump <- function(Y,
                            zeta0,
@@ -906,32 +773,14 @@ robust_sparse_jump <- function(Y,
                            alpha   = 0.1,
                            verbose = FALSE,
                            knn     = 10,
-                           c       = 5,
-                           M       = NULL,
-                           scale="i",
-                           parallel=F,
-                           n_cores=NULL) {
+                           c       = 2,
+                           M       = NULL) {
   library(Rcpp)
  
-  Rcpp::sourceCpp("robJM_R.cpp")
+  Rcpp::sourceCpp("robJM.cpp")
   
   P  <- ncol(Y)
   TT <- nrow(Y)
-  
-  feat_type <- get_feat_type(Y)
-  
-  # Transform Y into a numeric matrix
-  if(!is.matrix(Y)){
-    Y=as.matrix(
-      data.frame(
-        lapply(Y, function(col) {
-          if (is.factor(col)||is.character(col)) as.integer(as.character(col))
-          else              as.numeric(col)
-        })
-      )
-    )
-  }
-  
   Gamma <- lambda * (1 - diag(K))
   
   run_one <- function(init_id) {
@@ -940,29 +789,20 @@ robust_sparse_jump <- function(Y,
     W_old    <- W
     zeta     <- zeta0
     loss_old <- Inf
-    
-    s=initialize_states(Y, K,feat_type=feat_type,scale=scale)
-    
-    # Only this because I cannot weight categorical or ordinal variables
-    v2=v_1(Y,                     knn=knn, c=c, M=M,scale=scale)
-    # v=rep(1,TT)
-    # VV=v %*% t(v)
-    # VV=sqrt(VV)
+    #s = sample(1:K,TT,replace=T)
+    s        <- initialize_states(Y, K)
     
     for (outer in seq_len(n_outer)) {
       # 2) local scales
-      v1 <- v_1(W[s, , drop=FALSE] * Y, knn=knn, c=c, M=M,scale=scale)
-      # v2 <- v_1(Y,                     knn=knn, c=c, M=M)
+      v1 <- v_1(W[s, , drop=FALSE] * Y, knn=knn, c=c, M=M)
+      v2 <- v_1(Y,                     knn=knn, c=c, M=M)
+      
+      
+      
       v  <- pmin(v1, v2)
       
-      
       # 3) weighted distances + PAM
-      
-      DW      <- weight_inv_exp_dist(v*Y, s, W, zeta
-                                     ,
-                                     feat_type=feat_type,scale=scale
-                                     )
-      
+      DW      <- weight_inv_exp_dist(as.matrix(Y * v), s, W, zeta)
       pam_out <- cluster::pam(DW, k=K, diss=TRUE)
       medoids <- pam_out$id.med
       
@@ -1003,10 +843,7 @@ robust_sparse_jump <- function(Y,
       loss_old <- loss
       
       # 9) update W via WCD + exp
-      Spk <- WCD(s, v*Y , K
-                 #, feat_type=feat_type,v=rep(1,TT),scale=scale
-                 )
-      
+      Spk <- WCD(s, as.matrix(Y * v), K)
       wcd <- exp(-Spk / zeta0)
       W   <- wcd / rowSums(wcd)
       
@@ -1032,20 +869,7 @@ robust_sparse_jump <- function(Y,
   }
   
   # run n_init times, pick the one with smallest loss
-  if(parallel){
-    if(is.null(n_cores)){
-      n_cores=parallel::detectCores()-1
-    }
-    res_list=mclapply(
-      seq_len(n_init),
-      run_one,
-      mc.cores = n_cores
-    )
-  }
-  else{
-    res_list <- lapply(seq_len(n_init), run_one)
-    
-  }
+  res_list <- lapply(seq_len(n_init), run_one)
   losses   <- vapply(res_list, `[[`, numeric(1), "loss")
   best_run <- res_list[[ which.min(losses) ]]
   
@@ -1055,6 +879,7 @@ robust_sparse_jump <- function(Y,
   best_medoids  <- Y[best_run$medoids,]
   best_v <- best_run$v
   
+  # Most important features (mif)
   mif=which.max(apply(best_W,2,sum))
   
   # Re‐order states based on most important feature state-conditional median
@@ -1162,7 +987,7 @@ cv_robust_sparse_jump <- function(
   # calcola l’ARI sui punti di validazione
   fold_ari <- function(K, kappa, lambda, train_idx, val_idx) {
     # 1) Fit del modello sparse_jump su soli dati di TRAIN
-    res <- robust_sparse_jump(Y=Y[train_idx, , drop = FALSE],
+    res <- robust_sparse_jump(Y=as.matrix(Y[train_idx, , drop = FALSE]),
                           zeta0=zeta0,
                           lambda=lambda,
                           K=K,
