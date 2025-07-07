@@ -11,8 +11,8 @@ source("Utils_sparse_robust_2.R")
 
 zeta0=seq(0.05,0.4,by=.05)
 alpha=.1
-K=2:3
-lambda=seq(0,1,.2)
+K=3
+lambda=seq(0,2,.2)
 
 tol=1e-16
 verbose=F
@@ -27,7 +27,7 @@ mu=3
 rho=0
 nu=10
 pers = 0.99
-K_true=3
+K_true=5
 perc_out=.05
 out_sigma=100
 
@@ -170,7 +170,7 @@ library(plotly)
 
 # 1) superfice 3D per mean_ARI_s
 fig_s <- plot_ly(
-  data = av_results_robJM_K3[av_results_robJM_K3$K==2,],
+  data = av_results_robJM_K3[av_results_robJM_K3$K==3,],
   x = ~lambda, y = ~zeta0, z = ~mean_ARI_s,
   type = "mesh3d",
   intensity = ~mean_ARI_s,
