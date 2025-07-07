@@ -21,7 +21,7 @@ nseed=50
 TT=1000
 P=10
 
-c=10
+c=c(5,10,15)
 
 mu=3
 rho=0
@@ -49,7 +49,7 @@ rel_[[1]]=c(1,4,5)
 rel_[[2]]=c(2,4,5)
 rel_[[3]]=c(3,4,5)
 
-thres_out=.25
+thres_out=0
 thres_feat_weight=.02
 
 start <- Sys.time()
