@@ -11,28 +11,25 @@ source("Utils_sparse_robust_2.R")
 
 zeta0=seq(0.05,0.4,by=.05)
 alpha=.1
-
-# Check how to modify final evaluation to include also K>2
 K=2:3
-tol=1e-16
-n_outer=10
-verbose=F
 lambda=seq(0,1,.2)
+
+tol=1e-16
+verbose=F
 nseed=50
 
 TT=1000
 P=10
 
-c=5
+c=10
 
-mu=2
+mu=3
 rho=0
-nu=100
+nu=10
 pers = 0.99
-
-noise_df    = 4
-out_pct     = 0.02
-out_scale   = 100
+K_true=3
+perc_out=.05
+out_sigma=100
 
 hp=expand.grid(
   seed=1:nseed,
@@ -41,15 +38,19 @@ hp=expand.grid(
   lambda=lambda,
   TT=TT,
   P=P,
-  c=c
+  c=c,
+  K_true=K_true
 )
 
 ncores=parallel::detectCores()-1
 
 rel_=list()
-rel_[[1]]=c(1,2,3)
-rel_[[2]]=c(3,4,5)
-rel_[[3]]=c(5,6,7)
+rel_[[1]]=c(1,4,5)
+rel_[[2]]=c(2,4,5)
+rel_[[3]]=c(3,4,5)
+
+thres_out=.5
+thres_feat_weight=.02
 
 start=Sys.time()
 res_list_K3 <- mclapply(seq_len(nrow(hp)), function(i) {
@@ -61,87 +62,33 @@ res_list_K3 <- mclapply(seq_len(nrow(hp)), function(i) {
   TT       <- hp$TT[i]
   P        <- hp$P[i]
   c        <- hp$c[i]
+  K_true <- hp$K_true[i]
   
   # Substitute above with
-  simDat=simulate_sparse_hmm(seed=seed,
-                      TT=TT, 
-                      P=P, K=K,
-                      rel=rel_,
-                      mu   = mu,
-                      rho  = rho,
-                      nu   = nu,
-                      phi  = 0.8,
-                      pers = pers,
-                      noise_df    = noise_df,
-                      out_pct     = out_pct,
-                      out_scale   = out_scale)
+  simDat=sim_data_stud_t(seed=seed,
+                        TT=TT,
+                        P=P,
+                        Pcat=NULL,
+                        Ktrue=K_true,
+                        mu=mu,
+                        rho=rho,
+                        nu=nu,
+                        pers=pers)
   
-  ######
-  # set.seed(seed)
-  # simDat=sim_data_stud_t(seed=seed,
-  #                        TT=TT,
-  #                        P=P,
-  #                        Pcat=NULL,
-  #                        Ktrue=2,
-  #                        mu=2,
-  #                        rho=0,
-  #                        nu=100,
-  #                        phi=.8,
-  #                        pers=0.99)
-  # 
-  # Y=simDat$SimData
-  # true_stat=simDat$mchain
-  # 
-  # nu=4
-  # # For State 1, only features 1,2 and 3 are relevant, the rest are noise
-  # indx=which(true_stat!=1)
-  # Sigma <- matrix(0,ncol=P-3,nrow=P-3)
-  # diag(Sigma)=5
-  # Y[indx,-(1:3)]=mvtnorm::rmvt(length(indx),
-  #                              sigma = (nu-2)*Sigma/nu,
-  #                              df = nu, delta = rep(0,P-3))
-  # 
-  # # For State 2, only features 3,4 and 5 are relevant, the rest are noise
-  # indx=which(true_stat!=2)
-  # Y[indx,-(3:5)]=mvtnorm::rmvt(length(indx),
-  #                              sigma = (nu-2)*Sigma/nu,
-  #                              df = nu, delta = rep(0,P-3))
-  # 
-  # 
-  # Sigma <- matrix(0,ncol=P-5,nrow=P-5)
-  # diag(Sigma)=5
-  # 
-  # # All other features are noise
-  # Y[,6:P]=mvtnorm::rmvt(TT,
-  #                       sigma = (nu-2)*Sigma/nu,
-  #                       df = nu, delta = rep(0,P-5))
-  # 
-  # # Introduce outliers
-  # set.seed(seed)
-  # out_sigma=100
-  # N_out=TT*0.02
-  # t_out=sample(1:TT,size=N_out)
-  # Y[t_out,]=Y[t_out,]+rnorm(N_out*P,0,out_sigma)
-  # 
-  # # Set the truth for latent states sequence
-  # truth=simDat$mchain
-  # truth[t_out]=0
-  # ###
-  # 
-  # # Set the truth for features
-  # W_truth=matrix(F,nrow=K,ncol=P)
-  # W_truth[,3]=T
-  # W_truth[1,1:2]=T
-  # W_truth[2,4:5]=T
-  ############
+  simDat_sparse=simulate_sparse_hmm(Y=simDat$SimData,
+                                  rel_,
+                                  true_stat=simDat$mchain,
+                                  perc_out   = perc_out,
+                                  out_sigma  = out_sigma,
+                                  seed       = seed)
   
-  
-  fit=robust_sparse_jump(Y=as.matrix(simDat$Y),
+ 
+  fit=robust_sparse_jump(Y=as.matrix(simDat_sparse$Y),
                      zeta0=zeta0,
                      lambda=lambda,
                      K=K,
                      tol        = 1e-16,
-                     n_init     = 5,
+                     n_init     = 3,
                      n_outer    = 10,
                      alpha      = 0.1,
                      verbose    = F,
@@ -150,12 +97,12 @@ res_list_K3 <- mclapply(seq_len(nrow(hp)), function(i) {
                      M          = NULL)
   
   est_s=fit$s
-  est_s[fit$v<0.5]=0
+  est_s[fit$v<0.5]=thres_out
   
-  W_ind=fit$W>0.01
+  W_ind=fit$W>thres_feat_weight
   
-  truth=simDat$truth
-  W_truth=simDat$W_truth
+  truth=simDat_sparse$truth
+  W_truth=simDat_sparse$W_truth
   ARI_s=mclust::adjustedRandIndex(est_s,truth)
   ARI_W=mclust::adjustedRandIndex(W_ind,W_truth)
   
@@ -180,7 +127,7 @@ end=Sys.time()
 
 print(end-start)
 
-#save(res_list_K3,file='simple_simstud_rob_JM_K3.Rdata')
+save(res_list_K3,file='simple_simstud_rob_JM_K3.Rdata')
 
 load("C:/Users/federico/OneDrive - CNR/Comfort - HMM/simres_robJM/simple_simstud_rob_JM_K3.Rdata")
 

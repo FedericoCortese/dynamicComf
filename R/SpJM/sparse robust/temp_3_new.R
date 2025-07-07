@@ -18,51 +18,43 @@ simDat=sim_data_stud_t(seed=123,
                        Ktrue=3,
                        mu=3,
                        rho=0,
-                       nu=100,
+                       nu=10,
                        phi=.8,
                        pers=0.99)
 
 Y=simDat$SimData
 true_stat=simDat$mchain
 
-plot(Y[,2],col=true_stat,pch=19,type='l')
+# State 1: 1,2,3
+# State 2: 1,3,4
+# State 3: 1,4,5
+rel_=list()
+rel_[[1]]=c(1,2,3)
+rel_[[2]]=c(1,3,4)
+rel_[[3]]=c(1,4,5)
 
+inv_rel_=invert_rel(rel_,P)
 
+irrelevant_features=which(sapply(inv_rel_,function(x)length(x)==0))
+subsetY <- Y[,irrelevant_features]
+Y[,irrelevant_features]=subsetY[sample(nrow(subsetY)), ]
 
+relevant_features=which(sapply(inv_rel_,function(x)length(x)!=0))
 
-nu=4
-Sigma <- matrix(0,ncol=P-3,nrow=P-3)
-diag(Sigma)=100
-
-# State 1, 
-indx=which(true_stat==1)
-Y[indx,-c(1,2,3)]=mvtnorm::rmvt(length(indx),
-                             sigma = (nu-2)*Sigma/nu,
-                             df = nu, delta = rep(0,P-3))
-
-# # State 2, 
-indx=which(true_stat==2)
-Y[indx,-c(1,3,4)]=mvtnorm::rmvt(length(indx),
-                             sigma = (nu-2)*Sigma/nu,
-                             df = nu, delta = rep(0,P-3))
-
-## State 3 
-indx=which(true_stat==3)
-Y[indx,-c(1,4,5)]=mvtnorm::rmvt(length(indx),
-                                sigma = (nu-2)*Sigma/nu,
-                                df = nu, delta = rep(0,P-3))
-
-
-Sigma <- matrix(0,ncol=P-5,nrow=P-5)
-diag(Sigma)=100
-Y[,6:P]=mvtnorm::rmvt(TT,
-                      sigma = (nu-2)*Sigma/nu,
-                      df = nu, delta = rep(0,P-5))
+for(p in 1:relevant_features){
+  relevant_states=inv_rel_[[p]]
+  indx=which(true_stat%in%relevant_states)
+  Ytemp=Y[-indx,p]
+  if(length(Ytemp)!=0){
+    Y[-indx,p] = Ytemp[sample(length(Ytemp))]
+  }
+}
 
 # Introduce outliers
 set.seed(1)
-out_sigma=200
-N_out=TT*0.02
+out_sigma=100
+p_out=0.02
+N_out=TT*p_out
 t_out=sample(1:TT,size=N_out)
 Y[t_out,]=Y[t_out,]+rnorm(N_out*P,0,out_sigma)
 
@@ -72,7 +64,56 @@ truth[t_out]=0
 x11()
 par(mfrow=c(4,3))
 for (i in 1:P) {
-  plot(Y[, i], col=truth+1, pch=19,ylab=i,ylim=c(-10,10))
+  plot(Y[, i], col=truth+1, pch=19,ylab=i
+       ,ylim=c(-10,10)
+  )
+}
+
+
+# State 1, 
+indx=which(true_stat==1)
+# original subset
+subsetY <- Y[indx, -c(1,2,3)]
+# permute its rows
+Y[indx, -c(1,2,3)] <- subsetY[sample(nrow(subsetY)), ]
+
+
+
+# # State 2, 
+indx=which(true_stat==2)
+# original subset
+subsetY <- Y[indx, -c(1,2,3)]
+# permute its rows
+Y[indx, -c(1,3,4)] <- subsetY[sample(nrow(subsetY)), ]
+
+## State 3 
+indx=which(true_stat==3)
+# original subset
+subsetY <- Y[indx, -c(1,4,5)]
+# permute its rows
+Y[indx, -c(1,4,5)] <- subsetY[sample(nrow(subsetY)), ]
+
+
+subsetY <- Y[,6:P]
+Y[,6:P]=subsetY[sample(nrow(subsetY)), ]
+
+# Introduce outliers
+set.seed(1)
+out_sigma=100
+p_out=0.02
+N_out=TT*p_out
+t_out=sample(1:TT,size=N_out)
+Y[t_out,]=Y[t_out,]+rnorm(N_out*P,0,out_sigma)
+
+truth=simDat$mchain
+truth[t_out]=0
+
+x11()
+par(mfrow=c(4,3))
+for (i in 1:P) {
+  plot(Y[, i], col=truth+1, pch=19,ylab=i
+       ,ylim=c(-10,10)
+       )
 }
 
 # Y$X1=factor(round(Y$X1))

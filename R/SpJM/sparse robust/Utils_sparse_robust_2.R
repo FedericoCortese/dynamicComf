@@ -666,82 +666,80 @@ JM_COSA=function(Y,zeta0,lambda,K,tol,n_outer=20,alpha=.1,verbose=F,Ts=NULL){
   return(list(W=W,s=s,medoids=medoids))
 }
 
-simulate_sparse_hmm <- function(seed,
-                                TT, P, K,
-                                rel,
-                                mu   = 2,
-                                rho  = 0,
-                                nu   = 100,
-                                phi  = 0.8,
-                                pers = 0.99,
-                                noise_df    = 4,
-                                out_pct     = 0.02,
-                                out_scale   = 100) {
-  #' Simulate data from a Student-t HMM with selective features and outliers
-  #'
-  #' Arguments:
-  #'   seed         Integer; random seed for reproducibility.
-  #'   TT           Integer; number of time-series observations.
-  #'   P            Integer; total number of features.
-  #'   K            Integer; number of hidden states.
-  #'   rel          List of length K; for each state k (1…K), rel[[k]] is an integer vector
-  #'                of 1-based feature indices that are relevant in state k.
-  #'   mu           Numeric; location parameter passed to sim_data_stud_t.
-  #'   rho          Numeric; autocorrelation parameter for sim_data_stud_t.
-  #'   nu           Numeric; degrees of freedom for the Student-t in sim_data_stud_t.
-  #'   phi          Numeric; AR-parameter for sim_data_stud_t.
-  #'   pers         Numeric; persistence parameter for sim_data_stud_t.
-  #'   noise_df     Numeric; degrees of freedom for the Student-t used to generate noise
-  #'                on irrelevant features.
-  #'   out_pct      Numeric in [0,1]; fraction of observations to turn into outliers.
-  #'   out_scale    Numeric; standard deviation of the additive normal outlier noise.
-  #'
-  #' Value:
-  #'   A list with components:
-  #'     • Y        — Numeric matrix of dimension TT × P containing the simulated data.
-  #'     • truth    — Integer vector of length TT giving the true latent state (1…K),
-  #'                  with 0 marking observations designated as outliers.
-  #'     • rel_list — The same list rel provided as input, indicating per-state relevant features.
-  #'
+invert_rel <- function(rel_, P) {
+  # rel_: list of length K, each rel_[[k]] is a vector of indices in 1:P
+  # P    : total number of elements
+  #
+  # returns a list inv of length P, where
+  #   inv[[i]] = all k such that i %in% rel_[[k]]
   
-  noise_scale =  sqrt((noise_df-2))
-  set.seed(seed)
-  # 1) genera la catena di stati e i dati base student-t
-  simDat <- sim_data_stud_t(seed  = seed,
-                            TT    = TT,
-                            P     = P,
-                            Pcat  = NULL,
-                            Ktrue = K,
-                            mu    = mu,
-                            rho   = rho,
-                            nu    = nu,
-                            phi   = phi,
-                            pers  = pers)
-  Y0    <- as.matrix(simDat$SimData)
-  truth <- simDat$mchain
+  # initialize with empty integer vectors
+  inv <- vector("list", P)
+  for(i in seq_len(P)) inv[[i]] <- integer(0)
   
-  # 2) costruisci Y: per ogni cella (i,j), se j in rel[[ truth[i] ]] 
-  #    tieni Y0[i,j], altrimenti campiona rumore t_student( df=noise_df )*noise_scale
-  Y <- matrix(NA_real_, nrow = TT, ncol = P)
-  for (i in seq_len(TT)) {
-    k <- truth[i]
-    # feature rilevanti per stato k
-    keep <- rel[[k]]
-    # tutte le altre
-    drop <- setdiff(seq_len(P), keep)
-    # preserva le rilevanti…
-    Y[i, keep] <- Y0[i, keep]
-    # …e genera rumore indipendente sulle irrilevanti
-    Y[i, drop] <- rt(length(drop), df = noise_df) * noise_scale
+  # for each group k, append k to every member i in rel_[[k]]
+  for(k in seq_along(rel_)) {
+    members <- rel_[[k]]
+    for(i in members) {
+      inv[[i]] <- c(inv[[i]], k)
+    }
   }
   
-  # 3) genera outlier: sovrascrive outlier_pct*TT righe con un rumore gaussiano di sd=out_scale
-  N_out <- ceiling(out_pct * TT)
-  out_idx <- sample.int(TT, N_out)
-  Y[out_idx, ] <- Y[out_idx, ] + matrix(rnorm(N_out * P, sd = out_scale),
-                                        nrow = N_out, ncol = P)
-  # marca gli outlier con stato 0
-  truth[out_idx] <- 0
+  inv
+}
+
+simulate_sparse_hmm <- function(Y,
+                                rel_,
+                                true_stat,
+                                perc_out   = 0.02,
+                                out_sigma  = 100,
+                                seed       = NULL) {
+  # Y         : T x P data matrix or data.frame
+  # rel_      : list of length K; rel_[[k]] is a vector of features in state k
+  # true_stat : integer vector length T with values in 1:K
+  # perc_out  : fraction of rows to turn into outliers
+  # out_sigma : sd of Gaussian noise added for outliers
+  # seed      : optional RNG seed for reproducibility
+  
+  if(!is.null(seed)) set.seed(seed)
+  Y <- as.matrix(Y)
+  TT  <- nrow(Y)
+  P  <- ncol(Y)
+  
+  # 1) invert the rel_ list: for each feature p, which states mention p?
+  inv_rel <- invert_rel(rel_, P)
+  
+  # 2) Irrelevant features = those never mentioned in rel_
+  irrelevant <- which(vapply(inv_rel, length, integer(1)) == 0)
+  if(length(irrelevant) > 0) {
+    # permute their rows globally
+    Y[, irrelevant] <- Y[sample(TT), irrelevant]
+  }
+  
+  # 3) Relevant features = those that appear in at least one state
+  relevant <- which(vapply(inv_rel, length, integer(1)) > 0)
+  for(p in relevant) {
+    relevant_states <- inv_rel[[p]]
+    # indices of rows belonging to any of those states
+    idx_in_state <- which(true_stat %in% relevant_states)
+    # rows not in those states:
+    idx_out_state <- setdiff(seq_len(TT), idx_in_state)
+    if(length(idx_out_state) > 1) {
+      # permute only those rows of column p
+      Y[idx_out_state, p] <- sample(Y[idx_out_state, p])
+    }
+  }
+  
+  # 4) Introduce outliers
+  N_out <- ceiling(TT * perc_out)
+  t_out <- sort(sample(seq_len(TT), N_out))
+  # add Gaussian noise to all features of those rows
+  Y[t_out, ] <- Y[t_out, ] + matrix(rnorm(N_out * P, 0, out_sigma),
+                                    nrow = N_out, ncol = P)
+  
+  # 5) update truth: set outlier rows to 0
+  new_truth <- true_stat
+  new_truth[t_out] <- 0L
   
   W_truth <- matrix(FALSE, nrow = K, ncol = P)
   
@@ -749,12 +747,11 @@ simulate_sparse_hmm <- function(seed,
     W_truth[k, rel_[[k]]] <- TRUE
   }
   
-  # restituisci
   list(
-    Y         = Y,
-    truth     = truth,
-    rel_list  = rel,
-    W_truth   = W_truth
+    Y          = Y,
+    truth      = new_truth,
+    out_indices = t_out,
+    W_truth = W_truth
   )
 }
 
@@ -773,11 +770,22 @@ robust_sparse_jump <- function(Y,
                            alpha   = 0.1,
                            verbose = FALSE,
                            knn     = 10,
-                           c       = 2,
+                           c       = 10,
                            M       = NULL) {
   library(Rcpp)
  
   Rcpp::sourceCpp("robJM.cpp")
+  
+  if(!is.matrix(Y)){
+    Y=as.matrix(
+      data.frame(
+        lapply(Y, function(col) {
+          if (is.factor(col)||is.character(col)) as.integer(as.character(col))
+          else              as.numeric(col)
+        })
+      )
+    )
+  }
   
   P  <- ncol(Y)
   TT <- nrow(Y)
