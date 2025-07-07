@@ -105,7 +105,10 @@ res_list_K3 <- mclapply(seq_len(nrow(hp)), function(i) {
   W_truth=simDat_sparse$W_truth
   ARI_s=mclust::adjustedRandIndex(est_s,truth)
   
-  ARI_W <- mclust::adjustedRandIndex(W_ind, W_truth)
+  ARI_W <- tryCatch(
+    mclust::adjustedRandIndex(W_ind, W_truth),
+    error = function(e) 0
+  )
   
   res <- list(
     seed = seed,
