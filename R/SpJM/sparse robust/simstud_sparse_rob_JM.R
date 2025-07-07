@@ -12,7 +12,7 @@ source("Utils_sparse_robust_2.R")
 zeta0=seq(0.05,0.4,by=.05)
 alpha=.1
 K=3
-lambda=seq(0,2,.2)
+lambda=seq(0,2,.25)
 
 tol=1e-16
 verbose=F
@@ -27,7 +27,7 @@ mu=3
 rho=0
 nu=10
 pers = 0.99
-K_true=5
+K_true=3
 perc_out=.05
 out_sigma=100
 
@@ -49,7 +49,7 @@ rel_[[1]]=c(1,4,5)
 rel_[[2]]=c(2,4,5)
 rel_[[3]]=c(3,4,5)
 
-thres_out=.5
+thres_out=.25
 thres_feat_weight=.02
 
 start <- Sys.time()
@@ -103,7 +103,7 @@ res_list_K3 <- mclapply(seq_len(nrow(hp)), function(i) {
     )
     
     est_s <- fit$s
-    est_s[fit$v < thres_out] <- 0
+    est_s[fit$v <= thres_out] <- 0
     W_ind <- fit$W > thres_feat_weight
     truth <- simDat_sparse$truth
     W_truth <- simDat_sparse$W_truth
