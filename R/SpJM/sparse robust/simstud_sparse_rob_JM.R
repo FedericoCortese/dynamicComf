@@ -97,7 +97,7 @@ res_list_K3 <- mclapply(seq_len(nrow(hp)), function(i) {
                      M          = NULL)
   
   est_s=fit$s
-  est_s[fit$v<0.5]=thres_out
+  est_s[fit$v<thres_out]=0
   
   W_ind=fit$W>thres_feat_weight
   
