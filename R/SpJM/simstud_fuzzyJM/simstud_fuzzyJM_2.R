@@ -307,7 +307,9 @@ save(results_df_hard_K2_fuzzy,file='hellinger_df_hard_K2_fuzzy.Rdata')
 # K=3 soft ----------------------------------------------------------------
 
 mu=3
+#mu=5
 Sigma_rho=0
+#Sigma_rho=0.2
 ar_rho = 0.99
 tau = .2
 ncores=detectCores()-1
@@ -357,7 +359,7 @@ res_list_soft_K3 <- mclapply(seq_len(nrow(hp)), function(i) {
         max_iter = max_iter,
         n_init   = n_init,
         tol      = tol,
-        verbose  = FALSE
+        verbose  = T
       )
       list(success = TRUE, loss = fit$loss,
            S=fit$best_S)

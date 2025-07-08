@@ -509,6 +509,7 @@ fuzzy_jump_cpp <- function(Y,
       # Source Rcpp optimization routines (they must be in PATH)
       Rcpp::sourceCpp("simplex_pgd.cpp")
       
+      
       # Update S[1, ]
       S[1, ] <- optimize_pgd_1T(
         init   = rep(1/K, K),
@@ -549,6 +550,8 @@ fuzzy_jump_cpp <- function(Y,
       colnames(mu) <- colnames(Y)
       
       # Recompute distances and loss
+      # The following works fine
+      # V <- gower_dist(as.matrix(Y), as.matrix(mu))
       V <- gower.dist(Y, mu)
       loss <- sum(V * (S^m)) + lambda * sum(abs(S[1:(TT-1), ] - S[2:TT, ])^2)
       
