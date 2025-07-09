@@ -1170,7 +1170,7 @@ gap_robust_sparse_jump=function(
     parallel=F,
     n_cores=NULL,
     knn=10,
-    c=5,
+    c=10,
     M=NULL
 ){
   
