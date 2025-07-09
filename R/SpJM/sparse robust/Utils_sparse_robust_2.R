@@ -944,7 +944,7 @@ cv_robust_sparse_jump <- function(
   #   n_cores     - number of cores to use for parallel execution (default:  NULL)
   #   cv_method   - method for cross-validation: "blocked-cv" or "forward-chain"
   #   knn         - number of nearest neighbors for LOF (default: 10)
-  #   c           - lower threshold for LOF (default: 5)
+  #   c_grid           - lower threshold for LOF (default: NULL)
   #   M           - upper threshold for LOF (default: NULL, uses median + mad)
   
   
@@ -969,7 +969,7 @@ cv_robust_sparse_jump <- function(
     zeta0 <- 0.2  # Default sparsity hyperparameter
   }
   
-  if(is.null(c)) {
+  if(is.null(c_grid)) {
     c_grid <- c(10,15)
   }
   
@@ -1000,7 +1000,7 @@ cv_robust_sparse_jump <- function(
   
   # Funzione che, per una tripla (K, kappa, lambda) e un fold (train_idx, val_idx),
   # calcola l’ARI sui punti di validazione
-  fold_ari <- function(K, kappa, lambda,c, train_idx, val_idx,true_states) {
+  fold_ari <- function(K, zeta0, lambda,c, train_idx, val_idx,true_states) {
     # 1) Fit del modello sparse_jump su soli dati di TRAIN
     res <- robust_sparse_jump(Y=as.matrix(Y[train_idx, , drop = FALSE]),
                           zeta0=zeta0,
