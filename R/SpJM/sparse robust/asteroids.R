@@ -53,7 +53,7 @@ source("Utils_sparse_robust_2.R")
 
 # Select lambda, K, and c
 cv_2014OL339=cv_robust_sparse_jump(
-    Y=Y_2014OL339,
+    Y=features_2014OL339,
     true_states=gt_2014OL339,
     K_grid=2:4,
     zeta0=.4,
@@ -69,7 +69,7 @@ cv_2014OL339=cv_robust_sparse_jump(
 
 # Select zeta0 based on the best lambda, K and c
 gap_2014OL339=gap_robust_sparse_jump(
-    Y,
+    Y=features_2014OL339,
     K_grid=NULL,
     zeta0_grid=seq(0.05,.5,0.05),
     lambda=0,
