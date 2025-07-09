@@ -18,34 +18,43 @@ unique(df_2001GO2$type)
 # propagation_2002AA29_new_v2
 df_2002AA29=read.table("data_asteroids/propagation_2002AA29_new_v2.txt",header = T)
 df_2002AA29=trans_theta(df_2002AA29)
-plot(df_2002AA29$theta,type='p',col=df_2002AA29$type+2)
+unique(df_2002AA29$type)
+plot(df_2002AA29$theta,type='p',col=df_2002AA29$type+1)
 
 # propagation_2014OL339_new_v2
 
 df_2014OL339=read.table("data_asteroids/propagation_2014OL339_new_v2.txt",header = T)
 df_2014OL339=trans_theta(df_2014OL339)
+df_2014OL339$type[which(df_2014OL339$type==100)]=10
 unique(df_2014OL339$type)
-plot(df_2014OL339$theta,type='p',col=df_2014OL339$type+2)
+plot(df_2014OL339$theta,type='p',col=df_2014OL339$type+1)
 
 
 # propagation_2015SO2_new_v2
 df_2015SO2=read.table("data_asteroids/propagation_2015SO2_new_v2.txt",header = T)
 df_2015SO2=trans_theta(df_2015SO2)
+unique(df_2015SO2$type)
 plot(df_2015SO2$theta,type='p',col=df_2015SO2$type+2)
 
 # propagation_2015XX169_new_v2
 df_2015XX169=read.table("data_asteroids/propagation_2015XX169_new_v2.txt",header = T)
 df_2015XX169=trans_theta(df_2015XX169)
+unique(df_2015XX169$type)
 plot(df_2015XX169$theta,type='p',col=df_2015XX169$type+2)
 
 # propagation_2016CA138_new_v2
 df_2016CA138=read.table("data_asteroids/propagation_2016CA138_new_v2.txt",header = T)
 df_2016CA138=trans_theta(df_2016CA138)
+unique(df_2016CA138$type)
+df_2016CA138$type[which(df_2016CA138$type==100)]=10
 plot(df_2016CA138$theta,type='p',col=df_2016CA138$type+2)
 
-# propagation_2016CO246_new_v2
+# propagation_2016CO246_new_v2 <--- START WITH THIS
 df_2016CO246=read.table("data_asteroids/propagation_2016CO246_new_v2.txt",header = T)
 df_2016CO246=trans_theta(df_2016CO246)
+unique(df_2016CO246$type)
+df_2016CO246$type[which(df_2016CO246$type==100)]=10
+
 plot(df_2016CO246$theta,type='p',col=df_2016CO246$type+2)
 
 # propagation_2016HO3_new_v2
@@ -56,11 +65,16 @@ plot(df_2016HO3$theta,type='p',col=df_2016HO3$type+2)
 # propagation_2019GM1_new_v2
 df_2019GM1=read.table("data_asteroids/propagation_2019GM1_new_v2.txt",header = T)
 df_2019GM1=trans_theta(df_2019GM1)
+unique(df_2019GM1$type)
 plot(df_2019GM1$theta,type='p',col=df_2019GM1$type+2)
 
-# propagation_2020PN1_new_v2
+
+# propagation_2020PN1_new_v2 <--- THIS IS ALSO GOOD STARTING POINT
 df_2020PN1=read.table("data_asteroids/propagation_2020PN1_new_v2.txt",header = T)
 df_2020PN1=trans_theta(df_2020PN1)
+unique(df_2020PN1$type)
+df_2020PN1$type[which(df_2020PN1$type==100)]=10
+
 plot(df_2020PN1$theta,type='p',col=df_2020PN1$type+2)
 
 # propagation_2020PP1_new_v2
