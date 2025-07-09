@@ -44,9 +44,17 @@ features_2014OL339=subset(features_2014OL339,select=-c(type,t))
 apply(features_2014OL339,2,summary)
 
 # Remove I_TP and I_HS (zero variability)
-features_2014OL339=subset(features_2014OL339,select=-c(I_TP,I_HS))
+#features_2014OL339=subset(features_2014OL339,select=-c(I_TP,I_HS))
+sel_features_2014OL339=subset(features_2014OL339,
+                              select=-c(
+                                 theta,a
+                                         ,dtheta,
+                                        I_TP, I_HS
+                                 #,
+                                        #I_QS,I_CP
+                                        ))
 
-head(features_2014OL339)
+head(sel_features_2014OL339)
 
 # plot(features_2014OL339$dtheta,col=gt_2014OL339+2)
 # plot(features_2014OL339$sd_dtheta,col=gt_2014OL339+2)
@@ -58,7 +66,7 @@ source("Utils_sparse_robust_2.R")
 
 # Select lambda, K, and c
 cv_2014OL339=cv_robust_sparse_jump(
-    Y=features_2014OL339,
+    Y=sel_features_2014OL339,
     true_states=gt_2014OL339,
     K_grid=2:4,
     zeta0=.4,
@@ -74,7 +82,7 @@ cv_2014OL339=cv_robust_sparse_jump(
 
 # Select zeta0 based on the best lambda, K and c
 gap_2014OL339=gap_robust_sparse_jump(
-    Y=features_2014OL339,
+    Y=sel_features_2014OL339,
     K_grid=NULL,
     zeta0_grid=seq(0.05,.5,0.05),
     lambda=0,
@@ -86,6 +94,30 @@ gap_2014OL339=gap_robust_sparse_jump(
     M=NULL
 )
 
+# Final fit
+
+fit_2014OL339=robust_sparse_jump(
+    Y=sel_features_2014OL339,
+    K=3,
+    zeta0=.3,
+    lambda=.7,
+    c=10,
+    knn=10,
+    M=NULL,
+    n_init=3,
+    verbose=T,
+    tol=1e-16
+)
+
+est_s_2014OL339=fit_2014OL339$s
+est_s_2014OL339[fit_2014OL339$v==0]=0
+plot(features_2014OL339$theta,col=est_s_2014OL339+1)
+plot(features_2014OL339$a,col=est_s_2014OL339+1)
+
+est_W_2014OL339= data.frame(round(fit_2014OL339$W,2))
+colnames(est_W_2014OL339)=names(sel_features_2014OL339)
+
+est_W_2014OL339
 
 # propagation_2015SO2_new_v2
 df_2015SO2=read.table("data_asteroids/propagation_2015SO2_new_v2.txt",header = T)
