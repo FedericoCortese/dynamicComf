@@ -787,6 +787,9 @@ robust_sparse_jump <- function(Y,
     )
   }
   
+  # Standardize
+  Y=scale(Y)
+  
   P  <- ncol(Y)
   TT <- nrow(Y)
   Gamma <- lambda * (1 - diag(K))
@@ -924,7 +927,7 @@ cv_robust_sparse_jump <- function(
     n_cores=NULL,
     cv_method="blocked-cv",
     knn=10,
-    c=5,
+    c_grid=NULL,
     M=NULL
 ) {
   
@@ -966,6 +969,10 @@ cv_robust_sparse_jump <- function(
     zeta0 <- 0.2  # Default sparsity hyperparameter
   }
   
+  if(is.null(c)) {
+    c_grid <- c(10,15)
+  }
+  
   # Libreria per ARI
   library(mclust)
   
@@ -993,7 +1000,7 @@ cv_robust_sparse_jump <- function(
   
   # Funzione che, per una tripla (K, kappa, lambda) e un fold (train_idx, val_idx),
   # calcola l’ARI sui punti di validazione
-  fold_ari <- function(K, kappa, lambda, train_idx, val_idx) {
+  fold_ari <- function(K, kappa, lambda,c, train_idx, val_idx,true_states) {
     # 1) Fit del modello sparse_jump su soli dati di TRAIN
     res <- robust_sparse_jump(Y=as.matrix(Y[train_idx, , drop = FALSE]),
                           zeta0=zeta0,
@@ -1040,6 +1047,7 @@ cv_robust_sparse_jump <- function(
     # For kappa we take a representative value, we will select kappa later based on GAP stat
     zeta0  = zeta0,
     lambda = lambda_grid,
+    c_grid =c_grid,
     KEEP.OUT.ATTRS = FALSE,
     stringsAsFactors = FALSE
   )
@@ -1049,6 +1057,7 @@ cv_robust_sparse_jump <- function(
     K      = integer(0),
     zeta0  = integer(0),
     lambda = numeric(0),
+    c=numeric(0),
     ARI    = numeric(0)
   )
   
@@ -1059,13 +1068,15 @@ cv_robust_sparse_jump <- function(
       K_val     <- grid$K[row]
       zeta0_val <- grid$zeta0[row]
       lambda_val<- grid$lambda[row]
+      c_val     <- grid$c_grid[row]
       
       # calcolo ARI su ciascun fold
       ari_vals <- numeric(n_folds)
       for (f in seq_len(n_folds)) {
         val_idx   <- fold_indices[[f]]
         train_idx <- setdiff(seq_len(N), val_idx)
-        ari_vals[f] <- fold_ari(K_val, zeta0_val, lambda_val, train_idx, val_idx)
+        ari_vals[f] <- fold_ari(K_val, zeta0_val, lambda_val, c_val,
+                                train_idx, val_idx,true_states)
       }
       mean_ari <- mean(ari_vals)
       
@@ -1074,6 +1085,7 @@ cv_robust_sparse_jump <- function(
         K      = K_val,
         zeta0  = zeta0,
         lambda = lambda_val,
+        c= c_val,
         ARI    = mean_ari,
         stringsAsFactors = FALSE
       )
@@ -1096,13 +1108,14 @@ cv_robust_sparse_jump <- function(
         K_val     <- as.integer(grid$K[row])
         zeta0_val <- as.integer(grid$zeta0[row])
         lambda_val<-        grid$lambda[row]
+        c_val     <- grid$c_grid[row]
         
         # calcolo ARI su ciascun fold
         ari_vals <- numeric(n_folds)
         for (f in seq_len(n_folds)) {
           val_idx   <- fold_indices[[f]]
           train_idx <- setdiff(seq_len(N), val_idx)
-          ari_vals[f] <- fold_ari(K_val, zeta0_val, lambda_val, train_idx, val_idx)
+          ari_vals[f] <- fold_ari(K_val, zeta0_val, lambda_val,c_val, train_idx, val_idx)
         }
         mean_ari <- mean(ari_vals)
         
@@ -1111,6 +1124,7 @@ cv_robust_sparse_jump <- function(
           K      = K_val,
           zeta0  = zeta0,
           lambda = lambda_val,
+          c= c_val,
           ARI    = mean_ari,
           stringsAsFactors = FALSE
         )
