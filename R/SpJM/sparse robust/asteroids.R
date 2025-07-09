@@ -41,6 +41,11 @@ time=features_2014OL339$t
 # Remove ground truth 
 features_2014OL339=subset(features_2014OL339,select=-c(type,t))
 
+apply(features_2014OL339,2,summary)
+
+# Remove I_TP and I_HS (zero variability)
+features_2014OL339=subset(features_2014OL339,select=-c(I_TP,I_HS))
+
 head(features_2014OL339)
 
 # plot(features_2014OL339$dtheta,col=gt_2014OL339+2)
@@ -63,7 +68,7 @@ cv_2014OL339=cv_robust_sparse_jump(
     n_cores=NULL,
     cv_method="blocked-cv",
     knn=10,
-    c=c(7.5,10),
+    c_grid=c(7.5,10),
     M=NULL
 )
 
