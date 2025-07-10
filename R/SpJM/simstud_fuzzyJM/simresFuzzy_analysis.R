@@ -2,8 +2,6 @@ library(dplyr)
 library(tidyr)
 library(ggplot2)
 
-<<<<<<< HEAD
-=======
 max_iter   = 10
 n_init     = 10
 tol        = 1e-8
@@ -11,7 +9,6 @@ verbose    = FALSE
 ncores   = 25
 max_retries=50
 
->>>>>>> 705082e2ca4af0e77243b8cfc65f4d4157cb14b6
 K_grid=2:3
 lambda_grid=seq(0,.5,length.out=11)
 m_grid=seq(1.01,2,length.out=5)
@@ -247,12 +244,9 @@ best_hd_hard_K2_cont
 
 # K=3 soft ----------------------------------------------------------------
 
-<<<<<<< HEAD
 #load("D:/CNR/OneDrive - CNR/Comfort - HMM/simres_fuzzyJM_fuzzySTJM/hellinger_df_soft_K3_fuzzy.Rdata")
-=======
 load("C:/Users/federico/OneDrive - CNR/Comfort - HMM/simres_fuzzyJM_fuzzySTJM/hellinger_df_soft_K3_fuzzy.Rdata")
 
->>>>>>> 705082e2ca4af0e77243b8cfc65f4d4157cb14b6
 head(results_df_soft_K3_fuzzy)
 
 avg_hd_soft_K3_fuzzy <- results_df_soft_K3_fuzzy %>%
@@ -279,7 +273,7 @@ avg_lambda0_byTP <- avg_hd_soft_K3_fuzzy %>%
 avg_lambda0_byTP
 
 # Plot varying lambda
-plot_data <- avg_hd_soft_K3_fuzzy %>%
+plot_data <- avg_mse_soft_K3_fuzzy %>%
   filter(K == 3, m %in% unique(hp$m)) %>%
   mutate(m_label = case_when(
     m == 1.01   ~ "m = 1.01",
@@ -296,7 +290,7 @@ custom_labeller <- labeller(
 )
 
 # Plot
-ggplot(plot_data, aes(x = lambda, y = mean_hellinger,
+ggplot(plot_data, aes(x = lambda, y = av_MSE,
                       color = m_label, group = m_label)) +
   geom_line(size = .7) +
   facet_grid(TT ~ P, labeller = custom_labeller) +
@@ -312,12 +306,8 @@ ggplot(plot_data, aes(x = lambda, y = mean_hellinger,
   )
 
 # Plot varying m
-plot_data <- avg_hd_soft_K3_fuzzy %>%
-<<<<<<< HEAD
+plot_data <- avg_mse_soft_K3_fuzzy %>%
   filter(lambda == 0.40) %>%
-=======
-  filter(lambda == 0.1) %>%
->>>>>>> 705082e2ca4af0e77243b8cfc65f4d4157cb14b6
   mutate(K = factor(K))  # ensure K is treated as categorical for color/legend
 
 # Custom facet labels
@@ -327,14 +317,14 @@ custom_labeller <- labeller(
 )
 
 # Plot
-ggplot(plot_data, aes(x = m, y = mean_hellinger,
+ggplot(plot_data, aes(x = m, y = av_MSE,
                       color = K, group = K)) +
   geom_line(size = .7) +
   facet_grid(TT ~ P, labeller = custom_labeller) +
   scale_color_discrete(name = "K") +
   labs(
     x = "m",
-    y = "Mean Hellinger Distance"
+    y = "av. MSE"
   ) +
   theme_minimal() +
   theme(
@@ -382,12 +372,9 @@ best_hd_soft_K3_fuzzy
 
 # K=3 hard ----------------------------------------------------------------
 
-<<<<<<< HEAD
 #load("D:/CNR/OneDrive - CNR/Comfort - HMM/simres_fuzzyJM_fuzzySTJM/hellinger_df_hard_K3_fuzzy.Rdata")
-=======
 load("C:/Users/federico/OneDrive - CNR/Comfort - HMM/simres_fuzzyJM_fuzzySTJM/hellinger_df_hard_K3_fuzzy.Rdata")
 
->>>>>>> 705082e2ca4af0e77243b8cfc65f4d4157cb14b6
 head(results_df_hard_K3_fuzzy)
 
 avg_hd_hard_K3_fuzzy <- results_df_hard_K3_fuzzy %>%
@@ -415,11 +402,8 @@ avg_lambda0_byTP
 
 # Plot varying lambda
 plot_data <- avg_hd_hard_K3_fuzzy %>%
-<<<<<<< HEAD
   filter(K == 2, m %in% unique(results_df_hard_K3_fuzzy$m)) %>%
-=======
   filter(K == 3, m %in% unique(hp$m)) %>%
->>>>>>> 705082e2ca4af0e77243b8cfc65f4d4157cb14b6
   mutate(m_label = case_when(
     m == 1.01   ~ "m = 1.01",
     m == 1.2575 ~ "m = 1.25",
