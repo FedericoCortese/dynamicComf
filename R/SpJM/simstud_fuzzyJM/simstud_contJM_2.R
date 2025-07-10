@@ -125,37 +125,37 @@ end-start
 
 save(res_list_soft_K2_cont,file='res_cont_soft_K2.Rdata')
 
-lista_risultati <- mclapply(res_list_soft_K2_cont, function(el) {
-  # estraggo S e ground_truth come vettori
-  cS  <- as.matrix(el$S)
-  cGT <- as.matrix(el$ground_truth)
-  
-  MAP_true=apply(cS,1,which.max)
-  MAP_est=apply(cGT,1,which.max)
-  confusion <-table(MAP_true, MAP_est)
-  mapping <- apply(confusion, 1, which.max)
-  cS=cS[,mapping]
-  
-  # calcolo la distanza di Hellinger
-  hd <- mean(vapply(
-    seq_len(nrow(cS)),
-    function(i) hellinger_distance_vec(cS[i, ], cGT[i, ]),
-    numeric(1)
-  ))
-  
-  # costruisco un piccolo data.frame con jhellinger_dist e tutti gli altri campi
-  data.frame(
-    jhellinger_dist = hd,
-    lambda          = el$lambda,
-    K               = el$K,
-    stringsAsFactors = FALSE
-  )
-},mc.cores = ncores)
-
-# 3. Combino tutti i data.frame in uno solo
-results_df_soft_K2_cont <- do.call(rbind, lista_risultati)
-
-save(results_df_soft_K2_cont,file='hellinger_df_soft_K2_cont.Rdata')
+# lista_risultati <- mclapply(res_list_soft_K2_cont, function(el) {
+#   # estraggo S e ground_truth come vettori
+#   cS  <- as.matrix(el$S)
+#   cGT <- as.matrix(el$ground_truth)
+#   
+#   MAP_true=apply(cS,1,which.max)
+#   MAP_est=apply(cGT,1,which.max)
+#   confusion <-table(MAP_true, MAP_est)
+#   mapping <- apply(confusion, 1, which.max)
+#   cS=cS[,mapping]
+#   
+#   # calcolo la distanza di Hellinger
+#   hd <- mean(vapply(
+#     seq_len(nrow(cS)),
+#     function(i) hellinger_distance_vec(cS[i, ], cGT[i, ]),
+#     numeric(1)
+#   ))
+#   
+#   # costruisco un piccolo data.frame con jhellinger_dist e tutti gli altri campi
+#   data.frame(
+#     jhellinger_dist = hd,
+#     lambda          = el$lambda,
+#     K               = el$K,
+#     stringsAsFactors = FALSE
+#   )
+# },mc.cores = ncores)
+# 
+# # 3. Combino tutti i data.frame in uno solo
+# results_df_soft_K2_cont <- do.call(rbind, lista_risultati)
+# 
+# save(results_df_soft_K2_cont,file='hellinger_df_soft_K2_cont.Rdata')
 
 # K=2 hard contJM ---------------------------------------------------------------------
 
@@ -246,37 +246,37 @@ end-start
 
 save(res_list_hard_K2_cont,file='res_cont_hard_K2.Rdata')
 
-lista_risultati <- mclapply(res_list_hard_K2_cont, function(el) {
-  # estraggo S e ground_truth come vettori
-  cS  <- as.matrix(el$S)
-  cGT <- as.matrix(el$ground_truth)
-  
-  MAP_true=apply(cS,1,which.max)
-  MAP_est=apply(cGT,1,which.max)
-  confusion <-table(MAP_true, MAP_est)
-  mapping <- apply(confusion, 1, which.max)
-  cS=cS[,mapping]
-  
-  # calcolo la distanza di Hellinger
-  hd <- mean(vapply(
-    seq_len(nrow(cS)),
-    function(i) hellinger_distance_vec(cS[i, ], cGT[i, ]),
-    numeric(1)
-  ))
-  
-  # costruisco un piccolo data.frame con jhellinger_dist e tutti gli altri campi
-  data.frame(
-    jhellinger_dist = hd,
-    lambda          = el$lambda,
-    K               = el$K,
-    stringsAsFactors = FALSE
-  )
-},mc.cores = ncores)
-
-# 3. Combino tutti i data.frame in uno solo
-results_df_hard_K2_cont <- do.call(rbind, lista_risultati)
-
-save(results_df_hard_K2_cont,file='hellinger_df_hard_K2_cont.Rdata')
+# lista_risultati <- mclapply(res_list_hard_K2_cont, function(el) {
+#   # estraggo S e ground_truth come vettori
+#   cS  <- as.matrix(el$S)
+#   cGT <- as.matrix(el$ground_truth)
+#   
+#   MAP_true=apply(cS,1,which.max)
+#   MAP_est=apply(cGT,1,which.max)
+#   confusion <-table(MAP_true, MAP_est)
+#   mapping <- apply(confusion, 1, which.max)
+#   cS=cS[,mapping]
+#   
+#   # calcolo la distanza di Hellinger
+#   hd <- mean(vapply(
+#     seq_len(nrow(cS)),
+#     function(i) hellinger_distance_vec(cS[i, ], cGT[i, ]),
+#     numeric(1)
+#   ))
+#   
+#   # costruisco un piccolo data.frame con jhellinger_dist e tutti gli altri campi
+#   data.frame(
+#     jhellinger_dist = hd,
+#     lambda          = el$lambda,
+#     K               = el$K,
+#     stringsAsFactors = FALSE
+#   )
+# },mc.cores = ncores)
+# 
+# # 3. Combino tutti i data.frame in uno solo
+# results_df_hard_K2_cont <- do.call(rbind, lista_risultati)
+# 
+# save(results_df_hard_K2_cont,file='hellinger_df_hard_K2_cont.Rdata')
 
 
 # K=3 soft cont JM --------------------------------------------------------
@@ -368,37 +368,37 @@ end-start
 
 save(res_list_soft_K3_cont,file='res_cont_soft_K3.Rdata')
 
-lista_risultati <- mclapply(res_list_soft_K3_cont, function(el) {
-  # estraggo S e ground_truth come vettori
-  cS  <- as.matrix(el$S)
-  cGT <- as.matrix(el$ground_truth)
-  
-  MAP_true=apply(cS,1,which.max)
-  MAP_est=apply(cGT,1,which.max)
-  confusion <-table(MAP_true, MAP_est)
-  mapping <- apply(confusion, 1, which.max)
-  cS=cS[,mapping]
-  
-  # calcolo la distanza di Hellinger
-  hd <- mean(vapply(
-    seq_len(nrow(cS)),
-    function(i) hellinger_distance_vec(cS[i, ], cGT[i, ]),
-    numeric(1)
-  ))
-  
-  # costruisco un piccolo data.frame con jhellinger_dist e tutti gli altri campi
-  data.frame(
-    jhellinger_dist = hd,
-    lambda          = el$lambda,
-    K               = el$K,
-    stringsAsFactors = FALSE
-  )
-},mc.cores = ncores)
-
-# 3. Combino tutti i data.frame in uno solo
-results_df_soft_K3_cont <- do.call(rbind, lista_risultati)
-
-save(results_df_soft_K3_cont,file='hellinger_df_soft_K3_cont.Rdata')
+# lista_risultati <- mclapply(res_list_soft_K3_cont, function(el) {
+#   # estraggo S e ground_truth come vettori
+#   cS  <- as.matrix(el$S)
+#   cGT <- as.matrix(el$ground_truth)
+#   
+#   MAP_true=apply(cS,1,which.max)
+#   MAP_est=apply(cGT,1,which.max)
+#   confusion <-table(MAP_true, MAP_est)
+#   mapping <- apply(confusion, 1, which.max)
+#   cS=cS[,mapping]
+#   
+#   # calcolo la distanza di Hellinger
+#   hd <- mean(vapply(
+#     seq_len(nrow(cS)),
+#     function(i) hellinger_distance_vec(cS[i, ], cGT[i, ]),
+#     numeric(1)
+#   ))
+#   
+#   # costruisco un piccolo data.frame con jhellinger_dist e tutti gli altri campi
+#   data.frame(
+#     jhellinger_dist = hd,
+#     lambda          = el$lambda,
+#     K               = el$K,
+#     stringsAsFactors = FALSE
+#   )
+# },mc.cores = ncores)
+# 
+# # 3. Combino tutti i data.frame in uno solo
+# results_df_soft_K3_cont <- do.call(rbind, lista_risultati)
+# 
+# save(results_df_soft_K3_cont,file='hellinger_df_soft_K3_cont.Rdata')
 
 
 # K= 3 hard cont ----------------------------------------------------------
@@ -490,35 +490,35 @@ end-start
 
 save(res_list_hard_K3_cont,file='res_cont_hard_K3.Rdata')
 
-lista_risultati <- mclapply(res_list_hard_K3_cont, function(el) {
-  # estraggo S e ground_truth come vettori
-  cS  <- as.matrix(el$S)
-  cGT <- as.matrix(el$ground_truth)
-  
-  MAP_true=apply(cS,1,which.max)
-  MAP_est=apply(cGT,1,which.max)
-  confusion <-table(MAP_true, MAP_est)
-  mapping <- apply(confusion, 1, which.max)
-  cS=cS[,mapping]
-  
-  # calcolo la distanza di Hellinger
-  hd <- mean(vapply(
-    seq_len(nrow(cS)),
-    function(i) hellinger_distance_vec(cS[i, ], cGT[i, ]),
-    numeric(1)
-  ))
-  
-  # costruisco un piccolo data.frame con jhellinger_dist e tutti gli altri campi
-  data.frame(
-    jhellinger_dist = hd,
-    lambda          = el$lambda,
-    K               = el$K,
-    stringsAsFactors = FALSE
-  )
-},mc.cores = ncores)
-
-# 3. Combino tutti i data.frame in uno solo
-results_df_hard_K3_cont <- do.call(rbind, lista_risultati)
-
-save(results_df_hard_K3_cont,file='hellinger_df_hard_K3_cont.Rdata')
+# lista_risultati <- mclapply(res_list_hard_K3_cont, function(el) {
+#   # estraggo S e ground_truth come vettori
+#   cS  <- as.matrix(el$S)
+#   cGT <- as.matrix(el$ground_truth)
+#   
+#   MAP_true=apply(cS,1,which.max)
+#   MAP_est=apply(cGT,1,which.max)
+#   confusion <-table(MAP_true, MAP_est)
+#   mapping <- apply(confusion, 1, which.max)
+#   cS=cS[,mapping]
+#   
+#   # calcolo la distanza di Hellinger
+#   hd <- mean(vapply(
+#     seq_len(nrow(cS)),
+#     function(i) hellinger_distance_vec(cS[i, ], cGT[i, ]),
+#     numeric(1)
+#   ))
+#   
+#   # costruisco un piccolo data.frame con jhellinger_dist e tutti gli altri campi
+#   data.frame(
+#     jhellinger_dist = hd,
+#     lambda          = el$lambda,
+#     K               = el$K,
+#     stringsAsFactors = FALSE
+#   )
+# },mc.cores = ncores)
+# 
+# # 3. Combino tutti i data.frame in uno solo
+# results_df_hard_K3_cont <- do.call(rbind, lista_risultati)
+# 
+# save(results_df_hard_K3_cont,file='hellinger_df_hard_K3_cont.Rdata')
 
