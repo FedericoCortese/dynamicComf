@@ -1,4 +1,22 @@
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(tidyverse)
 
+K_grid=2:3
+lambda_grid=seq(0,.5,length.out=11)
+m_grid=seq(1.01,2,length.out=5)
+seed=1:50
+
+TT=c(1000,2000)
+P=c(5,10)
+
+hp <- expand.grid(K = K_grid,
+                  lambda = lambda_grid,
+                  m = m_grid,
+                  TT=TT,
+                  P=P,
+                  seed=seed)
 
 # K=3 soft ----------------------------------------------------------------
 
@@ -60,16 +78,6 @@ avg_lambda0_byTP
 
 # Cont JM
 load("D:/CNR/OneDrive - CNR/Comfort - HMM/simres_fuzzyJM_fuzzySTJM/res_cont_soft_K3.Rdata")
-K_grid=2:3
-lambda_grid=c(0,.5,1,5,10,25,50,100)
-seed=1:50
-TT=c(1000,2000)
-P=c(5,10)
-hp <- expand.grid(K = K_grid,
-                  lambda = lambda_grid,
-                  TT=TT,
-                  P=P,
-                  seed=seed)
 
 res_summary_K3_soft_cont <- do.call(rbind, lapply(res_list_soft_K3_cont, function(el) {
   # Coercizione in matrice
@@ -600,3 +608,36 @@ best_mse_hard_K2_cont <- avg_mse_hard_K2_cont %>%
   slice_min(order_by = av_MSE, n = 1, with_ties = FALSE) %>%
   ungroup()
 best_mse_hard_K2_cont
+
+# Some Diagnostics Plots
+plot_data_hard_K2 <- avg_mse_hard_K2_fuzzy %>%
+  filter(K == 2, m %in% unique(hp$m)) %>%
+  mutate(m_label = case_when(
+    m == 1.01   ~ "m = 1.01",
+    m == 1.2575 ~ "m = 1.25",
+    m == 1.505  ~ "m = 1.50",
+    m == 1.7525 ~ "m = 1.75",
+    m == 2.00   ~ "m = 2.00"
+  ))
+
+# Create custom labeller for TT and P
+custom_labeller_hard_K2 <- labeller(
+  TT = function(x) paste("T =", x),
+  P  = function(x) paste("P =", x)
+)
+
+# Plot
+ggplot(plot_data_hard_K2, aes(x = lambda, y = av_MSE,
+                               color = m_label, group = m_label)) +
+  geom_line(size = .7) +
+  facet_grid(TT ~ P, labeller = custom_labeller_hard_K2) +
+  scale_color_discrete(name = NULL) +
+  labs(
+    x = expression(lambda),
+    y = "av. MSE"
+  ) +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(face = "bold"),
+    legend.position = "bottom"
+  )

@@ -306,7 +306,7 @@ save(results_df_hard_K2_fuzzy,file='hellinger_df_hard_K2_fuzzy.Rdata')
 
 # K=3 soft ----------------------------------------------------------------
 
-mu=3
+mu=1
 #mu=5
 Sigma_rho=0
 #Sigma_rho=0.2
