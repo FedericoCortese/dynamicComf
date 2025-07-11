@@ -213,40 +213,40 @@ punct=function(x,pNAs,typeNA){
   
 }
 
-initialize_states <- function(Y, K) {
-  n <- nrow(Y)
-  
-  ### Repeat the following few times?
-  centr_indx=sample(1:n, 1)
-  centroids <- Y[centr_indx, , drop = FALSE]  # Seleziona il primo centroide a caso
-  
-  closest_dist <- as.matrix(daisy(Y, metric = "gower"))
-  closest_dist <- closest_dist[centr_indx,]
-  
-  for (i in 2:K) {
-    prob <- closest_dist / sum(closest_dist)
-    next_centr_indx <- sample(1:n, 1, prob = prob)
-    next_centroid <- Y[next_centr_indx, , drop = FALSE]
-    centroids <- rbind(centroids, next_centroid)
-  }
-  ###
-  
-  # init_stats=rep(0,n)
-  # For cycle
-  # for(i in 1:n){
-  #   init_stats[i]=which.min(gower.dist(Y[i,],centroids))
-  # }
-  
-  # Using sapply and vapply
-  # init_stats2 <- sapply(1:n, function(i) which.min(gower.dist(Y[i,], centroids)))
-  # init_stats3 <- vapply(1:n, function(i) which.min(gower.dist(Y[i,], centroids)), integer(1))
-  
-  # Faster solution 
-  dist_matrix <- gower.dist(Y, centroids)
-  init_stats <- apply(dist_matrix, 1, which.min)
-  
-  return(init_stats)
-}
+# initialize_states <- function(Y, K) {
+#   n <- nrow(Y)
+#   
+#   ### Repeat the following few times?
+#   centr_indx=sample(1:n, 1)
+#   centroids <- Y[centr_indx, , drop = FALSE]  # Seleziona il primo centroide a caso
+#   
+#   closest_dist <- as.matrix(daisy(Y, metric = "gower"))
+#   closest_dist <- closest_dist[centr_indx,]
+#   
+#   for (i in 2:K) {
+#     prob <- closest_dist / sum(closest_dist)
+#     next_centr_indx <- sample(1:n, 1, prob = prob)
+#     next_centroid <- Y[next_centr_indx, , drop = FALSE]
+#     centroids <- rbind(centroids, next_centroid)
+#   }
+#   ###
+#   
+#   # init_stats=rep(0,n)
+#   # For cycle
+#   # for(i in 1:n){
+#   #   init_stats[i]=which.min(gower.dist(Y[i,],centroids))
+#   # }
+#   
+#   # Using sapply and vapply
+#   # init_stats2 <- sapply(1:n, function(i) which.min(gower.dist(Y[i,], centroids)))
+#   # init_stats3 <- vapply(1:n, function(i) which.min(gower.dist(Y[i,], centroids)), integer(1))
+#   
+#   # Faster solution 
+#   dist_matrix <- gower.dist(Y, centroids)
+#   init_stats <- apply(dist_matrix, 1, which.min)
+#   
+#   return(init_stats)
+# }
 ######
 
 get_cat_t <- function(y, mc, mu_val, phi, df = 5) {
@@ -478,39 +478,63 @@ fuzzy_jump_cpp <- function(Y,
   TT <- nrow(Y)
   P  <- ncol(Y)
   
-  # Replace missing values with column medians initially
+  Rcpp::sourceCpp("simplex_pgd.cpp")
+  
+  # Get feature types vector
+  feature_types <- sapply(Y, class)
+  # Convert feature_types to integer (0 for continuous, 1 for categorical)
+  feature_types <- as.integer(feature_types == "factor" | feature_types == "character")
+  
+  # Standardize only continuous features
   for (j in seq_len(P)) {
-    if (any(is.na(Y[[j]]))) {
-      medj <- median(Y[[j]], na.rm = TRUE)
-      Y[[j]][is.na(Y[[j]])] <- medj
-    }
+    if (feature_types[j] == 0) {  # Continuous feature
+      Y[[j]] <- scale(Y[[j]], center = TRUE, scale = TRUE)
+    } 
   }
+  
+  # Transform into a matrix
+  if(!is.matrix(Y)){
+    Y=as.matrix(
+      data.frame(
+        lapply(Y, function(col) {
+          if (is.factor(col)||is.character(col)) as.integer(as.character(col))
+          else              as.numeric(col)
+        })
+      )
+    )
+  }
+  
   
   run_one <- function(init) {
     # Single initialization
     # 1) Initialize hard states via k‐prototypes++ (or custom routine)
     s <- initialize_states(Y, K)
     S <- matrix(0, nrow = TT, ncol = K)
-    row_idx <- seq_len(TT)
-    S[cbind(row_idx, s)] <- 1
+    S[cbind(seq_len(TT), s)] <- 1L
     
     # 2) Initialize mu: state‐conditional medians/modes
-    mu <- sapply(seq_len(K), function(k) {
-      apply(Y, 2, function(x) poliscidata::wtd.median(x, weights = S[, k]^m))
-    })
-    mu <- t(mu)
-    colnames(mu) <- colnames(Y)
+    mu <- matrix(NA_real_, nrow = K, ncol = P, 
+                 dimnames = list(NULL, colnames(Y)))
+    
+    for (k in seq_len(K)) {
+      w <- S[, k]
+      for (p in seq_len(P)) {
+        if (feature_types[p] == 0L) {
+          # variabile continua → mediana pesata
+          mu[k, p] <- as.numeric(poliscidata::wtd.median(Y[, p], weights = w))
+        } else {
+          # variabile categorica (già numerica) → moda pesata
+          mu[k, p] <- as.numeric(poliscidata::wtd.mode(Y[, p], weights = w))
+        }
+      }
+    }
     
     S_old <- S
-    V <- gower.dist(Y, mu)
+    V <- gower_dist(Y, mu)
     loss_old <- sum(V * (S^m)) + lambda * sum(abs(S[1:(TT-1), ] - S[2:TT, ])^2)
     
     for (it in seq_len(max_iter)) {
-      # Source Rcpp optimization routines (they must be in PATH)
-      Rcpp::sourceCpp("simplex_pgd.cpp")
-      # Rcpp::sourceCpp("simplex_pgd_2.cpp")
-      
-      
+    
       # Update S[1, ]
       S[1, ] <- optimize_pgd_1T(
         init   = rep(1/K, K),
@@ -544,16 +568,23 @@ fuzzy_jump_cpp <- function(Y,
       )$par
       
       # Recompute mu
-      mu <- sapply(seq_len(K), function(k) {
-        apply(Y, 2, function(x) poliscidata::wtd.median(x, weights = S[, k]^m))
-      })
-      mu <- t(mu)
-      colnames(mu) <- colnames(Y)
+      for (k in seq_len(K)) {
+        w <- S[, k]
+        for (p in seq_len(P)) {
+          if (feature_types[p] == 0L) {
+            # variabile continua → mediana pesata
+            mu[k, p] <- as.numeric(poliscidata::wtd.median(Y[, p], weights = w))
+          } else {
+            # variabile categorica (già numerica) → moda pesata
+            mu[k, p] <- as.numeric(poliscidata::wtd.mode(Y[, p], weights = w))
+          }
+        }
+      }
       
       # Recompute distances and loss
       # The following works fine
       # V <- gower_dist(as.matrix(Y), as.matrix(mu))
-      V <- gower.dist(Y, mu)
+      V <- gower_dist(Y, mu)
       loss <- sum(V * (S^m)) + lambda * sum(abs(S[1:(TT-1), ] - S[2:TT, ])^2)
       
       if (verbose) cat(sprintf("Initialization %d, Iteration %d: loss = %.6e\n", init, it, loss))
@@ -619,7 +650,9 @@ fuzzy_jump_cpp <- function(Y,
     best_S    = best_S,
     best_mu = best_mu,
     loss      = best_loss,
-    MAP       = MAP
+    MAP       = MAP,
+    Y=Y,
+    feature_types = feature_types
     # ,
     # Y         = Y,
     # PE        = PE,
@@ -628,198 +661,6 @@ fuzzy_jump_cpp <- function(Y,
     # XB        = XB
   ))
 }
-
-fuzzy_jump_entropy_cpp <- function(Y, 
-                           K, 
-                           lambda = 1e-5, 
-                           m = 0,
-                           max_iter = 5, 
-                           n_init = 10, 
-                           tol = 1e-16, 
-                           verbose = FALSE,
-                           parallel = FALSE,
-                           n_cores = NULL
-) {
-  # Fit jump model for mixed‐type data with optional parallel initializations
-  #
-  # Arguments:
-  #   Y            - data.frame with mixed data types (categorical vars must be factors)
-  #   K            - number of states
-  #   lambda       - penalty for the number of jumps
-  #   m            - fuzziness exponent (for soft membership)
-  #   max_iter     - maximum number of iterations per initialization
-  #   n_init       - number of random initializations
-  #   tol          - convergence tolerance
-  #   verbose      - print progress per iteration (TRUE/FALSE)
-  #   parallel     - if TRUE, use mclapply for parallel initializations
-  #   n_cores      - number of cores for mclapply; if NULL, uses detectCores() - 1
-  #
-  # Value:
-  #   List with:
-  #     best_S      - TT×K soft‐membership matrix from best initialization
-  #     loss        - best objective value
-  #     MAP         - re‐ordered state sequence (1..K)
-  #     Y           - imputed data (NA replaced)
-  #     PE          - partitioning entropy
-  #     PB          - PB index
-  #     PB_lambda   - PB index using loss in denominator
-  #     XB          - Xie–Beni index
-  
-  K <- as.integer(K)
-  TT <- nrow(Y)
-  P  <- ncol(Y)
-  
-  # Replace missing values with column medians initially
-  for (j in seq_len(P)) {
-    if (any(is.na(Y[[j]]))) {
-      medj <- median(Y[[j]], na.rm = TRUE)
-      Y[[j]][is.na(Y[[j]])] <- medj
-    }
-  }
-  
-  run_one <- function(init) {
-    # Single initialization
-    # 1) Initialize hard states via k‐prototypes++ (or custom routine)
-    s <- initialize_states(Y, K)
-    S <- matrix(0, nrow = TT, ncol = K)
-    row_idx <- seq_len(TT)
-    S[cbind(row_idx, s)] <- 1
-    
-    # 2) Initialize mu: state‐conditional medians/modes
-    mu <- sapply(seq_len(K), function(k) {
-      apply(Y, 2, function(x) poliscidata::wtd.median(x, weights = S[, k]^m))
-    })
-    mu <- t(mu)
-    colnames(mu) <- colnames(Y)
-    
-    S_old <- S
-    V <- gower.dist(Y, mu)
-    loss_old <- sum(V * S) + lambda * sum(abs(S[1:(TT-1), ] - S[2:TT, ])^2)
-    
-    for (it in seq_len(max_iter)) {
-      # Source Rcpp optimization routines (they must be in PATH)
-      Rcpp::sourceCpp("simplex_pgd_2.cpp")
-      
-      
-      # Update S[1, ]
-      S[1, ] <- optimize_pgd_1T(
-        init   = rep(1/K, K),
-        g      = V[1, ],
-        s_t1   = S[2, ],
-        lambda = lambda,
-        m      = m
-      )$par
-      
-      # Update S[2:(TT-1), ]
-      if (TT > 2) {
-        for (t in 2:(TT - 1)) {
-          S[t, ] <- optimize_pgd_2T(
-            init    = rep(1/K, K),
-            g       = V[t, ],
-            s_prec  = S[t - 1, ],
-            s_succ  = S[t + 1, ],
-            lambda  = lambda,
-            m       = m
-          )$par
-        }
-      }
-      
-      # Update S[TT, ]
-      S[TT, ] <- optimize_pgd_1T(
-        init   = rep(1/K, K),
-        g      = V[TT, ],
-        s_t1   = S[TT - 1, ],
-        lambda = lambda,
-        m      = m
-      )$par
-      
-      # Recompute mu
-      mu <- sapply(seq_len(K), function(k) {
-        apply(Y, 2, function(x) poliscidata::wtd.median(x, weights = S[, k]))
-      })
-      mu <- t(mu)
-      colnames(mu) <- colnames(Y)
-      
-      # Recompute distances and loss
-      # The following works fine
-      # V <- gower_dist(as.matrix(Y), as.matrix(mu))
-      V <- gower.dist(Y, mu)
-      loss <- sum(V * S) + lambda * sum(abs(S[1:(TT-1), ] - S[2:TT, ])^2)
-      
-      if (verbose) cat(sprintf("Initialization %d, Iteration %d: loss = %.6e\n", init, it, loss))
-      
-      # Check convergence
-      if (!is.null(tol)) {
-        if ((loss_old - loss) < tol) break
-      } else if (all(S == S_old)) {
-        break
-      }
-      loss_old <- loss
-      S_old <- S
-    }
-    
-    list(S = S, loss = loss_old, mu = mu)
-  }
-  
-  # Choose apply function based on parallel flag
-  if (parallel) {
-    library(parallel)
-    if (is.null(n_cores)) {
-      n_cores <- max(detectCores() - 1, 1)
-    }
-    res_list <- mclapply(seq_len(n_init), run_one, mc.cores = n_cores)
-  } else {
-    res_list <- lapply(seq_len(n_init), run_one)
-  }
-  
-  # Find best initialization
-  losses <- vapply(res_list, function(x) x$loss, numeric(1))
-  best_idx <- which.min(losses)
-  best_run <- res_list[[best_idx]]
-  best_S   <- best_run$S
-  best_loss<- best_run$loss
-  best_mu  <- best_run$mu
-  
-  # Compute MAP and re‐order states
-  old_MAP <- apply(best_S, 1, which.max)
-  MAP <- order_states_condMed(Y[, 1], old_MAP)
-  tab <- table(MAP, old_MAP)
-  new_order <- apply(tab, 1, which.max)
-  best_S <- best_S[, new_order]
-  
-  # # Compute cluster validity indices
-  # PE <- compute_entropy(best_S, base = exp(1))
-  # 
-  # unc_med <- apply(Y, 2, median)
-  # ref <- as.data.frame(t(unc_med))
-  # colnames(ref) <- colnames(Y)
-  # E1 <- sum(gower_dist(Y, ref))
-  # 
-  # Dmat <- gower.dist(best_mu)
-  # DK <- sum(Dmat[lower.tri(Dmat)])
-  # 
-  # Jm <- sum((gower.dist(Y, best_mu)) * (best_S^m))
-  # 
-  # PB <- (DK * (1/K) * E1 / Jm)^2
-  # PB_lambda <- (DK * (1/K) * E1 / best_loss)^2
-  # 
-  # XB <- Jm / (TT * min(Dmat[lower.tri(Dmat)]))
-  
-  return(list(
-    best_S    = best_S,
-    best_mu = best_mu,
-    loss      = best_loss,
-    MAP       = MAP
-    # ,
-    # Y         = Y,
-    # PE        = PE,
-    # PB        = PB,
-    # PB_lambda = PB_lambda,
-    # XB        = XB
-  ))
-}
-
-
 
 
 
@@ -964,6 +805,8 @@ cv_fuzzy_jump <- function(
     n_folds = 5,
     parallel = FALSE,
     n_cores = NULL
+    # ,
+    # cv_method="forward-chain"
 ) {
   # Cross-validate fuzzy jump model hyperparameters (K, m, lambda) via rolling-origin CV
   
@@ -973,25 +816,63 @@ cv_fuzzy_jump <- function(
   if (is.null(lambda_grid)) lambda_grid <- seq(0, 1, by = 0.1)
   
   library(fclust)    # for fARI
-  library(cluster)   # for daisy (Gower distance)
   library(parallel)  # for mclapply
   
   TT <- nrow(Y)
   P  <- ncol(Y)
   
-  if(is.null(n_folds)){
-    n_folds <- round(TT*.1)
+  if(cv_method=="blocked-cv"){
+    fold_indices <- split(
+      1:TT,
+      rep(1:n_folds, each = ceiling(TT/ n_folds), length.out = TT)
+    )
+
+  }
+  else if(cv_method=="forward-chain"){
+    fold_indices <- lapply(seq_len(n_folds), function(k) {
+      idx_end <- TT - (k - 1)
+      1:(idx_end-1)
+    })
+    names(fold_indices) <- as.character(seq_len(n_folds))
+  }
+  else{
+    stop("cv_method must be either 'blocked-cv' or 'forward-chain'")
   }
   
   # Function to compute fuzzy ARI for one fold
-  fold_pred <- function(K, m, lambda, train_idx, val_idx) {
+  fold_pred <- function(Y,K, m, lambda, train_idx, val_idx,true_states) {
+    
+    # Get feature types vector
+    feature_types <- sapply(Y, class)
+    # Convert feature_types to integer (0 for continuous, 1 for categorical)
+    feature_types <- as.integer(feature_types == "factor" | feature_types == "character")
+    
+    # Standardize only continuous features
+    for (j in seq_len(P)) {
+      if (feature_types[j] == 0) {  # Continuous feature
+        Y[[j]] <- scale(Y[[j]], center = TRUE, scale = TRUE)
+      } 
+    }
+    
+    # Transform into a matrix
+    if(!is.matrix(Y)){
+      Y=as.matrix(
+        data.frame(
+          lapply(Y, function(col) {
+            if (is.factor(col)||is.character(col)) as.integer(as.character(col))
+            else              as.numeric(col)
+          })
+        )
+      )
+    }
+    
     # 1) Fit on training data
     res <- fuzzy_jump_cpp(
-      Y        = as.matrix(Y[train_idx, , drop = FALSE]),
+      Y        = Y[train_idx, , drop = FALSE],
       K        = as.integer(K),
       lambda   = lambda,
       m        = m,
-      max_iter = 8,
+      max_iter = 5,
       n_init   = 5,
       tol      = 1e-6,
       verbose  = FALSE
@@ -1003,50 +884,100 @@ cv_fuzzy_jump <- function(
     
     # 2) Forecast the next point using PGD on simplex
     #    Compute Gower distances between new point and each centroid
-    g_dist <- gower.dist(Y[val_idx, , drop = FALSE], centroids)
+    g_dist <- gower_dist(Y[val_idx, , drop = FALSE], centroids,feat_type=feat_type)
     
-    s_prev <- S_train[nrow(S_train), ]
-    pred_s <- optimize_pgd_1T(
-      init   = rep(1 / K, K),
-      g      = g_dist,
-      s_t1   = s_prev,
-      lambda = lambda,
-      m      = m
-    )$par
+    TT_val <- length(val_idx)
+    s <- apply(g_dist,1,which.min)
+    S_pred <- matrix(0, nrow = TT_val, ncol = K)
+    S_pred[cbind(seq_len(TT_val), s)] <- 1L
+    # Estimate optimal S
+    for(i in 1:5){
+      S_pred[1, ] <- optimize_pgd_1T(
+        init   = rep(1/K, K),
+        g      = g_dist[1, ],
+        s_t1   = S_pred[2, ],
+        lambda = lambda,
+        m      = m
+      )$par
+      
+      # Update S[2:(TT-1), ]
+      if (TT_val > 2) {
+        for (t in 2:(TT_val - 1)) {
+          S_pred[t, ] <- optimize_pgd_2T(
+            init    = rep(1/K, K),
+            g       = g_dist[t, ],
+            s_prec  = S_pred[t - 1, ],
+            s_succ  = S_pred[t + 1, ],
+            lambda  = lambda,
+            m       = m
+          )$par
+        }
+      }
+      
+      # Update S[TT, ]
+      S_pred[TT_val, ] <- optimize_pgd_1T(
+        init   = rep(1/K, K),
+        g      = g_dist[TT_val, ],
+        s_t1   = S_pred[TT_val - 1, ],
+        lambda = lambda,
+        m      = m
+      )$par
+    }
     
-    # 3) Compute fuzzy ARI between true label and predicted membership
-    return(pred_s)
+    # 3) Compute fuzzy fARI between true label and predicted membership
+    
+    # NOT WORKING
+    fARI <- fclust::ARI.F(, S_pred)
+    return(fARI)
   }
   
   # Build hyperparameter grid
   grid <- expand.grid(
     K      = K_grid,
-    m      = m_grid,
+    # For kappa we take a representative value, we will select kappa later based on GAP stat
+    m  = m_grid,
     lambda = lambda_grid,
-    fold = n_folds:1,
     KEEP.OUT.ATTRS = FALSE,
     stringsAsFactors = FALSE
+  )
+  
+  # Data.frame in cui raccogliere (K, kappa, lambda, media_ARI)
+  results <- data.frame(
+    K      = integer(0),
+    m  = integer(0),
+    lambda = numeric(0),
+    fARI    = numeric(0)
   )
   
   #--- versione sequenziale
   if(!parallel){
     fold_results <- lapply(1:nrow(grid), function(i) {
       
-      train_idx <- 1:(TT-grid$fold[i])
-      val_idx = TT-grid$fold[i]+1
+      # train_idx <- 1:(TT-grid$fold[i])
+      # val_idx = TT-grid$fold[i]+1
       K      <- grid$K[i]
       m      <- grid$m[i]
       lambda <- grid$lambda[i]
-      pred_s    <- fold_pred(K, m, lambda, train_idx, val_idx)
+      
+      fARI_vals =numeric(n_folds)
+      for (f in seq_len(n_folds)) {
+        val_idx   <- fold_indices[[f]]
+        train_idx <- setdiff(seq_len(TT), val_idx)
+        fARI_vals[f]<- fold_pred(Y,K, m, lambda,
+                                  train_idx, val_idx,true_states)
+      }
+      
+      mean_fARI<- mean(fARI_vals)
       
       list(
         fold     = grid$fold[i],
         K        = K,
         m        = m,
         lambda   = lambda,
-        pred_s   = pred_s
+        fARI  = mean_fARI
       )
     })
+    results <- do.call(rbind, results_list)
   }
   
   #--- versione parallela
@@ -1055,21 +986,29 @@ cv_fuzzy_jump <- function(
     n_cores <- if (is.null(n_cores)) detectCores() - 1 else n_cores
     
     fold_results <- mclapply(1:nrow(grid), function(i) {
-      train_idx <- 1:(TT-grid$fold[i])
-      val_idx = TT-grid$fold[i]+1
+      
       K      <- grid$K[i]
       m      <- grid$m[i]
       lambda <- grid$lambda[i]
-      pred_s    <- fold_pred(K, m, lambda, train_idx, val_idx)
+      
+      fARI_vals =numeric(n_folds)
+      for (f in seq_len(n_folds)) {
+        val_idx   <- fold_indices[[f]]
+        train_idx <- setdiff(seq_len(TT), val_idx)
+        fARI_vals[f]<- fold_pred(Y,K, m, lambda,
+                                 train_idx, val_idx,true_states)
+      }
+      
+      mean_fARI<- mean(fARI_vals)
       
       list(
         fold     = grid$fold[i],
         K        = K,
         m        = m,
         lambda   = lambda,
-        pred_s   = pred_s
+        fARI  = mean_fARI
       )
-    }, mc.cores = n_cores)
+    },mc.cores = n_cores)
   }
   return(fold_results)
 }
