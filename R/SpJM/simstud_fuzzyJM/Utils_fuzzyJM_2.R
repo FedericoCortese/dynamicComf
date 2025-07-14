@@ -213,6 +213,21 @@ punct=function(x,pNAs,typeNA){
   
 }
 
+my_ARI <- function(x, y, both_constant_value = 1) {
+  ux <- unique(x)
+  uy <- unique(y)
+  if (length(ux) < 2 && length(uy) < 2) {
+    # both constant: perfect agreement by convention
+    return(both_constant_value)
+  }
+  if (length(ux) < 2 || length(uy) < 2) {
+    # one constant, one not: total disagreement by some conventions
+    return(0)
+  }
+  # normal case
+  pdfCluster::adj.rand.index(x, y)
+}
+
 # initialize_states <- function(Y, K) {
 #   n <- nrow(Y)
 #   
@@ -804,9 +819,8 @@ cv_fuzzy_jump <- function(
     lambda_grid = NULL,
     n_folds = 5,
     parallel = FALSE,
-    n_cores = NULL
-    # ,
-    # cv_method="forward-chain"
+    n_cores = NULL,
+    cv_method="blocked-cv"
 ) {
   # Cross-validate fuzzy jump model hyperparameters (K, m, lambda) via rolling-origin CV
   
@@ -842,30 +856,6 @@ cv_fuzzy_jump <- function(
   # Function to compute fuzzy ARI for one fold
   fold_pred <- function(Y,K, m, lambda, train_idx, val_idx,true_states) {
     
-    # Get feature types vector
-    feature_types <- sapply(Y, class)
-    # Convert feature_types to integer (0 for continuous, 1 for categorical)
-    feature_types <- as.integer(feature_types == "factor" | feature_types == "character")
-    
-    # Standardize only continuous features
-    for (j in seq_len(P)) {
-      if (feature_types[j] == 0) {  # Continuous feature
-        Y[[j]] <- scale(Y[[j]], center = TRUE, scale = TRUE)
-      } 
-    }
-    
-    # Transform into a matrix
-    if(!is.matrix(Y)){
-      Y=as.matrix(
-        data.frame(
-          lapply(Y, function(col) {
-            if (is.factor(col)||is.character(col)) as.integer(as.character(col))
-            else              as.numeric(col)
-          })
-        )
-      )
-    }
-    
     # 1) Fit on training data
     res <- fuzzy_jump_cpp(
       Y        = Y[train_idx, , drop = FALSE],
@@ -882,9 +872,28 @@ cv_fuzzy_jump <- function(
     S_train   <- res$best_S             # (length(train_idx) × K)
     centroids <- res$best_mu                 # (K × P)
     
+    # Get feature types vector
+    Yg=Y
+    feature_types <- sapply(Yg, class)
+    # Convert feature_types to integer (0 for continuous, 1 for categorical)
+    feature_types <- as.integer(feature_types == "factor" | feature_types == "character")
+
+    # Transform into a matrix
+    if(!is.matrix(Y)){
+      Yg=as.matrix(
+        data.frame(
+          lapply(Yg, function(col) {
+            if (is.factor(col)||is.character(col)) as.integer(as.character(col))
+            else              as.numeric(col)
+          })
+        )
+      )
+    }
+    
     # 2) Forecast the next point using PGD on simplex
     #    Compute Gower distances between new point and each centroid
-    g_dist <- gower_dist(Y[val_idx, , drop = FALSE], centroids,feat_type=feat_type)
+    
+    g_dist <- gower_dist(Yg[val_idx, , drop = FALSE], centroids,feat_type=feature_types)
     
     TT_val <- length(val_idx)
     s <- apply(g_dist,1,which.min)
@@ -927,7 +936,14 @@ cv_fuzzy_jump <- function(
     # 3) Compute fuzzy fARI between true label and predicted membership
     
     # NOT WORKING
-    fARI <- fclust::ARI.F(, S_pred)
+    MAP_pred=apply(S_pred,1,which.max)
+    #fARI <- fclust::ARI.F(true_states[val_idx], MAP_pred)
+    temp=true_states[val_idx]
+    if(all(temp==temp[1])){
+      temp=rep(1,length(temp))
+    }
+    # fARI <- pdfCluster::adj.rand.index(temp, MAP_pred)
+    fARI <-my_ARI(temp, MAP_pred) 
     return(fARI)
   }
   

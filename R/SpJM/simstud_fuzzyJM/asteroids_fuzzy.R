@@ -1,5 +1,6 @@
 
-source("D:/git/dynamicComf/dynamicComf/R/SpJM/sparse robust/Utils_asteroids.R")
+#source("D:/git/dynamicComf/dynamicComf/R/SpJM/sparse robust/Utils_asteroids.R")
+source("C:/Users/federico/OneDrive/Documenti/git/dynamicComf/R/SpJM/sparse robust/Utils_asteroids.R")
 
 # propagation_2001GO2_new_v2
 
@@ -18,6 +19,12 @@ plot(df_2002AA29$theta,type='p',col=df_2002AA29$type+1)
 # propagation_2014OL339_new_v2
 
 df_2014OL339=read.table("D:/git/dynamicComf/dynamicComf/R/SpJM/sparse robust/data_asteroids/propagation_2014OL339_new_v2.txt",header = T)
+df_2014OL339=read.table("C:/Users/federico/OneDrive/Documenti/git/dynamicComf/R/SpJM/sparse robust/data_asteroids/propagation_2014OL339_new_v2.txt",header = T)
+
+# Recode states
+old_vals <- sort(unique(df_2014OL339$type))
+df_2014OL339$type <- match(df_2014OL339$type, old_vals)
+
 
 # Transform theta
 df_2014OL339=trans_theta(df_2014OL339)
@@ -50,9 +57,13 @@ sel_features_2014OL339=subset(features_2014OL339,
                                 theta,a
                                 ,dtheta,
                                 I_TP, I_HS
-                                #,
-                                #I_QS,I_CP
+                                # ,
+                                # mean_osc
+                                # ,
+                                # I_QS,I_CP
                               ))
+# I have problems with all these features during CV cause they remain constant over
+# the all train-validation time window
 
 head(sel_features_2014OL339)
 
@@ -76,44 +87,31 @@ cv_fuzzy_2014OL339=cv_fuzzy_jump(
     n_cores = NULL
 )
 
-# Select zeta0 based on the best lambda, K and c
-gap_2014OL339=gap_robust_sparse_jump(
-  Y=sel_features_2014OL339,
-  K_grid=NULL,
-  zeta0_grid=seq(0.05,.5,0.05),
-  lambda=0,
-  B=10,
-  parallel=F,
-  n_cores=NULL,
-  knn=10,
-  c=10,
-  M=NULL
+
+# Fit with best hyperparameters
+
+fit_2014OL339 = fuzzy_jump_cpp(Y=sel_features_2014OL339, 
+                           K=3, 
+                           lambda = .5, 
+                           m = 1.25,
+                           max_iter = 5, 
+                           n_init = 10, 
+                           tol = 1e-16, 
+                           verbose = T,
+                           parallel = FALSE,
+                           n_cores = NULL
 )
 
-# Final fit
+plot(df_2014OL339$theta[-(1:100)],col=fit_2014OL339$MAP)
+plot(sel_features_2014OL339$value_max,col=fit_2014OL339$MAP)
+plot(sel_features_2014OL339$value_min,col=fit_2014OL339$MAP)
+plot(sel_features_2014OL339$sd_dtheta,col=fit_2014OL339$MAP)
+plot(sel_features_2014OL339$sd_theta,col=fit_2014OL339$MAP)
+plot(sel_features_2014OL339$ma_a,col=fit_2014OL339$MAP)
+plot(sel_features_2014OL339$sd_a,col=fit_2014OL339$MAP)
+matplot(fit_2014OL339$best_S,type='l')
 
-fit_2014OL339=robust_sparse_jump(
-  Y=sel_features_2014OL339,
-  K=3,
-  zeta0=.3,
-  lambda=.7,
-  c=10,
-  knn=10,
-  M=NULL,
-  n_init=3,
-  verbose=T,
-  tol=1e-16
-)
-
-est_s_2014OL339=fit_2014OL339$s
-est_s_2014OL339[fit_2014OL339$v==0]=0
-plot(features_2014OL339$theta,col=est_s_2014OL339+1)
-plot(features_2014OL339$a,col=est_s_2014OL339+1)
-
-est_W_2014OL339= data.frame(round(fit_2014OL339$W,2))
-colnames(est_W_2014OL339)=names(sel_features_2014OL339)
-
-est_W_2014OL339
+fit_2014OL339$best_mu
 
 # propagation_2015SO2_new_v2
 df_2015SO2=read.table("data_asteroids/propagation_2015SO2_new_v2.txt",header = T)
