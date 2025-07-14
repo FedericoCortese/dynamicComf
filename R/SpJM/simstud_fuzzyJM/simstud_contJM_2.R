@@ -82,7 +82,7 @@ res_list_soft_K2_cont <- mclapply(seq_len(nrow(hp)), function(i) {
                              n_init=n_init, 
                              tol=tol, 
                              mode_loss=F,
-                             grid_size=.025
+                             grid_size=.05
       )
       list(success = TRUE, 
            S=fit$best_S)
@@ -203,7 +203,7 @@ res_list_hard_K2_cont <- mclapply(seq_len(nrow(hp)), function(i) {
                        n_init=n_init, 
                        tol=tol, 
                        mode_loss=F,
-                       grid_size=.025
+                       grid_size=.05
       )
       list(success = TRUE, 
            S=fit$best_S)
@@ -307,7 +307,7 @@ res_list_soft_K3_cont <- mclapply(seq_len(nrow(hp)), function(i) {
     seed = seedi
   )
   
-  ground_truth=soft_scen[,c("pi_1", "pi_2")]
+  ground_truth=soft_scen[,c("pi_1", "pi_2", "pi_3")]
   
   Yinput=soft_scen[,(1:Pi)+1]
   
@@ -429,7 +429,7 @@ res_list_hard_K3_cont <- mclapply(seq_len(nrow(hp)), function(i) {
     seed = seedi
   )
   
-  ground_truth=hard_scen[,c("pi_1", "pi_2")]
+  ground_truth=hard_scen[,c("pi_1", "pi_2", "pi_3")]
   
   Yinput=hard_scen[,(1:Pi)+1]
   
