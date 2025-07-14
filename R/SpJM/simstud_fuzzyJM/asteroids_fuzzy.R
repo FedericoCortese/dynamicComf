@@ -57,8 +57,8 @@ sel_features_2014OL339=subset(features_2014OL339,
                                 theta,a
                                 ,dtheta,
                                 I_TP, I_HS
-                                # ,
-                                # mean_osc
+                                ,
+                                mean_osc
                                 # ,
                                 # I_QS,I_CP
                               ))
