@@ -83,8 +83,8 @@ cv_fuzzy_2014OL339=cv_fuzzy_jump(
     m_grid = c(1.01,1.25,1.5),
     lambda_grid = seq(0,1,.1),
     n_folds = 5,
-    parallel = FALSE,
-    n_cores = NULL
+    parallel = T,
+    n_cores = 29
 )
 
 
