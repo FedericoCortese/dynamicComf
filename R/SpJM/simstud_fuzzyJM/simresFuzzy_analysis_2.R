@@ -26,6 +26,7 @@ res_summary_K3_soft <- do.call(rbind, lapply(res_list_soft_K3, function(el) {
   # 1) Coerciamo S in matrice (anche se fosse un vettore 1D)
   S_mat <- as.matrix(el$S)
   
+  
   # 2) Estraiamo ground_truth come matrice
   gt_mat <- as.matrix(el$ground_truth)
   

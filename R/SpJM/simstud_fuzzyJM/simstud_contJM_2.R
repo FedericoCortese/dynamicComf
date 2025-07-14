@@ -93,6 +93,15 @@ res_list_soft_K2_cont <- mclapply(seq_len(nrow(hp)), function(i) {
     })
     
     if (result$success) {
+      
+      # Reorder states
+      # Compute MAP and re‐order states
+      old_MAP <- apply(result$S, 1, which.max)
+      MAP <- order_states_condMed(Yinput[, 1], old_MAP)
+      tab <- table(MAP, old_MAP)
+      new_order <- apply(tab, 1, which.max)
+      result$S <- result$S[, new_order]
+      
       S= result$S
       break
     }
@@ -214,6 +223,15 @@ res_list_hard_K2_cont <- mclapply(seq_len(nrow(hp)), function(i) {
     })
     
     if (result$success) {
+      
+      # Reorder states
+      # Compute MAP and re‐order states
+      old_MAP <- apply(result$S, 1, which.max)
+      MAP <- order_states_condMed(Yinput[, 1], old_MAP)
+      tab <- table(MAP, old_MAP)
+      new_order <- apply(tab, 1, which.max)
+      result$S <- result$S[, new_order]
+      
       S= result$S
       break
     }
@@ -336,6 +354,15 @@ res_list_soft_K3_cont <- mclapply(seq_len(nrow(hp)), function(i) {
     })
     
     if (result$success) {
+      
+      # Reorder states
+      # Compute MAP and re‐order states
+      old_MAP <- apply(result$S, 1, which.max)
+      MAP <- order_states_condMed(Yinput[, 1], old_MAP)
+      tab <- table(MAP, old_MAP)
+      new_order <- apply(tab, 1, which.max)
+      result$S <- result$S[, new_order]
+      
       S= result$S
       break
     }
@@ -458,6 +485,15 @@ res_list_hard_K3_cont <- mclapply(seq_len(nrow(hp)), function(i) {
     })
     
     if (result$success) {
+      
+      # Reorder states
+      # Compute MAP and re‐order states
+      old_MAP <- apply(result$S, 1, which.max)
+      MAP <- order_states_condMed(Yinput[, 1], old_MAP)
+      tab <- table(MAP, old_MAP)
+      new_order <- apply(tab, 1, which.max)
+      result$S <- result$S[, new_order]
+      
       S= result$S
       break
     }
