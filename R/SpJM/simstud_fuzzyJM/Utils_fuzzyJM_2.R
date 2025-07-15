@@ -935,14 +935,13 @@ cv_fuzzy_jump <- function(
     
     # 3) Compute fuzzy fARI between true label and predicted membership
     
-    # NOT WORKING
     MAP_pred=apply(S_pred,1,which.max)
     #fARI <- fclust::ARI.F(true_states[val_idx], MAP_pred)
     temp=true_states[val_idx]
     if(all(temp==temp[1])){
       temp=rep(1,length(temp))
     }
-    # fARI <- pdfCluster::adj.rand.index(temp, MAP_pred)
+    # fARI <- pdfCluster::adj.rand.index(temp, S_pred)
     fARI <-my_ARI(temp, MAP_pred) 
     return(fARI)
   }

@@ -27,40 +27,37 @@ df_2014OL339=df_2014OL339[,c("t","a","theta","type")]
 df_2014OL339$type[which(df_2014OL339$type==100)]=10
 
 # Compute features
-features_2014OL339=compute_feat(df_2014OL339,l_short=5,l_long=100,
-                          tt_thres_maxmin=2.5)
+
+df_2014OL339_maxmins_theta=max_min_feat(df_2014OL339,"theta",tt_thres_maxmin=2.5,
+                                        l=5)
+
+df_2014OL339_stat_theta=compute_feat(df_2014OL339,"theta",l=100,ma_flag   = F)
+
+df_2014OL339_stat_a=compute_feat(df_2014OL339,"a",l=100,sd_flag   = F)
+df_2014OL339_stat_a=df_2014OL339_stat_a[,c("t","ma_a")]
 
 
-# Remove NAs
-features_2014OL339=features_2014OL339[complete.cases(features_2014OL339),]
+# Merge by t
+features_2014OL339=merge(df_2014OL339,
+                         df_2014OL339_maxmins_theta,by="t")
+features_2014OL339=merge(features_2014OL339,
+                         df_2014OL339_stat_theta,by="t")
+features_2014OL339=merge(features_2014OL339,
+                         df_2014OL339_stat_a,by="t")
+
+features_2014OL339=features_2014OL339[complete.cases(features_2014OL339), ]
 
 # Extract ground truth and time
-gt_2014OL339=features_2014OL339$type
-time=features_2014OL339$t
+gt_2014OL339=df_2014OL339$type
+time_2014OL339=df_2014OL339$t
+a_2014OL339=df_2014OL339$a
+theta_2014OL339=df_2014OL339$theta
 
-# Remove ground truth 
-features_2014OL339=subset(features_2014OL339,select=-c(type,t))
-
-apply(features_2014OL339,2,summary)
-
-# Remove I_TP and I_HS (zero variability)
-#features_2014OL339=subset(features_2014OL339,select=-c(I_TP,I_HS))
-sel_features_2014OL339=subset(features_2014OL339,
-                              select=-c(
-                                 theta,a
-                                         ,dtheta,
-                                        I_TP, I_HS
-                                 #,
-                                        #I_QS,I_CP
-                                        ))
-
-head(sel_features_2014OL339)
-
-# plot(features_2014OL339$dtheta,col=gt_2014OL339+2)
-# plot(features_2014OL339$sd_dtheta,col=gt_2014OL339+2)
-# plot(features_2014OL339$mean_osc,col=gt_2014OL339+2)
-# plot(features_2014OL339$I_QS,col=gt_2014OL339+2)
-# plot(features_2014OL339$sd_a,col=gt_2014OL339+2)
+sel_features_2014OL339=features_2014OL339[,c("value_max_theta", "value_min_theta",
+                                             "dtheta","sd_theta","sd_dtheta",
+                                             #"I_TP","I_HS",
+                                             "I_QS","I_CP",
+                                             "ma_a")]
 
 source("Utils_sparse_robust_2.R")
 
@@ -99,14 +96,14 @@ gap_2014OL339=gap_robust_sparse_jump(
 fit_2014OL339=robust_sparse_jump(
     Y=sel_features_2014OL339,
     K=3,
-    zeta0=.3,
+    zeta0=.2,
     lambda=.7,
     c=10,
     knn=10,
     M=NULL,
-    n_init=3,
+    n_init=5,
     verbose=T,
-    tol=1e-16
+    tol=1e-8
 )
 
 est_s_2014OL339=fit_2014OL339$s
@@ -125,18 +122,215 @@ df_2015SO2=trans_theta(df_2015SO2)
 unique(df_2015SO2$type)
 plot(df_2015SO2$theta,type='p',col=df_2015SO2$type+2)
 
-# propagation_2015XX169_new_v2
+
+# 2015XX169 ---------------------------------------------------------------
+
 df_2015XX169=read.table("data_asteroids/propagation_2015XX169_new_v2.txt",header = T)
 df_2015XX169=trans_theta(df_2015XX169)
-unique(df_2015XX169$type)
-plot(df_2015XX169$theta,type='p',col=df_2015XX169$type+2)
 
-# propagation_2016CA138_new_v2
+# Select relevant variables
+df_2015XX169=df_2015XX169[,c("t","a","theta","type")]
+#df_2015XX169$type[which(df_2015XX169$type==100)]=10
+
+plot(df_2015XX169$theta,col=df_2015XX169$type+2)
+
+# Compute features
+
+df_2015XX169_maxmins_theta=max_min_feat(df_2015XX169,"theta",tt_thres_maxmin=2.5,
+                                        l=5)
+
+df_2015XX169_stat_theta=compute_feat(df_2015XX169,"theta",l=50,ma_flag   = F)
+
+df_2015XX169_stat_a=compute_feat(df_2015XX169,"a",l=50,sd_flag   = F)
+df_2015XX169_stat_a=df_2015XX169_stat_a[,c("t","ma_a")]
+
+
+# Merge by t
+features_2015XX169=merge(df_2015XX169,
+                         df_2015XX169_maxmins_theta,by="t")
+features_2015XX169=merge(features_2015XX169,
+                         df_2015XX169_stat_theta,by="t")
+features_2015XX169=merge(features_2015XX169,
+                         df_2015XX169_stat_a,by="t")
+
+features_2015XX169=features_2015XX169[complete.cases(features_2015XX169), ]
+
+# Extract ground truth and time
+gt_2015XX169=df_2015XX169$type
+time_2015XX169=df_2015XX169$t
+a_2015XX169=df_2015XX169$a
+theta_2015XX169=df_2015XX169$theta
+
+summary(features_2015XX169)
+
+sel_features_2015XX169=features_2015XX169[,c("value_max_theta", "value_min_theta",
+                                             "dtheta","sd_theta","sd_dtheta",
+                                             #"I_TP",
+                                             "I_HS",
+                                             "I_QS","I_CP",
+                                             "ma_a")]
+
+source("Utils_sparse_robust_2.R")
+
+# Select lambda, K, and c
+cv_2015XX169=cv_robust_sparse_jump(
+  Y=sel_features_2015XX169,
+  true_states=gt_2015XX169,
+  K_grid=2:4,
+  zeta0=.4,
+  lambda_grid=seq(0,1,.1),
+  n_folds = 5,
+  parallel=F,
+  n_cores=NULL,
+  cv_method="blocked-cv",
+  knn=10,
+  c_grid=c(7.5,10),
+  M=NULL
+)
+
+# Select zeta0 based on the best lambda, K and c
+gap_2015XX169=gap_robust_sparse_jump(
+  Y=sel_features_2015XX169,
+  K_grid=NULL,
+  zeta0_grid=seq(0.05,.5,0.05),
+  lambda=0,
+  B=10,
+  parallel=F,
+  n_cores=NULL,
+  knn=10,
+  c=10,
+  M=NULL
+)
+
+# Final fit
+
+fit_2015XX169=robust_sparse_jump(
+  Y=sel_features_2015XX169,
+  K=3,
+  zeta0=.2,
+  lambda=.7,
+  c=10,
+  knn=10,
+  M=NULL,
+  n_init=5,
+  verbose=T,
+  tol=1e-8
+)
+
+est_s_2015XX169=fit_2015XX169$s
+est_s_2015XX169[fit_2015XX169$v==0]=0
+plot(features_2015XX169$theta,col=est_s_2015XX169+1)
+plot(features_2015XX169$a,col=est_s_2015XX169+1)
+
+est_W_2015XX169= data.frame(round(fit_2015XX169$W,2))
+colnames(est_W_2015XX169)=names(sel_features_2015XX169)
+
+est_W_2015XX169
+
+
+
+# 2016CA138 ---------------------------------------------------------------
+
 df_2016CA138=read.table("data_asteroids/propagation_2016CA138_new_v2.txt",header = T)
 df_2016CA138=trans_theta(df_2016CA138)
 unique(df_2016CA138$type)
+
+# Select relevant variables
+df_2016CA138=df_2016CA138[,c("t","a","theta","type")]
 df_2016CA138$type[which(df_2016CA138$type==100)]=10
-plot(df_2016CA138$theta,type='p',col=df_2016CA138$type+2)
+
+# Compute features
+
+df_2016CA138_maxmins_theta=max_min_feat(df_2016CA138,"theta",tt_thres_maxmin=2.5,
+                                        l=5)
+
+df_2016CA138_stat_theta=compute_feat(df_2016CA138,"theta",l=100,ma_flag   = F)
+
+df_2016CA138_stat_a=compute_feat(df_2016CA138,"a",l=100,sd_flag   = F)
+df_2016CA138_stat_a=df_2016CA138_stat_a[,c("t","ma_a")]
+
+
+# Merge by t
+features_2016CA138=merge(df_2016CA138,
+                         df_2016CA138_maxmins_theta,by="t")
+features_2016CA138=merge(features_2016CA138,
+                         df_2016CA138_stat_theta,by="t")
+features_2016CA138=merge(features_2016CA138,
+                         df_2016CA138_stat_a,by="t")
+
+features_2016CA138=features_2016CA138[complete.cases(features_2016CA138), ]
+
+# Extract ground truth and time
+gt_2016CA138=df_2016CA138$type
+time_2016CA138=df_2016CA138$t
+a_2016CA138=df_2016CA138$a
+theta_2016CA138=df_2016CA138$theta
+
+summary(features_2016CA138)
+
+sel_features_2016CA138=features_2016CA138[,c("value_max_theta", "value_min_theta",
+                                             "dtheta","sd_theta","sd_dtheta",
+                                             "I_TP","I_HS",
+                                             "I_QS","I_CP",
+                                             "ma_a")]
+
+source("Utils_sparse_robust_2.R")
+
+# Select lambda, K, and c
+cv_2016CA138=cv_robust_sparse_jump(
+  Y=sel_features_2016CA138,
+  true_states=gt_2016CA138,
+  K_grid=2:4,
+  zeta0=.4,
+  lambda_grid=seq(0,1,.1),
+  n_folds = 5,
+  parallel=F,
+  n_cores=NULL,
+  cv_method="blocked-cv",
+  knn=10,
+  c_grid=c(7.5,10),
+  M=NULL
+)
+
+# Select zeta0 based on the best lambda, K and c
+gap_2016CA138=gap_robust_sparse_jump(
+  Y=sel_features_2016CA138,
+  K_grid=NULL,
+  zeta0_grid=seq(0.05,.5,0.05),
+  lambda=0,
+  B=10,
+  parallel=F,
+  n_cores=NULL,
+  knn=10,
+  c=10,
+  M=NULL
+)
+
+# Final fit
+
+fit_2016CA138=robust_sparse_jump(
+  Y=sel_features_2016CA138,
+  K=3,
+  zeta0=.2,
+  lambda=.7,
+  c=10,
+  knn=10,
+  M=NULL,
+  n_init=5,
+  verbose=T,
+  tol=1e-8
+)
+
+est_s_2016CA138=fit_2016CA138$s
+est_s_2016CA138[fit_2016CA138$v==0]=0
+plot(features_2016CA138$theta,col=est_s_2016CA138+1)
+plot(features_2016CA138$a,col=est_s_2016CA138+1)
+
+est_W_2016CA138= data.frame(round(fit_2016CA138$W,2))
+colnames(est_W_2016CA138)=names(sel_features_2016CA138)
+
+est_W_2016CA138
+
 
 # propagation_2016CO246_new_v2 <--- START WITH THIS
 df_2016CO246=read.table("data_asteroids/propagation_2016CO246_new_v2.txt",header = T)
