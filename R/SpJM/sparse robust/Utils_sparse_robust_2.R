@@ -772,6 +772,10 @@ robust_sparse_jump <- function(Y,
                            knn     = 10,
                            c       = 10,
                            M       = NULL) {
+  
+  P  <- ncol(Y)
+  TT <- nrow(Y)
+  
   library(Rcpp)
  
   Rcpp::sourceCpp("robJM.cpp")
@@ -787,11 +791,15 @@ robust_sparse_jump <- function(Y,
     )
   }
   
+  # Check if which features are constant
+  constant_features <- apply(Y, 2, function(col) length(unique(col)) == 1)
+  
+  # Transform into noise (?)
+  Y[,constant_features]=rnorm(TT,sd=10)
+  
   # Standardize
   Y=scale(Y)
   
-  P  <- ncol(Y)
-  TT <- nrow(Y)
   Gamma <- lambda * (1 - diag(K))
   
   run_one <- function(init_id) {

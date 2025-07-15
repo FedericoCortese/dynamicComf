@@ -102,6 +102,20 @@ max_min_feat=function(x,var_name="theta",tt_thres_maxmin=2.5,l=5){
       value_min = sapply(t, find_closest, t_mins, theta_mins)
     )
   
+  if(var_name=="theta"){
+    # TP indicator
+      x$I_TP=as.numeric(x$value_max*x$value_min>0 & x$value_max>x$value_min)
+
+      # # HS indicator
+      x$I_HS=as.numeric(x$value_max*x$value_min<0&x$value_max<x$value_min)
+
+      # # QS indicator
+      x$I_QS=as.numeric(x$value_max*x$value_min<0 & x$value_max>x$value_min)
+
+      # # CP indicator
+      x$I_CP=as.numeric(x$value_max*x$value_min>0&x$value_max<=x$value_min)
+  }
+  
   old <- c("value_max", "value_min")
   new <- paste0(old, "_", var_name)
   names(x)[names(x) %in% old] <- new
@@ -109,6 +123,10 @@ max_min_feat=function(x,var_name="theta",tt_thres_maxmin=2.5,l=5){
   matched_cols <- grepl(var_name, names(x))
   matched_cols[1]=T
   matched_cols[which(names(x)==var_name)]=F
+  
+  if(var_name=="theta"){
+    matched_cols[(length(matched_cols)-3):length(matched_cols)] <- TRUE
+  }
   
   return(x[ , matched_cols])
 }
