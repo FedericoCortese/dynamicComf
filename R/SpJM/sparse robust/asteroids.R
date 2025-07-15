@@ -49,9 +49,8 @@ sel_features_2014OL339=subset(features_2014OL339,
                               select=-c(
                                  theta,a
                                          ,dtheta,
-                                        I_TP, I_HS
-                                 #,
-                                        #I_QS,I_CP
+                                        I_TP, I_HS,
+                                        I_QS,I_CP, mean_osc
                                         ))
 
 head(sel_features_2014OL339)

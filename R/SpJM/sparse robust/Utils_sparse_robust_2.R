@@ -976,20 +976,20 @@ cv_robust_sparse_jump <- function(
   # Libreria per ARI
   library(mclust)
   
-  N <- nrow(Y)
+  TT <- nrow(Y)
   P <- ncol(Y)
   
   # Suddivido gli N campioni in n_folds blocchi contigui
   if(cv_method=="blocked-cv"){
     fold_indices <- split(
-      1:N,
-      rep(1:n_folds, each = ceiling(N / n_folds), length.out = N)
+      1:TT,
+      rep(1:n_folds, each = ceiling(TT / n_folds), length.out = TT)
     )
     
   }
   else if(cv_method=="forward-chain"){
     fold_indices <- lapply(seq_len(n_folds), function(k) {
-      idx_end <- N - (k - 1)
+      idx_end <- TT - (k - 1)
       1:(idx_end-1)
     })
     names(fold_indices) <- as.character(seq_len(n_folds))
@@ -1074,7 +1074,7 @@ cv_robust_sparse_jump <- function(
       ari_vals <- numeric(n_folds)
       for (f in seq_len(n_folds)) {
         val_idx   <- fold_indices[[f]]
-        train_idx <- setdiff(seq_len(N), val_idx)
+        train_idx <- setdiff(seq_len(TT), val_idx)
         ari_vals[f] <- fold_ari(K_val, zeta0_val, lambda_val, c_val,
                                 train_idx, val_idx,true_states)
       }
@@ -1114,7 +1114,7 @@ cv_robust_sparse_jump <- function(
         ari_vals <- numeric(n_folds)
         for (f in seq_len(n_folds)) {
           val_idx   <- fold_indices[[f]]
-          train_idx <- setdiff(seq_len(N), val_idx)
+          train_idx <- setdiff(seq_len(TT), val_idx)
           ari_vals[f] <- fold_ari(K_val, zeta0_val, lambda_val,c_val, train_idx, val_idx)
         }
         mean_ari <- mean(ari_vals)
