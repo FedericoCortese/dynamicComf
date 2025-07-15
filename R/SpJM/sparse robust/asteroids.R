@@ -27,39 +27,34 @@ df_2014OL339=df_2014OL339[,c("t","a","theta","type")]
 df_2014OL339$type[which(df_2014OL339$type==100)]=10
 
 # Compute features
-features_2014OL339=compute_feat(df_2014OL339,l_short=5,l_long=100,
-                          tt_thres_maxmin=2.5)
+l=5
+df_2014OL339_maxmins_theta=max_min_feat(df_2014OL339,"theta",tt_thres_maxmin=2.5,l=l)
+
+df_2014OL339_stat_theta=compute_feat(df_2014OL339,"theta",l=l,ma_flag   = F)
+
+df_2014OL339_stat_a=compute_feat(df_2014OL339,"a",l=l,sd_flag   = F)
+df_2014OL339_stat_a=df_2014OL339_stat_a[,c("t","ma_a")]
 
 
-# Remove NAs
-features_2014OL339=features_2014OL339[complete.cases(features_2014OL339),]
+# Merge by t
+features_2014OL339=merge(df_2014OL339,
+                         df_2014OL339_maxmins_theta,by="t")
+features_2014OL339=merge(features_2014OL339,
+                         df_2014OL339_stat_theta,by="t")
+features_2014OL339=merge(features_2014OL339,
+                         df_2014OL339_stat_a,by="t")
+
+features_2014OL339=features_2014OL339[complete.cases(features_2014OL339), ]
 
 # Extract ground truth and time
-gt_2014OL339=features_2014OL339$type
-time=features_2014OL339$t
+gt_2014OL339=df_2014OL339$type
+time_2014OL339=df_2014OL339$t
+a_2014OL339=df_2014OL339$a
+theta_2014OL339=df_2014OL339$theta
 
-# Remove ground truth 
-features_2014OL339=subset(features_2014OL339,select=-c(type,t))
-
-apply(features_2014OL339,2,summary)
-
-# Remove I_TP and I_HS (zero variability)
-#features_2014OL339=subset(features_2014OL339,select=-c(I_TP,I_HS))
-sel_features_2014OL339=subset(features_2014OL339,
-                              select=-c(
-                                 theta,a
-                                         ,dtheta,
-                                        I_TP, I_HS,
-                                        I_QS,I_CP, mean_osc
-                                        ))
-
-head(sel_features_2014OL339)
-
-# plot(features_2014OL339$dtheta,col=gt_2014OL339+2)
-# plot(features_2014OL339$sd_dtheta,col=gt_2014OL339+2)
-# plot(features_2014OL339$mean_osc,col=gt_2014OL339+2)
-# plot(features_2014OL339$I_QS,col=gt_2014OL339+2)
-# plot(features_2014OL339$sd_a,col=gt_2014OL339+2)
+sel_features_2014OL339=features_2014OL339[,c("value_max_theta", "value_min_theta",
+                                             "dtheta","sd_theta","sd_dtheta",
+                                             "ma_a")]
 
 source("Utils_sparse_robust_2.R")
 
@@ -98,14 +93,14 @@ gap_2014OL339=gap_robust_sparse_jump(
 fit_2014OL339=robust_sparse_jump(
     Y=sel_features_2014OL339,
     K=3,
-    zeta0=.3,
+    zeta0=.15,
     lambda=.7,
     c=10,
     knn=10,
     M=NULL,
     n_init=3,
     verbose=T,
-    tol=1e-16
+    tol=1e-8
 )
 
 est_s_2014OL339=fit_2014OL339$s
