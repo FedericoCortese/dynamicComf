@@ -79,6 +79,7 @@ sel_features_2015XX169=features_2015XX169[,c("value_max_theta", "value_min_theta
 source("Utils_sparse_robust_2.R")
 
 # Select lambda, K, and c
+st=Sys.time()
 cv_2015XX169=cv_robust_sparse_jump(
   Y=sel_features_2015XX169,
   true_states=gt_2015XX169,
@@ -107,6 +108,8 @@ gap_2015XX169=gap_robust_sparse_jump(
   c=10,
   M=NULL
 )
+en=Sys.time()
+en-st
 
 # Final fit
 
