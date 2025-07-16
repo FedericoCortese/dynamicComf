@@ -976,7 +976,7 @@ cv_robust_sparse_jump <- function(
     lambda_grid <- seq(0,1,.1)  # Default range for lambda
   }
   
-  if(is.null(zeta0)) {
+  if(is.null(zeta0_grid)) {
     zeta0_grid <- 0.2  # Default sparsity hyperparameter
   }
   
