@@ -936,7 +936,10 @@ cv_robust_sparse_jump <- function(
     cv_method="blocked-cv",
     knn=10,
     c_grid=NULL,
-    M=NULL
+    M=NULL,
+    n_init =5,
+    n_outer=5,
+    tol=1e-8
 ) {
   
   # cv_sparse_jump: Cross-validate Sparse Jump Model parameters (K and lambda)
@@ -1014,9 +1017,9 @@ cv_robust_sparse_jump <- function(
                           zeta0=zeta0,
                           lambda=lambda,
                           K=K,
-                          tol        = 1e-16,
-                          n_init     = 5,
-                          n_outer    = 10,
+                          tol        = tol,
+                          n_init     = n_init,
+                          n_outer    = n_outer,
                           alpha      = 0.1,
                           verbose    = F,
                           knn        = knn,
