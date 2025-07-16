@@ -82,15 +82,15 @@ source("Utils_sparse_robust_2.R")
 cv_2015XX169=cv_robust_sparse_jump(
   Y=sel_features_2015XX169,
   true_states=gt_2015XX169,
-  K_grid=2,
+  K_grid=2:4,
   zeta0=.4,
-  lambda_grid=seq(0,1,.5),
+  lambda_grid=seq(0,1,.1),
   n_folds = 5,
-  parallel=F,
-  n_cores=NULL,
+  parallel=T,
+  n_cores=detectCores()-1,
   cv_method="blocked-cv",
   knn=10,
-  c_grid=10,
+  c_grid=c(7.5,10),
   M=NULL
 )
 
