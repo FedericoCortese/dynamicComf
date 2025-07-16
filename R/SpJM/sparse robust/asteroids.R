@@ -118,10 +118,10 @@ en-st
 
 fit_2015XX169=robust_sparse_jump(
   Y=sel_features_2015XX169,
-  K=3,
-  zeta0=.2,
-  lambda=.7,
-  c=10,
+  K=4,
+  zeta0=.05,
+  lambda=.3,
+  c=7.5,
   knn=10,
   M=NULL,
   n_init=5,
@@ -145,20 +145,26 @@ est_W_2015XX169
 
 df_2016CA138=read.table("data_asteroids/propagation_2016CA138_new_v2.txt",header = T)
 df_2016CA138=trans_theta(df_2016CA138)
-unique(df_2016CA138$type)
 
 # Select relevant variables
 df_2016CA138=df_2016CA138[,c("t","a","theta","type")]
-df_2016CA138$type[which(df_2016CA138$type==100)]=10
+#df_2016CA138$type[which(df_2016CA138$type==100)]=10
+
+# Recode states
+old_vals <- sort(unique(df_2016CA138$type))
+df_2016CA138$type <- match(df_2016CA138$type, old_vals)
+
+plot(df_2016CA138$theta,col=df_2016CA138$type)
 
 # Compute features
 
-df_2016CA138_maxmins_theta=max_min_feat(df_2016CA138,"theta",tt_thres_maxmin=2.5,
+df_2016CA138_maxmins_theta=max_min_feat(df_2016CA138,
+                                        "theta",tt_thres_maxmin=2.5,
                                         l=5)
 
-df_2016CA138_stat_theta=compute_feat(df_2016CA138,"theta",l=100,ma_flag   = F)
+df_2016CA138_stat_theta=compute_feat(df_2016CA138,"theta",l=50,ma_flag   = F)
 
-df_2016CA138_stat_a=compute_feat(df_2016CA138,"a",l=100,sd_flag   = F)
+df_2016CA138_stat_a=compute_feat(df_2016CA138,"a",l=50,sd_flag   = F)
 df_2016CA138_stat_a=df_2016CA138_stat_a[,c("t","ma_a")]
 
 
@@ -182,27 +188,31 @@ summary(features_2016CA138)
 
 sel_features_2016CA138=features_2016CA138[,c("value_max_theta", "value_min_theta",
                                              "dtheta","sd_theta","sd_dtheta",
-                                             "I_TP","I_HS",
+                                             #"I_TP",
+                                             "I_HS",
                                              "I_QS","I_CP",
                                              "ma_a")]
 
 source("Utils_sparse_robust_2.R")
 
 # Select lambda, K, and c
+st=Sys.time()
 cv_2016CA138=cv_robust_sparse_jump(
   Y=sel_features_2016CA138,
   true_states=gt_2016CA138,
   K_grid=2:4,
-  zeta0=.4,
+  zeta0_grid=seq(0.05,0.5,.05),
   lambda_grid=seq(0,1,.1),
   n_folds = 5,
-  parallel=F,
-  n_cores=NULL,
+  parallel=T,
+  n_cores=detectCores()-1,
   cv_method="blocked-cv",
   knn=10,
   c_grid=c(7.5,10),
   M=NULL
 )
+en=Sys.time()
+en-st
 
 # Select zeta0 based on the best lambda, K and c
 gap_2016CA138=gap_robust_sparse_jump(
