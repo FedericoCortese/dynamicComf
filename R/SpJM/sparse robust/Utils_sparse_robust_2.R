@@ -1264,19 +1264,57 @@ gap_robust_sparse_jump=function(
     
   }
   
-  if(parallel){
-    if(is.null(n_cores)){
+  if (parallel) {
+    if (is.null(n_cores)) {
       n_cores <- parallel::detectCores() - 1
     }
-    results <- parallel::mclapply(seq_len(nrow(grid)), function(i) {
-      params <- grid[i, ]
-      gap_one_run(
-        zeta0 = params$zeta0,
-        lambda= params$lambda,
-        K     = params$K,
-        b     = params$b
-      )
-    }, mc.cores = mc_cores)
+    
+    results_list <- parallel::mclapply(
+      seq_len(nrow(grid)),
+      function(row) {
+        # === re‐load any packages / source code you need ===
+        library(mclust)             # for adjustedRandIndex()
+        library(cluster)            # for pam() or any cluster functions
+        # if gower_dist() comes from a package, load it here;
+        # otherwise, ensure that you have defined gower_dist() in the global env
+        # and that it’s visible to the children.
+        
+        # If your robust_sparse_jump() relies on an Rcpp sourceCpp,
+        # you’ll also need to re‐source it inside each worker:
+        Rcpp::sourceCpp("robJM.cpp")
+        
+        # now pull out the grid parameters
+        K_val     <- as.integer(grid$K[row])
+        zeta0_val <- grid$zeta0[row]
+        lambda_val<- grid$lambda[row]
+        c_val     <- grid$c_grid[row]
+        
+        # a quick local copy of true_states so it’s in scope
+        ts <- true_states
+        
+        # compute ARI over folds just like before
+        ari_vals <- vapply(seq_len(n_folds), function(f) {
+          val_idx   <- fold_indices[[f]]
+          train_idx <- setdiff(seq_len(TT), val_idx)
+          fold_ari(
+            Y, K_val, zeta0_val, lambda_val, c_val,
+            train_idx, val_idx, ts
+          )
+        }, numeric(1))
+        
+        data.frame(
+          K      = K_val,
+          zeta0  = zeta0_val,
+          lambda = lambda_val,
+          c      = c_val,
+          ARI    = mean(ari_vals),
+          stringsAsFactors = FALSE
+        )
+      },
+      mc.cores = n_cores
+    )
+    
+    results <- do.call(rbind, results_list)
   }
   else{
     results <- lapply(seq_len(nrow(grid)), function(i) {
