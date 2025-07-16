@@ -94,8 +94,11 @@ cv_2015XX169=cv_robust_sparse_jump(
   c_grid=c(7.5,10),
   M=NULL
 )
+en=Sys.time()
+en-st
 
 # Select zeta0 based on the best lambda, K and c
+st=Sys.time()
 gap_2015XX169=gap_robust_sparse_jump(
   Y=sel_features_2015XX169,
   K_grid=NULL,
