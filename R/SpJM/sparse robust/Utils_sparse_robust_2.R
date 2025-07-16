@@ -928,7 +928,7 @@ cv_robust_sparse_jump <- function(
     Y,
     true_states,
     K_grid=NULL,
-    zeta0=NULL,
+    zeta0_grid=NULL,
     lambda_grid=NULL,
     n_folds = 5,
     parallel=F,
@@ -977,7 +977,7 @@ cv_robust_sparse_jump <- function(
   }
   
   if(is.null(zeta0)) {
-    zeta0 <- 0.2  # Default sparsity hyperparameter
+    zeta0_grid <- 0.2  # Default sparsity hyperparameter
   }
   
   if(is.null(c_grid)) {
@@ -1056,9 +1056,9 @@ cv_robust_sparse_jump <- function(
   grid <- expand.grid(
     K      = K_grid,
     # For kappa we take a representative value, we will select kappa later based on GAP stat
-    zeta0  = zeta0,
+    zeta0  = zeta0_grid,
     lambda = lambda_grid,
-    c_grid =c_grid,
+    c =c_grid,
     KEEP.OUT.ATTRS = FALSE,
     stringsAsFactors = FALSE
   )
@@ -1079,7 +1079,7 @@ cv_robust_sparse_jump <- function(
       K_val     <- grid$K[row]
       zeta0_val <- grid$zeta0[row]
       lambda_val<- grid$lambda[row]
-      c_val     <- grid$c_grid[row]
+      c_val     <- grid$c[row]
       
       # calcolo ARI su ciascun fold
       ari_vals <- numeric(n_folds)
@@ -1094,7 +1094,7 @@ cv_robust_sparse_jump <- function(
       # restituisco un data.frame di una sola riga
       data.frame(
         K      = K_val,
-        zeta0  = zeta0,
+        zeta0  = zeta0_val,
         lambda = lambda_val,
         c= c_val,
         ARI    = mean_ari,
@@ -1130,7 +1130,7 @@ cv_robust_sparse_jump <- function(
         K_val     <- as.integer(grid$K[row])
         zeta0_val <- grid$zeta0[row]
         lambda_val<- grid$lambda[row]
-        c_val     <- grid$c_grid[row]
+        c_val     <- grid$c[row]
         
         # a quick local copy of true_states so it’s in scope
         ts <- true_states
