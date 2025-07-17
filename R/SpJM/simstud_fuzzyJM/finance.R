@@ -121,17 +121,6 @@ Y$sd_GLD.Close_ret=zoo::rollapply(Y$GLD.Close_ret, 7, sd, fill=NA)
 Y$sd_BTC.USD.Close_ret=zoo::rollapply(Y$BTC.USD.Close_ret, 7, sd, fill=NA)
 Y$sd_EURUSD.X.Close_ret=zoo::rollapply(Y$EURUSD.X.Close_ret, 7, sd, fill=NA)
 
-# Plot the moving standard deviations
-
-ggplot(Y_long, aes(x = date, y = return)) +
-  geom_line() +
-  facet_wrap(~ asset, scales = "free_y") +
-  labs(title = "7-Day Moving Standard Deviations of Daily Returns",
-       x = "Date",
-       y = "Standard Deviation") +
-  theme_minimal()
-
-
 Y=Y[complete.cases(Y),]
 
 dim(Y)
@@ -254,31 +243,7 @@ df_long <- df %>%
     values_to = "price"
   )
 
-# 3. Plot with lines colored by p1
-ggplot(df_long, aes(x = date, y = price, color = p1, group = 1)) +
-  geom_line(size = 1) +
-  facet_wrap(~ asset, ncol = 3, scales = "free_y") +
-  scale_color_gradientn(
-    colors = c("green","yellow", "red"),
-    limits = c(0, 1),
-    name   = "P(Bear)"
-  ) +
-  theme_minimal(base_size = 12) +
-  theme(
-    strip.text       = element_text(face = "bold"),
-    axis.title.x     = element_blank()
-  ) +
-  labs(
-    y     = "Closing Price"
-    # ,
-    # title = "Daily Prices"
-  )
 
-
-
-library(tidyverse)
-
-# prepare df_long as before…
 
 ggplot(df_long, aes(date, price, color = p1, group = 1)) +
   geom_line(size = 1) +
@@ -286,14 +251,42 @@ ggplot(df_long, aes(date, price, color = p1, group = 1)) +
   scale_color_gradientn(
     colors   = c("green","yellow","red"),
     limits   = c(0, 1),
-    name     = "P(Bear)"
+    name     = expression(bold(s)[Bear])
+  ) +
+  scale_x_date(
+    breaks = seq(as.Date("2019-01-01"), as.Date("2025-01-01"), by = "1 year"),
+    date_labels = "%Y"
   ) +
   theme_minimal(base_size = 12) +
   theme(
-    strip.text        = element_text(face = "bold"),
-    axis.title.x      = element_blank(),
-    legend.position   = c(0.9, 0.1),      # x,y in [0,1], bottom‑right
+    strip.text           = element_text(face = "bold"),
+    axis.title.x         = element_blank(),
+    legend.position      = c(0.9, 0.1),
     legend.justification = c("right","bottom"),
-    legend.background = element_rect(fill = "white", color = "grey50")
+    legend.background    = element_rect(fill = "white", color = "grey50"),
+    axis.text.x          = element_text(angle = 45, hjust = 1)
   ) +
   labs(y = "Closing Price")
+
+# State cond corrplot
+
+library(corrplot)
+
+# select only the numeric feature columns you want to correlate
+feat_cols <- c("SPY.Close_ret", "AGG.Close_ret", "GLD.Close_ret",
+               "BTC.USD.Close_ret", "EURUSD.X.Close_ret")
+
+# split the data by MAP
+df1 <- results_finance[results_finance$MAP == 1, feat_cols]
+df2 <- results_finance[results_finance$MAP == 2, feat_cols]
+
+# compute correlation matrices
+cor1 <- cor(df1, use = "pairwise.complete.obs")
+row.names(cor1)=c("SPY", "AGG", "GLD", "BTC", "EURUSD")
+colnames(cor1)=c("SPY", "AGG", "GLD", "BTC", "EURUSD")
+cor2 <- cor(df2, use = "pairwise.complete.obs")
+row.names(cor2)=c("SPY", "AGG", "GLD", "BTC", "EURUSD")
+colnames(cor2)=c("SPY", "AGG", "GLD", "BTC", "EURUSD")
+
+cor1
+cor2

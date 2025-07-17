@@ -116,6 +116,69 @@ Y=subset(df164207_select,select=-c(t,type))
 str(Y)
 
 source("Utils_fuzzyJM_2.R")
+
+# 1) Define the sequence of lambda values
+lambdas <- seq(0, 1, by = 0.1)
+
+# 2) Fit the model for each lambda via lapply
+fits <- lapply(lambdas, function(i) {
+  fuzzy_jump_cpp(
+    Y         = Y[, -1],
+    K         = 2,
+    lambda    = i,
+    m         = 1.1,
+    max_iter  = 10,
+    n_init    = 5,
+    tol       = 1e-8,
+    verbose   = FALSE,
+    parallel  = FALSE,
+    n_cores   = NULL
+  )
+})
+names(fits) <- paste0("λ=", lambdas)
+
+# 3) Compare each consecutive pair via Map (no explicit SIMPLIFY here)
+comparison_list <- Map(
+  function(f1, f2, λ1, λ2) {
+    MAP1    <- f1$MAP
+    MAP2    <- f2$MAP
+    S1      <- f1$best_S
+    S2      <- f2$best_S
+    data.frame(
+      lambda1 = λ1,
+      lambda2 = λ2,
+      ARI      = mclust::adjustedRandIndex(MAP1, MAP2),
+      avgMSE   = mean((S1 - S2)^2)
+    )
+  },
+  fits[-length(fits)],    # all but last fit
+  fits[-1],               # all but first fit
+  lambdas[-length(lambdas)],
+  lambdas[-1]
+)
+
+# 4) Combine into one data.frame
+results <- do.call(rbind, comparison_list)
+print(results)
+
+ggplot(results, aes(x = lambda1, y = avgMSE)) +
+  geom_line(size = 1) +
+  geom_point(size = 2) +
+  labs(
+    x = expression(lambda),
+    y = "avg. MSE"
+  ) +
+  theme_minimal(base_size = 16) +                # increases all text
+  theme(
+    axis.title   = element_text(size = 18),      # axis labels
+    axis.text    = element_text(size = 14),      # tick labels
+    plot.title   = element_text(size = 20),      # if you add a title
+    legend.text  = element_text(size = 14),
+    legend.title = element_text(size = 16)
+  )
+
+# Final fit
+
 lambda=.5
 m=1.5
 
@@ -134,6 +197,8 @@ end-start
 
 results_164207=data.frame(df164207_select,MAP=fit_164207$MAP,
                            p1=fit_164207$best_S[,1])
+
+results_164207$time=1:nrow(results_164207)
 
 tapply(results_164207$theta, results_164207$MAP, mean)
 tapply(results_164207$theta, results_164207$MAP, sd)
@@ -166,7 +231,7 @@ ggplot(df_long2, aes(x = time, y = value, color = p1, group = 1)) +
   scale_color_gradientn(
     colors = c("cyan", "yellow", "magenta"),
     limits = c(0, 1),
-    name   = expression(P(QS))
+    name   = expression(bold(s)[QS])
   ) +
   theme_minimal(base_size = 14) +
   theme(
