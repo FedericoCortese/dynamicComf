@@ -588,49 +588,49 @@ JM_COSA=function(Y,zeta0,lambda,K,tol,n_outer=20,alpha=.1,verbose=F,Ts=NULL){
     # ss=s[subsample]
     
     # Questo qui sotto lentissimo se T>1000
-      
-      DW=weight_inv_exp_dist(Y,
-                             s,
-                             W,zeta)
-      
-      # PAM only on subsample
-      # DW_1=weight_inv_exp_dist(Ys,
-      #                        ss,
-      #                        W,zeta)
-      
-      medoids=cluster::pam(x=DW,k=K,diss=TRUE)
-      #Ymedoids=Ys[medoids$medoids,]
-      #Ymedoids=Y[medoids$medoids,]
-      
-      # Questo se lavoro su tutto il dato
-      loss_by_state=DW[,medoids$id.med]
-      
-      # Questo se lavoro su sottocampioni per ottimizzare i tempi
-      #loss_by_state=weight_inv_exp_dist_medoids(Y, Ymedoids, s, W, zeta)
-      
-      V <- loss_by_state
-      for (t in (TT-1):1) {
-        V[t-1,] <- loss_by_state[t-1,] + apply(V[t,] + Gamma, 2, min)
-      }
-      s_old=s
-      s[1] <- which.min(V[1,])
-      for (t in 2:TT) {
-        s[t] <- which.min(V[t,] + Gamma[s[t-1],])
-      }
-      loss <- min(V[1,])
-      if (length(unique(s)) < K) {
-        s=s_old
+    
+    DW=weight_inv_exp_dist(Y,
+                           s,
+                           W,zeta)
+    
+    # PAM only on subsample
+    # DW_1=weight_inv_exp_dist(Ys,
+    #                        ss,
+    #                        W,zeta)
+    
+    medoids=cluster::pam(x=DW,k=K,diss=TRUE)
+    #Ymedoids=Ys[medoids$medoids,]
+    #Ymedoids=Y[medoids$medoids,]
+    
+    # Questo se lavoro su tutto il dato
+    loss_by_state=DW[,medoids$id.med]
+    
+    # Questo se lavoro su sottocampioni per ottimizzare i tempi
+    #loss_by_state=weight_inv_exp_dist_medoids(Y, Ymedoids, s, W, zeta)
+    
+    V <- loss_by_state
+    for (t in (TT-1):1) {
+      V[t-1,] <- loss_by_state[t-1,] + apply(V[t,] + Gamma, 2, min)
+    }
+    s_old=s
+    s[1] <- which.min(V[1,])
+    for (t in 2:TT) {
+      s[t] <- which.min(V[t,] + Gamma[s[t-1],])
+    }
+    loss <- min(V[1,])
+    if (length(unique(s)) < K) {
+      s=s_old
+      break
+    }
+    if (!is.null(tol)) {
+      epsilon <- loss_old - loss
+      if (epsilon < tol) {
         break
       }
-      if (!is.null(tol)) {
-        epsilon <- loss_old - loss
-        if (epsilon < tol) {
-          break
-        }
-      } else if (all(s == s_old)) {
-        break
-      }
-      loss_old <- loss
+    } else if (all(s == s_old)) {
+      break
+    }
+    loss_old <- loss
     #}
     
     # Compute weights
@@ -761,23 +761,25 @@ Rcpp::sourceCpp("robJM.cpp")
 
 
 robust_sparse_jump <- function(Y,
-                           zeta0,
-                           lambda,
-                           K,
-                           tol     = 1e-16,
-                           n_init  = 5,
-                           n_outer = 20,
-                           alpha   = 0.1,
-                           verbose = FALSE,
-                           knn     = 10,
-                           c       = 10,
-                           M       = NULL) {
+                               zeta0,
+                               lambda,
+                               K,
+                               tol     = 1e-16,
+                               n_init  = 5,
+                               n_outer = 20,
+                               alpha   = 0.1,
+                               verbose = FALSE,
+                               knn     = 10,
+                               c       = 10,
+                               M       = NULL,
+                               hd=F,
+                               n_hd=NULL) {
   
   P  <- ncol(Y)
   TT <- nrow(Y)
   
   library(Rcpp)
- 
+  
   Rcpp::sourceCpp("robJM.cpp")
   
   if(!is.matrix(Y)){
@@ -812,21 +814,41 @@ robust_sparse_jump <- function(Y,
     s        <- initialize_states(Y, K)
     
     for (outer in seq_len(n_outer)) {
-      # 2) local scales
+      
       v1 <- v_1(W[s, , drop=FALSE] * Y, knn=knn, c=c, M=M)
       v2 <- v_1(Y,                     knn=knn, c=c, M=M)
-      
-      
-      
       v  <- pmin(v1, v2)
       
-      # 3) weighted distances + PAM
-      DW      <- weight_inv_exp_dist(as.matrix(Y * v), s, W, zeta)
+      
+      if(hd){
+        if(is.null(n_hd)){
+          n_hd=500
+        }
+        
+        sel_idx=sample(1:TT,n_hd,replace=F)
+        Y_search=Y[sel_idx,]
+        
+        Y_search=as.matrix(Y_search*v)
+        
+      }
+      
+      else{
+        Y_search=as.matrix(Y * v)
+        sel_idx=1:TT
+      }
+      DW      <- weight_inv_exp_dist(Y_search, s, W, zeta)
       pam_out <- cluster::pam(DW, k=K, diss=TRUE)
-      medoids <- pam_out$id.med
+      #medoids <- pam_out$id.med
+      medoids=sel_idx[pam_out$id.med]
       
       # 4) build loss-by-state
-      loss_by_state <- DW[, medoids, drop=FALSE]  # TT x K
+      #loss_by_state <- DW[, medoids, drop=FALSE]  # TT x K
+      
+
+# QUI C'E' UN ERRORE ------------------------------------------------------
+
+      
+      loss_by_state <- gower_dist(Y,Y[medoids,])
       
       # 5) DP forward: V[t,j] = loss[t,j] + min_i( V[t+1,i] + Gamma[i,j] )
       V <- loss_by_state
@@ -1014,17 +1036,17 @@ cv_robust_sparse_jump <- function(
   fold_ari <- function(Y,K, zeta0, lambda,c, train_idx, val_idx,true_states) {
     # 1) Fit del modello sparse_jump su soli dati di TRAIN
     res <- robust_sparse_jump(Y=as.matrix(Y[train_idx, , drop = FALSE]),
-                          zeta0=zeta0,
-                          lambda=lambda,
-                          K=K,
-                          tol        = tol,
-                          n_init     = n_init,
-                          n_outer    = n_outer,
-                          alpha      = 0.1,
-                          verbose    = F,
-                          knn        = knn,
-                          c          = c,
-                          M          = M)
+                              zeta0=zeta0,
+                              lambda=lambda,
+                              K=K,
+                              tol        = tol,
+                              n_init     = n_init,
+                              n_outer    = n_outer,
+                              alpha      = 0.1,
+                              verbose    = F,
+                              knn        = knn,
+                              c          = c,
+                              M          = M)
     states_train <- res$s
     feat_idx     <- which(colSums(res$W) > 0.025)
     
@@ -1256,17 +1278,17 @@ gap_robust_sparse_jump=function(
     # Fit the model
     
     fit=robust_sparse_jump(Y,
-                       zeta0=zeta0,
-                       lambda=lambda,
-                       K=K,
-                       tol     = NULL,
-                       n_init  = 5,
-                       n_outer = 20,
-                       alpha   = 0.1,
-                       verbose = FALSE,
-                       knn     = knn,
-                       c       = c,
-                       M       = M)
+                           zeta0=zeta0,
+                           lambda=lambda,
+                           K=K,
+                           tol     = NULL,
+                           n_init  = 5,
+                           n_outer = 20,
+                           alpha   = 0.1,
+                           verbose = FALSE,
+                           knn     = knn,
+                           c       = c,
+                           M       = M)
     
     return(list(loss=fit$loss,
                 K=K,
