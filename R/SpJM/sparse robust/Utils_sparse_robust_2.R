@@ -772,6 +772,7 @@ robust_sparse_jump <- function(Y,
                                knn     = 10,
                                c       = 10,
                                M       = NULL,
+                               mif=NULL,
                                hd=F,
                                n_hd=NULL) {
   
@@ -825,18 +826,19 @@ robust_sparse_jump <- function(Y,
           n_hd=500
         }
         
-        sel_idx=sample(1:TT,n_hd,replace=F)
+        sel_idx=sort(sample(1:TT,n_hd,replace=F))
         Y_search=Y[sel_idx,]
         
-        Y_search=as.matrix(Y_search*v)
-        
+        Y_search=as.matrix(Y_search*v[sel_idx])
+
       }
       
       else{
         Y_search=as.matrix(Y * v)
         sel_idx=1:TT
       }
-      DW      <- weight_inv_exp_dist(Y_search, s, W, zeta)
+
+      DW      <- weight_inv_exp_dist(Y_search, s[sel_idx], W, zeta)
       pam_out <- cluster::pam(DW, k=K, diss=TRUE)
       #medoids <- pam_out$id.med
       medoids=sel_idx[pam_out$id.med]
@@ -847,8 +849,9 @@ robust_sparse_jump <- function(Y,
       }
       
       else{
-        loss_by_state_new <- weight_inv_exp_dist_new(Y=Y_search,s=s,W=W,zeta=zeta,
-                                                     medoids=medoids)
+        loss_by_state <- weight_inv_exp_dist(Y=as.matrix(Y * v),
+                                             s=s,W=W,zeta=zeta,
+                                             medoids=medoids)
       }
       
       
@@ -924,7 +927,9 @@ robust_sparse_jump <- function(Y,
   best_v <- best_run$v
   
   # Most important features (mif)
-  mif=which.max(apply(best_W,2,sum))
+  if(is.null(mif)){
+    mif=which.max(apply(best_W,2,sum))
+  }
   
   # Re‐order states based on most important feature state-conditional median
   new_best_s <- order_states_condMed(Y[, mif], best_s)
