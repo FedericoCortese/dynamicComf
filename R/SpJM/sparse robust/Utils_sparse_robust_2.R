@@ -772,6 +772,7 @@ robust_sparse_jump <- function(Y,
                                knn     = 10,
                                c       = 10,
                                M       = NULL,
+                               mif=NULL,
                                hd=F,
                                n_hd=NULL) {
   
@@ -926,7 +927,9 @@ robust_sparse_jump <- function(Y,
   best_v <- best_run$v
   
   # Most important features (mif)
-  mif=which.max(apply(best_W,2,sum))
+  if(is.null(mif)){
+    mif=which.max(apply(best_W,2,sum))
+  }
   
   # Re‐order states based on most important feature state-conditional median
   new_best_s <- order_states_condMed(Y[, mif], best_s)

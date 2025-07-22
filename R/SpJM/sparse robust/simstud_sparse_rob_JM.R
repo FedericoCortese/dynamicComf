@@ -9,7 +9,7 @@ library(tidyr)
 
 source("Utils_sparse_robust_2.R")
 
-TT=1000
+TT=2000
 P=10
 
 zeta0=seq(0.05,0.4,by=.05)
