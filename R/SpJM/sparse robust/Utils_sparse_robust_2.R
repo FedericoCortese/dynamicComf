@@ -842,13 +842,16 @@ robust_sparse_jump <- function(Y,
       medoids=sel_idx[pam_out$id.med]
       
       # 4) build loss-by-state
-      #loss_by_state <- DW[, medoids, drop=FALSE]  # TT x K
+      if(!hd){
+        loss_by_state <- DW[, medoids, drop=FALSE]  # TT x K
+      }
       
-
-# QUI C'E' UN ERRORE ------------------------------------------------------
-
+      else{
+        loss_by_state_new <- weight_inv_exp_dist_new(Y=Y_search,s=s,W=W,zeta=zeta,
+                                                     medoids=medoids)
+      }
       
-      loss_by_state <- gower_dist(Y,Y[medoids,],scale='i')
+      
       
       # 5) DP forward: V[t,j] = loss[t,j] + min_i( V[t+1,i] + Gamma[i,j] )
       V <- loss_by_state
