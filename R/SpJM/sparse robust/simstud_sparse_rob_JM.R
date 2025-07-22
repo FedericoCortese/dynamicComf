@@ -9,6 +9,9 @@ library(tidyr)
 
 source("Utils_sparse_robust_2.R")
 
+TT=1000
+P=10
+
 zeta0=seq(0.05,0.4,by=.05)
 alpha=.1
 K=3
@@ -17,9 +20,6 @@ lambda=seq(0,2,.25)
 tol=1e-16
 verbose=F
 nseed=50
-
-TT=1000
-P=10
 
 c=c(5,7.5,10)
 
@@ -99,7 +99,8 @@ res_list_K3 <- mclapply(seq_len(nrow(hp)), function(i) {
       verbose = FALSE,
       knn = 10,
       c = c,
-      M = NULL
+      M = NULL,
+      hd=F
     )
     
     est_s <- fit$s

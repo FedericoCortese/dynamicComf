@@ -532,7 +532,7 @@ fuzzy_jump_cpp <- function(Y,
                  dimnames = list(NULL, colnames(Y)))
     
     for (k in seq_len(K)) {
-      w <- S[, k]
+      w <- S[, k]^m
       for (p in seq_len(P)) {
         if (feature_types[p] == 0L) {
           # variabile continua → mediana pesata
@@ -584,7 +584,7 @@ fuzzy_jump_cpp <- function(Y,
       
       # Recompute mu
       for (k in seq_len(K)) {
-        w <- S[, k]
+        w <- S[, k]^m
         for (p in seq_len(P)) {
           if (feature_types[p] == 0L) {
             # variabile continua → mediana pesata

@@ -4,43 +4,6 @@
 #include <set>
 using namespace Rcpp;
 
-// [[Rcpp::export]]
-NumericMatrix gower_dist_old(const NumericMatrix& Y,
-                         const NumericMatrix& mu) {
-  int n = Y.nrow();     // number of observations in Y
-  int p = Y.ncol();     // number of variables (columns)
-  int m = mu.nrow();    // number of rows in mu
-  
-  // Compute s_p: the range of each column of Y
-  NumericVector s_p(p);
-  for(int j = 0; j < p; ++j) {
-    double mn = Y(0, j), mx = Y(0, j);
-    for(int i = 1; i < n; ++i) {
-      if (Y(i, j) < mn) mn = Y(i, j);
-      if (Y(i, j) > mx) mx = Y(i, j);
-    }
-    s_p[j] = mx - mn;
-    if (s_p[j] == 0.0) s_p[j] = 1.0;  // avoid division by zero
-  }
-  
-  // Allocate output matrix V (n x m)
-  NumericMatrix V(n, m);
-  
-  // Compute the Gower distance (mean of standardized abs differences)
-  for(int i = 0; i < n; ++i) {
-    for(int j = 0; j < m; ++j) {
-      double acc = 0.0;
-      for(int k = 0; k < p; ++k) {
-        acc += std::abs(Y(i, k) - mu(j, k)) / s_p[k];
-      }
-      V(i, j) = acc / p;  // divide by number of variables to get the mean
-    }
-  }
-  
-  return V;
-}
-
-
 // helper to compute median of a std::vector<double>
 // includes the diagonal zero entry as in your R code
 double median_vec(std::vector<double>& v) {
@@ -117,7 +80,7 @@ NumericMatrix WCD(const IntegerVector& s,
 
 
 // [[Rcpp::export]]
-NumericMatrix weight_inv_exp_dist(const NumericMatrix& Y,
+NumericMatrix weight_inv_exp_dist_old(const NumericMatrix& Y,
                                   const IntegerVector& s,
                                   const NumericMatrix& W,
                                   double zeta) {
@@ -159,6 +122,92 @@ NumericMatrix weight_inv_exp_dist(const NumericMatrix& Y,
   
   return D;
 }
+
+#include <Rcpp.h>
+using namespace Rcpp;
+
+#include <Rcpp.h>
+using namespace Rcpp;
+
+// [[Rcpp::export]]
+NumericMatrix weight_inv_exp_dist(
+    const NumericMatrix& Y,
+    const IntegerVector& s,
+    const NumericMatrix& W,
+    double zeta,
+    Nullable<IntegerVector> medoids = R_NilValue
+) {
+  int T = Y.nrow();
+  int P = Y.ncol();
+  
+  // 1) compute robust scales sk[p] from Y’s columns
+  std::vector<double> sk(P);
+  for (int p = 0; p < P; ++p) {
+    std::vector<double> col(T);
+    for (int i = 0; i < T; ++i) col[i] = Y(i, p);
+    std::sort(col.begin(), col.end());
+    double q1 = col[(int)std::floor((T - 1) * 0.25)];
+    double q3 = col[(int)std::floor((T - 1) * 0.75)];
+    sk[p] = (q3 - q1) / 1.35;
+    if (sk[p] == 0.0) sk[p] = 1.0;  // avoid div by zero
+  }
+  
+  // check s length
+  if (s.size() != T)
+    stop("Length of s must equal nrow(Y)");
+  
+  // 2) branch on whether medoids is provided
+  if (medoids.isNull()) {
+    // ——— full Y vs Y: return T×T symmetric matrix ———
+    NumericMatrix D(T, T);
+    for (int i = 0; i < T; ++i) {
+      for (int j = i + 1; j < T; ++j) {
+        double sum_exp = 0.0;
+        int si = s[i] - 1;
+        int sj = s[j] - 1;
+        for (int p = 0; p < P; ++p) {
+          double diff = std::abs(Y(i, p) - Y(j, p)) / sk[p];
+          double wmax = std::max(W(si, p), W(sj, p));
+          sum_exp += wmax * std::exp(-diff / zeta);
+        }
+        double val = -zeta * std::log(std::max(sum_exp, 1e-16));
+        D(i, j) = D(j, i) = val;
+      }
+    }
+    return D;
+    
+  } else {
+    // ——— Y vs medoids: return T×K matrix ———
+    IntegerVector med(medoids);
+    int K = med.size();
+    // convert to 0-based and validate
+    std::vector<int> midx(K);
+    for (int k = 0; k < K; ++k) {
+      if (med[k] < 1 || med[k] > T)
+        stop("medoids must be 1..nrow(Y)");
+      midx[k] = med[k] - 1;
+    }
+    
+    NumericMatrix D(T, K);
+    for (int i = 0; i < T; ++i) {
+      int si = s[i] - 1;
+      for (int k = 0; k < K; ++k) {
+        int j = midx[k];
+        int sj = s[j] - 1;
+        double sum_exp = 0.0;
+        for (int p = 0; p < P; ++p) {
+          double diff = std::abs(Y(i, p) - Y(j, p)) / sk[p];
+          double wmax = std::max(W(si, p), W(sj, p));
+          sum_exp += wmax * std::exp(-diff / zeta);
+        }
+        D(i, k) = -zeta * std::log(std::max(sum_exp, 1e-16));
+      }
+    }
+    return D;
+  }
+}
+
+
 
 // [[Rcpp::export]]
 NumericMatrix gower_dist(const NumericMatrix& Y,

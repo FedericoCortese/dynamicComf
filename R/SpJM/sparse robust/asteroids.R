@@ -232,9 +232,9 @@ gap_2016CA138=gap_robust_sparse_jump(
 
 fit_2016CA138=robust_sparse_jump(
   Y=sel_features_2016CA138,
-  K=3,
-  zeta0=.2,
-  lambda=.7,
+  K=4,
+  zeta0=.1,
+  lambda=.4,
   c=10,
   knn=10,
   M=NULL,
