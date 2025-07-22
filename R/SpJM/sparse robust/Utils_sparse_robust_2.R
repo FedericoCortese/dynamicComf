@@ -825,10 +825,17 @@ robust_sparse_jump <- function(Y,
           n_hd=500
         }
         
+<<<<<<< HEAD
         sel_idx=sort(sample(1:TT,n_hd,replace=F))
         Y_search=Y[sel_idx,]
         
         Y_search=as.matrix(Y_search*v[sel_idx])
+=======
+        sel_idx=sample(1:TT,n_hd,replace=F)
+        Y_search=Y[sel_idx,]
+        
+        Y_search=as.matrix(Y_search*v)
+>>>>>>> 7171c163ef1e60b9f7f7b44400f74b91f5ff7c19
         
       }
       
@@ -836,7 +843,11 @@ robust_sparse_jump <- function(Y,
         Y_search=as.matrix(Y * v)
         sel_idx=1:TT
       }
+<<<<<<< HEAD
       DW      <- weight_inv_exp_dist(Y_search, s[sel_idx], W, zeta)
+=======
+      DW      <- weight_inv_exp_dist(Y_search, s, W, zeta)
+>>>>>>> 7171c163ef1e60b9f7f7b44400f74b91f5ff7c19
       pam_out <- cluster::pam(DW, k=K, diss=TRUE)
       #medoids <- pam_out$id.med
       medoids=sel_idx[pam_out$id.med]
@@ -847,8 +858,12 @@ robust_sparse_jump <- function(Y,
       }
       
       else{
+<<<<<<< HEAD
         loss_by_state <- weight_inv_exp_dist(Y=as.matrix(Y * v),
                                                      s=s,W=W,zeta=zeta,
+=======
+        loss_by_state_new <- weight_inv_exp_dist_new(Y=Y_search,s=s,W=W,zeta=zeta,
+>>>>>>> 7171c163ef1e60b9f7f7b44400f74b91f5ff7c19
                                                      medoids=medoids)
       }
       
