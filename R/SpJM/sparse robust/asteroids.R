@@ -26,6 +26,7 @@ df_2014OL339$type <- match(df_2014OL339$type, old_vals)
 
 # 2015XX169 ---------------------------------------------------------------
 
+source("Utils_asteroids.R")
 df_2015XX169=read.table("data_asteroids/propagation_2015XX169_new_v2.txt",header = T)
 df_2015XX169=trans_theta(df_2015XX169)
 
@@ -61,12 +62,6 @@ features_2015XX169=merge(features_2015XX169,
 
 features_2015XX169=features_2015XX169[complete.cases(features_2015XX169), ]
 
-# Extract ground truth and time
-gt_2015XX169=df_2015XX169$type
-time_2015XX169=df_2015XX169$t
-a_2015XX169=df_2015XX169$a
-theta_2015XX169=df_2015XX169$theta
-
 summary(features_2015XX169)
 
 sel_features_2015XX169=features_2015XX169[,c("value_max_theta", "value_min_theta",
@@ -75,6 +70,24 @@ sel_features_2015XX169=features_2015XX169[,c("value_max_theta", "value_min_theta
                                              "I_HS",
                                              "I_QS","I_CP",
                                              "ma_a")]
+
+# Extract ground truth and time
+gt_2015XX169=features_2015XX169$type
+time_2015XX169=features_2015XX169$t
+a_2015XX169=features_2015XX169$a
+theta_2015XX169=features_2015XX169$theta
+
+# Artificially replicate data
+n_times=3
+sel_features_2015XX169=sel_features_2015XX169[rep(1:nrow(sel_features_2015XX169),
+                                                  times=n_times),]
+
+dataplot_2015XX169=data.frame(t=1:nrow(sel_features_2015XX169),
+                              a=rep(a_2015XX169,n_times),
+                              theta=rep(theta_2015XX169,n_times),
+                              ground_truth=rep(gt_2015XX169,n_times))
+
+plot(dataplot_2015XX169$theta,col=dataplot_2015XX169$ground_truth+1)
 
 source("Utils_sparse_robust_2.R")
 
@@ -98,35 +111,37 @@ en=Sys.time()
 en-st
 
 # Select zeta0 based on the best lambda, K and c
-st=Sys.time()
-gap_2015XX169=gap_robust_sparse_jump(
-  Y=sel_features_2015XX169,
-  K_grid=NULL,
-  zeta0_grid=seq(0.05,.5,0.05),
-  lambda=0,
-  B=10,
-  parallel=F,
-  n_cores=NULL,
-  knn=10,
-  c=10,
-  M=NULL
-)
-en=Sys.time()
-en-st
+# st=Sys.time()
+# gap_2015XX169=gap_robust_sparse_jump(
+#   Y=sel_features_2015XX169,
+#   K_grid=NULL,
+#   zeta0_grid=seq(0.05,.5,0.05),
+#   lambda=0,
+#   B=10,
+#   parallel=F,
+#   n_cores=NULL,
+#   knn=10,
+#   c=10,
+#   M=NULL
+# )
+# en=Sys.time()
+# en-st
 
 # Final fit
 
 fit_2015XX169=robust_sparse_jump(
   Y=sel_features_2015XX169,
-  K=4,
-  zeta0=.05,
+  K=3,
+  zeta0=.1,
   lambda=.3,
   c=7.5,
   knn=10,
   M=NULL,
-  n_init=5,
+  n_init=3,
   verbose=T,
-  tol=1e-8
+  tol=1e-6,
+  hd=T,
+  n_hd=1000
 )
 
 est_s_2015XX169=fit_2015XX169$s
