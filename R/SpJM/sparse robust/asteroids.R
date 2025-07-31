@@ -105,7 +105,9 @@ cv_2015XX169=cv_robust_sparse_jump(
   cv_method="blocked-cv",
   knn=10,
   c_grid=c(7.5,10),
-  M=NULL
+  M=NULL,
+  hd=T,
+  n_hd=1000
 )
 en=Sys.time()
 en-st
