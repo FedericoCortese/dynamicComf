@@ -95,7 +95,7 @@ source("Utils_sparse_robust_2.R")
 st=Sys.time()
 cv_2015XX169=cv_robust_sparse_jump(
   Y=sel_features_2015XX169,
-  true_states=gt_2015XX169,
+  true_states=dataplot_2015XX169$ground_truth,
   K_grid=2:4,
   zeta0_grid=seq(0.05,0.5,.05),
   lambda_grid=seq(0,1,.1),
@@ -136,7 +136,7 @@ fit_2015XX169=robust_sparse_jump(
   K=3,
   zeta0=.1,
   lambda=.3,
-  c=7.5,
+  c=100,
   knn=10,
   M=NULL,
   n_init=3,
@@ -148,8 +148,11 @@ fit_2015XX169=robust_sparse_jump(
 
 est_s_2015XX169=fit_2015XX169$s
 est_s_2015XX169[fit_2015XX169$v==0]=0
-plot(features_2015XX169$theta,col=est_s_2015XX169+1)
-plot(features_2015XX169$a,col=est_s_2015XX169+1)
+
+dataplot_2015XX169$s=est_s_2015XX169
+
+plot(dataplot_2015XX169$theta,col=dataplot_2015XX169$s+1)
+plot(dataplot_2015XX169$a,col=dataplot_2015XX169$s+1)
 
 est_W_2015XX169= data.frame(round(fit_2015XX169$W,2))
 colnames(est_W_2015XX169)=names(sel_features_2015XX169)
