@@ -969,7 +969,9 @@ cv_robust_sparse_jump <- function(
     M=NULL,
     n_init =5,
     n_outer=5,
-    tol=1e-8
+    tol=1e-8,
+    hd=F,
+    n_hd=NULL
 ) {
   
   # cv_sparse_jump: Cross-validate Sparse Jump Model parameters (K and lambda)
@@ -1054,7 +1056,9 @@ cv_robust_sparse_jump <- function(
                               verbose    = F,
                               knn        = knn,
                               c          = c,
-                              M          = M)
+                              M          = M,
+                              hd=hd,
+                              n_hd=n_hd)
     states_train <- res$s
     feat_idx     <- which(colSums(res$W) > 0.025)
     
