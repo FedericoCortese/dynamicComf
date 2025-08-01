@@ -320,7 +320,7 @@ df_2016CA138_maxmins_theta=max_min_feat(df_2016CA138,
 
 df_2016CA138_stat_theta=compute_feat(df_2016CA138,"theta",l=50,ma_flag   = F)
 
-df_2016CA138_stat_a=compute_feat(df_2016CA138,"a",l=50,sd_flag   = F)
+df_2016CA138_stat_a=compute_feat(df_2016CA138,"a",l=100,sd_flag   = F)
 df_2016CA138_stat_a=df_2016CA138_stat_a[,c("t","ma_a")]
 
 
@@ -360,6 +360,8 @@ dataplot_2016CA138=data.frame(t=1:nrow(sel_features_2016CA138),
                               ground_truth=rep(gt_2016CA138,n_times))
 
 plot(dataplot_2016CA138$theta,col=dataplot_2016CA138$ground_truth+1)
+plot(sel_features_2016CA138$ma_a,col=dataplot_2016CA138$ground_truth+1)
+
 
 source("Utils_sparse_robust_2.R")
 
