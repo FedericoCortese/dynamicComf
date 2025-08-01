@@ -406,21 +406,19 @@ en-st
 
 fit_2016CA138=robust_sparse_jump(
   Y=sel_features_2016CA138,
-  K=3,
-  zeta0=.5,
+  K=4,
+  zeta0=.05,
   lambda=.1,
   c=10,
   knn=10,
   M=NULL,
-  n_init=3,
+  n_init=5,
   verbose=T,
   tol=1e-6,
   hd=T,
   n_hd=1000,
   outlier=F
 )
-
-table(fit_2016CA138$s,dataplot_2016CA138$ground_truth)
 
 est_s_2016CA138=fit_2016CA138$s
 est_s_2016CA138[fit_2016CA138$v==0]=0
@@ -429,6 +427,8 @@ dataplot_2016CA138$s=est_s_2016CA138
 
 plot(dataplot_2016CA138$theta,col=dataplot_2016CA138$s+1)
 plot(dataplot_2016CA138$a,col=dataplot_2016CA138$s+1)
+
+table(fit_2016CA138$s,dataplot_2016CA138$ground_truth)
 
 est_W_2016CA138= data.frame(round(fit_2016CA138$W,2))
 colnames(est_W_2016CA138)=names(sel_features_2016CA138)
