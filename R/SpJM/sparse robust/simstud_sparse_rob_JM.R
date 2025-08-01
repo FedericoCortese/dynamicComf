@@ -96,11 +96,12 @@ res_list_K3 <- mclapply(seq_len(nrow(hp)), function(i) {
       n_init = 3,
       n_outer = 10,
       alpha = 0.1,
-      verbose = FALSE,
+      verbose = T,
       knn = 10,
       c = c,
       M = NULL,
-      hd=F
+      hd=T,
+      outlier=F
     )
     
     est_s <- fit$s

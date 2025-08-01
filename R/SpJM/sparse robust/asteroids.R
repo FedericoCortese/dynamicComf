@@ -266,7 +266,7 @@ en-st
 fit_2015XX169=robust_sparse_jump(
   Y=sel_features_2015XX169,
   K=3,
-  zeta0=.25,
+  zeta0=.20,
   lambda=.5,
   c=10,
   knn=10,
@@ -275,7 +275,8 @@ fit_2015XX169=robust_sparse_jump(
   verbose=T,
   tol=1e-6,
   hd=T,
-  n_hd=1000
+  n_hd=1000,
+  outlier=F
 )
 
 est_s_2015XX169=fit_2015XX169$s
@@ -403,8 +404,8 @@ en-st
 fit_2016CA138=robust_sparse_jump(
   Y=sel_features_2016CA138,
   K=3,
-  zeta0=.1,
-  lambda=.5,
+  zeta0=.5,
+  lambda=.1,
   c=10,
   knn=10,
   M=NULL,
@@ -412,8 +413,11 @@ fit_2016CA138=robust_sparse_jump(
   verbose=T,
   tol=1e-6,
   hd=T,
-  n_hd=1000
+  n_hd=1000,
+  outlier=F
 )
+
+table(fit_2016CA138$s,dataplot_2016CA138$ground_truth)
 
 est_s_2016CA138=fit_2016CA138$s
 est_s_2016CA138[fit_2016CA138$v==0]=0

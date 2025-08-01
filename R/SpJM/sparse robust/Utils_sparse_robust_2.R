@@ -890,6 +890,7 @@ robust_sparse_jump <- function(Y,
       # Cpp alternative
       s=E_step(loss_by_state,
              Gamma)
+      loss  <- loss_by_state[1, s[1]]
       
       # 7) must have all K states or revert
       if (length(unique(s)) < K) {
