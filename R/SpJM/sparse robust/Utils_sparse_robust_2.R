@@ -774,7 +774,8 @@ robust_sparse_jump <- function(Y,
                                M       = NULL,
                                mif=NULL,
                                hd=F,
-                               n_hd=NULL) {
+                               n_hd=NULL,
+                               outlier=T) {
   
   P  <- ncol(Y)
   TT <- nrow(Y)
@@ -816,9 +817,14 @@ robust_sparse_jump <- function(Y,
     
     for (outer in seq_len(n_outer)) {
       
-      v1 <- v_1(W[s, , drop=FALSE] * Y, knn=knn, c=c, M=M)
-      v2 <- v_1(Y,                     knn=knn, c=c, M=M)
-      v  <- pmin(v1, v2)
+      if(!outlier){
+        v=rep(1,TT)
+      }
+      else{
+        v1 <- v_1(W[s, , drop=FALSE] * Y, knn=knn, c=c, M=M)
+        v2 <- v_1(Y,                     knn=knn, c=c, M=M)
+        v  <- pmin(v1, v2)
+      }
       
       
       if(hd){
@@ -857,27 +863,33 @@ robust_sparse_jump <- function(Y,
       
       
       # 5) DP forward: V[t,j] = loss[t,j] + min_i( V[t+1,i] + Gamma[i,j] )
-      V <- loss_by_state
-      for (t in (TT-1):1) {
-        for (j in seq_len(K)) {
-          # look at row t+1 of V plus column j of Gamma:
-          V[t, j] <- loss_by_state[t, j] +
-            min( V[t+1, ] + Gamma[, j] )
-        }
-      }
-      
-      # 6) backtrack to get s
-      s_old <- s
-      # first time‐point
-      s[1] <- which.min(V[1, ])
-      loss  <- V[1, s[1]]
-      # subsequent
-      for (t in 2:TT) {
-        prev <- s[t-1]
-        # pick state j minimizing V[t,j] + penalty from prev
-        scores <- V[t, ] + Gamma[prev, ]
-        s[t] <- which.min(scores)
-      }
+      # V <- loss_by_state
+      # 
+      # # Input: V is TT x K, Gamma is KxK, s and s_old have length TT
+      # for (t in (TT-1):1) {
+      #   for (j in seq_len(K)) {
+      #     # look at row t+1 of V plus column j of Gamma:
+      #     V[t, j] <- loss_by_state[t, j] +
+      #       min( V[t+1, ] + Gamma[, j] )
+      #   }
+      # }
+      # 
+      # # 6) backtrack to get s
+      # s_old <- s
+      # # first time‐point
+      # s[1] <- which.min(V[1, ])
+      # loss  <- V[1, s[1]]
+      # # subsequent
+      # for (t in 2:TT) {
+      #   prev <- s[t-1]
+      #   # pick state j minimizing V[t,j] + penalty from prev
+      #   scores <- V[t, ] + Gamma[prev, ]
+      #   s[t] <- which.min(scores)
+      # }
+
+      # Cpp alternative
+      s=E_step(loss_by_state,
+             Gamma)
       
       # 7) must have all K states or revert
       if (length(unique(s)) < K) {
@@ -890,7 +902,13 @@ robust_sparse_jump <- function(Y,
       loss_old <- loss
       
       # 9) update W via WCD + exp
-      Spk <- WCD(s, as.matrix(Y * v), K)
+      if(hd){
+        Spk <- WCD(s[sel_idx], as.matrix(Y_search * v[sel_idx]), K)
+      }
+      else{
+        Spk <- WCD(s, as.matrix(Y * v), K)
+      }
+      
       wcd <- exp(-Spk / zeta0)
       W   <- wcd / rowSums(wcd)
       

@@ -535,3 +535,66 @@ NumericVector v_1(const NumericMatrix& Y,
   }
   return v;
 }
+
+// [[Rcpp::export]]
+IntegerVector E_step(const NumericMatrix& loss_by_state,
+                     const NumericMatrix& Gamma) {
+  int T = loss_by_state.nrow();
+  int K = loss_by_state.ncol();
+  
+  if (Gamma.nrow() != K || Gamma.ncol() != K)
+    stop("Gamma must be K x K with K = ncol(loss_by_state)");
+  
+  // 1) Forward pass: V[t,j] = loss[t,j] + min_i { V[t+1,i] + Gamma[i,j] }
+  NumericMatrix V(T, K);
+  // initialize with the immediate loss
+  for (int t = 0; t < T; ++t)
+    for (int j = 0; j < K; ++j)
+      V(t, j) = loss_by_state(t, j);
+  
+  // fill rows T-2 ... 0
+  for (int t = T - 2; t >= 0; --t) {
+    for (int j = 0; j < K; ++j) {
+      // compute min_i { V[t+1,i] + Gamma[i,j] }
+      double m = V(t+1, 0) + Gamma(0, j);
+      for (int i = 1; i < K; ++i) {
+        double cand = V(t+1, i) + Gamma(i, j);
+        if (cand < m) m = cand;
+      }
+      V(t, j) = loss_by_state(t, j) + m;
+    }
+  }
+  
+  // 2) Backtrack
+  IntegerVector s(T);
+  
+  // first time‐point: pick argmin over j of V(0,j)
+  {
+    double m0 = V(0, 0);
+    int idx = 0;
+    for (int j = 1; j < K; ++j) {
+      if (V(0, j) < m0) {
+        m0  = V(0, j);
+        idx = j;
+      }
+    }
+    s[0] = idx + 1;  // store 1-based
+  }
+  
+  // subsequent t = 1..T-1
+  for (int t = 1; t < T; ++t) {
+    int prev = s[t-1] - 1;  // zero-based
+    double m = V(t, 0) + Gamma(prev, 0);
+    int idx = 0;
+    for (int j = 1; j < K; ++j) {
+      double cand = V(t, j) + Gamma(prev, j);
+      if (cand < m) {
+        m   = cand;
+        idx = j;
+      }
+    }
+    s[t] = idx + 1;
+  }
+  
+  return s;
+}
