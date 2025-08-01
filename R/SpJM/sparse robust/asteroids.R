@@ -103,7 +103,8 @@ cv_2014OL339=cv_robust_sparse_jump(
   c_grid=c(7.5,10,100),
   M=NULL,
   hd=T,
-  n_hd=1000
+  n_hd=1000,
+  outlier=F
 )
 en=Sys.time()
 en-st
@@ -239,7 +240,8 @@ cv_2015XX169=cv_robust_sparse_jump(
   c_grid=c(7.5,10,100),
   M=NULL,
   hd=T,
-  n_hd=1000
+  n_hd=1000,
+  outlier=F
 )
 en=Sys.time()
 en-st
@@ -377,7 +379,8 @@ cv_2016CA138=cv_robust_sparse_jump(
   c_grid=c(7.5,10,100),
   M=NULL,
   hd=T,
-  n_hd=1000
+  n_hd=1000,
+  outlier=F
 )
 en=Sys.time()
 en-st
