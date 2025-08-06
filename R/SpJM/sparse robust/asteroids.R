@@ -409,8 +409,8 @@ en-st
 fit_2016CA138=robust_sparse_jump(
   Y=sel_features_2016CA138,
   K=4,
-  zeta0=.05,
-  lambda=.1,
+  zeta0=.2,
+  lambda=.8,
   c=10,
   knn=10,
   M=NULL,
