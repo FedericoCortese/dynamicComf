@@ -210,6 +210,9 @@ time_2015XX169=features_2015XX169$t
 a_2015XX169=features_2015XX169$a
 theta_2015XX169=features_2015XX169$theta
 
+
+T_origin=dim(sel_features_2015XX169)[1]
+
 # Artificially replicate data
 n_times=3
 sel_features_2015XX169=sel_features_2015XX169[rep(1:nrow(sel_features_2015XX169),
@@ -286,7 +289,32 @@ est_s_2015XX169[fit_2015XX169$v==0]=0
 
 dataplot_2015XX169$s=est_s_2015XX169
 
-plot(dataplot_2015XX169$theta,col=dataplot_2015XX169$s+1)
+library(ggplot2)
+
+dat <- dataplot_2015XX169[1:T_origin,]
+dat$s_lab <- factor(dat$s, levels = c(1, 2, 3), labels = c("QS", "CP", "HS"))
+
+library(ggplot2)
+
+ggplot(dat, aes(x = seq_along(theta), y = theta, color = s_lab)) +
+  geom_point(shape = 16, size = 2.5) + # filled points
+  scale_color_manual(
+    values = c(CP = "green", HS = "black", QS = "red"),
+    name = NULL
+  ) +
+  labs(x = NULL, y = expression(theta)) +
+  theme_minimal(base_size = 14) + # bigger default text size
+  theme(
+    axis.title = element_text(size = 16), # bigger axis labels
+    axis.text = element_text(size = 14),  # bigger tick labels
+    legend.position = "top",
+    legend.justification = "center",
+    legend.box = "horizontal",
+    plot.margin = margin(t = 20, r = 10, b = 10, l = 10) # add top space for legend
+  )
+
+
+
 plot(dataplot_2015XX169$a,col=dataplot_2015XX169$s+1)
 
 est_W_2015XX169= data.frame(round(fit_2015XX169$W,2))
